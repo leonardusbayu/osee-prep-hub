@@ -39,7 +39,7 @@ export async function createGradingEntry(
   const { data, error } = await supabase
     .from('ai_grading_queue')
     .insert({
-      user_id: userId,
+      teacher_id: userId,
       grading_type: gradingType,
       status: 'pending',
       input,
@@ -64,7 +64,7 @@ export async function getGradingEntry(
     .from('ai_grading_queue')
     .select('*')
     .eq('id', entryId)
-    .eq('user_id', userId)
+    .eq('teacher_id', userId)
     .maybeSingle();
 
   if (error || !data) return null;
@@ -81,7 +81,7 @@ export async function listGradingHistory(
   const { data, error } = await supabase
     .from('ai_grading_queue')
     .select('*')
-    .eq('user_id', userId)
+    .eq('teacher_id', userId)
     .order('created_at', { ascending: false })
     .limit(limit);
 

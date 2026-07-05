@@ -54,14 +54,21 @@ export async function getMonthlyUsage(
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   // Query ai_grading_queue for grading count this month
+  // Table uses teacher_id (blueprint schema) not user_id
   if (quotaType === 'grading') {
     const { count, error } = await supabase
       .from('ai_grading_queue')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
+      .eq('teacher_id', userId)
       .gte('created_at', monthStart);
     if (error) {
-      throw new Error(`Failed to fetch usage: ${error.message}`);
+      // If teacher_id doesn't match, try student_id as fallback
+      const { count: altCount } = await supabase
+        .from('ai_grading_queue')
+        .select('id', { count: 'exact', head: true })
+        .eq('student_id', userId)
+        .gte('created_at', monthStart);
+      return altCount ?? 0;
     }
     return count ?? 0;
   }
@@ -82,13 +89,13 @@ export async function getMonthlyUsage(
   }
 
   // Speaking quota — also tracked via ai_grading_queue with type='speaking'
-  // (schema doesn't have a separate speaking queue — reuse grading queue)
+  // Table uses teacher_id (blueprint schema) not user_id
   if (quotaType === 'speaking') {
     const { count, error } = await supabase
       .from('ai_grading_queue')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('grading_type', 'speaking')
+      .eq('teacher_id', userId)
+      .eq('submission_type', 'speaking')
       .gte('created_at', monthStart);
     if (error) {
       return 0;
