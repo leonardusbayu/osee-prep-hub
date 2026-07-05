@@ -126,7 +126,9 @@ async function insertDocument(
   embedding: number[] | null,
   tier: string
 ): Promise<void> {
-  // Insert into knowledge_base_documents
+  // Actual schema columns: id, title, source, source_author, source_publisher,
+  // source_url, source_license, category, subcategory, cefr_level, content,
+  // content_chunk_count, metadata, uploaded_by, is_active, created_at, updated_at
   const docResponse = await fetch(`${supabaseUrl}/rest/v1/knowledge_base_documents`, {
     method: 'POST',
     headers: {
@@ -136,13 +138,15 @@ async function insertDocument(
       Prefer: 'return=representation',
     },
     body: JSON.stringify({
-      source_path: filePath,
-      source_type: extname(filePath).slice(1),
       title: basename(filePath, extname(filePath)),
-      tier,
-      cefr_level: null,
+      source: filePath,
       category: 'general',
+      subcategory: tier,
+      cefr_level: null,
       content: chunks.join('\n\n---\n\n'),
+      content_chunk_count: chunks.length,
+      metadata: { tier, source_path: filePath, source_type: extname(filePath).slice(1) },
+      is_active: true,
     }),
   });
   if (!docResponse.ok) {
