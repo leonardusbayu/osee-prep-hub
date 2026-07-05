@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { enrollStudentByJoinCode, getStudentClassrooms } from '../services/classroom';
+import { getSupabase } from '../services/supabase';
 
 export const studentRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -49,13 +50,73 @@ studentRoutes.get('/classrooms', async (c) => {
   }
 });
 
-/** GET /api/student/progress — student's progress across all platforms (placeholder — Task 3.3) */
+/** GET /api/student/progress — student's progress across all platforms (Task 3.3, 11.3) */
 studentRoutes.get('/progress', async (c) => {
   const user = getAuthedUser(c);
-  // TODO: Task 3.3 student-facing progress endpoint (uses student-progress service)
+  const supabase = getSupabase(c.env);
+  const { data: progress } = await supabase
+    .from('student_progress_unified')
+    .select('*')
+    .eq('student_id', user.id)
+    .maybeSingle();
   return c.json({
     student_id: user.id,
-    progress: [],
-    note: 'Full progress data — implemented in Task 3.3 (service exists, endpoint wiring pending)',
+    progress: progress ?? {},
   });
+});
+
+/** GET /api/student/dashboard — student dashboard data (Task 11.1) */
+studentRoutes.get('/dashboard', async (c) => {
+  const user = getAuthedUser(c);
+  const supabase = getSupabase(c.env);
+
+  // Get progress
+  const { data: progress } = await supabase
+    .from('student_progress_unified')
+    .select('*')
+    .eq('student_id', user.id)
+    .maybeSingle();
+
+  // Get enrolled classrooms
+  const classrooms = await getStudentClassrooms(c.env, user.id);
+
+  // Calculate readiness (simple heuristic)
+  const p = (progress as Record<string, unknown>) ?? {};
+  const scores = [
+    p.ibt_latest_score as number | null,
+    p.itp_latest_score as number | null,
+    p.ielts_latest_band as number | null,
+    p.toeic_latest_score as number | null,
+  ].filter((s): s is number => s !== null);
+  const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  const readiness = Math.min(100, Math.round(avgScore));
+
+  return c.json({
+    student: { id: user.id, name: user.display_name, email: user.email },
+    progress: progress ?? {},
+    classrooms,
+    readiness,
+    note: 'Full student dashboard — Task 11.1 (Flutter UI)',
+  });
+});
+
+/** GET /api/student/syllabus — get assigned syllabus (Task 11.2) */
+studentRoutes.get('/syllabus', async (c) => {
+  const user = getAuthedUser(c);
+  const supabase = getSupabase(c.env);
+
+  // Get student's classrooms, then find syllabi for those classrooms
+  const classrooms = await getStudentClassrooms(c.env, user.id);
+  const classroomIds = classrooms.map((c) => c.id);
+  if (classroomIds.length === 0) {
+    return c.json({ syllabi: [] });
+  }
+
+  const { data: syllabi } = await supabase
+    .from('syllabi')
+    .select('*, syllabus_items(*)')
+    .in('classroom_id', classroomIds)
+    .eq('is_published', true);
+
+  return c.json({ syllabi: syllabi ?? [] });
 });

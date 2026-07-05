@@ -6,6 +6,18 @@ import {
   getClassroomsByTeacher,
   getClassroomDetail,
 } from '../services/classroom';
+import {
+  generateStudentReport,
+  generateClassroomReport,
+} from '../services/reports';
+import {
+  createSyllabus,
+  listSyllabi,
+  getSyllabus,
+  listSyllabusItems,
+  batchSaveSyllabusItems,
+  addSyllabusItem,
+} from '../services/syllabus';
 
 export const teacherRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -76,7 +88,6 @@ teacherRoutes.get('/classrooms/:id', async (c) => {
 /** GET /api/teacher/dashboard — stats overview */
 teacherRoutes.get('/dashboard', async (c) => {
   const user = getAuthedUser(c);
-  // TODO: Task 2.1 will implement full dashboard stats
   return c.json({
     user: { id: user.id, name: user.display_name, role: user.role },
     classrooms_count: 0,
@@ -85,4 +96,125 @@ teacherRoutes.get('/dashboard', async (c) => {
     ai_quota_remaining: 0,
     note: 'Full dashboard stats — Task 2.1 (Flutter UI)',
   });
+});
+
+// ---------- Report endpoints (Task 8.1, 9.1) ----------
+
+/** GET /api/teacher/students/:id/report — generate student report */
+teacherRoutes.get('/students/:id/report', async (c) => {
+  const user = getAuthedUser(c);
+  const studentId = c.req.param('id');
+  try {
+    const report = await generateStudentReport(c.env, user.id, studentId);
+    return c.json(report);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Report failed';
+    return c.json({ error: { code: 'REPORT_FAILED', message } }, 404);
+  }
+});
+
+/** GET /api/teacher/classrooms/:id/report — generate classroom report */
+teacherRoutes.get('/classrooms/:id/report', async (c) => {
+  const user = getAuthedUser(c);
+  const classroomId = c.req.param('id');
+  try {
+    const report = await generateClassroomReport(c.env, user.id, classroomId);
+    return c.json(report);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Report failed';
+    return c.json({ error: { code: 'REPORT_FAILED', message } }, 404);
+  }
+});
+
+// ---------- Syllabus endpoints (Task 10.x) ----------
+
+/** POST /api/teacher/syllabi — create syllabus */
+teacherRoutes.post('/syllabi', async (c) => {
+  const user = getAuthedUser(c);
+  let body: { name?: string; description?: string; target_exam?: string; classroom_id?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.name?.trim()) {
+    return c.json({ error: { code: 'INVALID_NAME', message: 'name required' } }, 400);
+  }
+  try {
+    const syllabus = await createSyllabus(c.env, user.id, {
+      name: body.name,
+      description: body.description,
+      target_exam: body.target_exam,
+      classroom_id: body.classroom_id,
+    });
+    return c.json(syllabus, 201);
+  } catch (err) {
+    return c.json({ error: { code: 'CREATE_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** GET /api/teacher/syllabi — list teacher's syllabi */
+teacherRoutes.get('/syllabi', async (c) => {
+  const user = getAuthedUser(c);
+  try {
+    const syllabi = await listSyllabi(c.env, user.id);
+    return c.json({ syllabi });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** GET /api/teacher/syllabi/:id — get syllabus with items */
+teacherRoutes.get('/syllabi/:id', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  try {
+    const syllabus = await getSyllabus(c.env, user.id, syllabusId);
+    if (!syllabus) {
+      return c.json({ error: { code: 'NOT_FOUND', message: 'Syllabus not found' } }, 404);
+    }
+    const items = await listSyllabusItems(c.env, syllabusId);
+    return c.json({ syllabus, items });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** PUT /api/teacher/syllabi/:id/items — batch save syllabus items (Task 10.4) */
+teacherRoutes.put('/syllabi/:id/items', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  let body: { items?: Array<Record<string, unknown>> };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  // Verify syllabus belongs to teacher
+  const syllabus = await getSyllabus(c.env, user.id, syllabusId);
+  if (!syllabus) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Syllabus not found' } }, 404);
+  }
+  try {
+    await batchSaveSyllabusItems(c.env, syllabusId, (body.items ?? []) as never);
+    return c.json({ success: true, count: body.items?.length ?? 0 });
+  } catch (err) {
+    return c.json({ error: { code: 'SAVE_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** POST /api/teacher/syllabi/:id/items — add single item */
+teacherRoutes.post('/syllabi/:id/items', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  let body: Record<string, unknown>;
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  const syllabus = await getSyllabus(c.env, user.id, syllabusId);
+  if (!syllabus) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Syllabus not found' } }, 404);
+  }
+  try {
+    const item = await addSyllabusItem(c.env, syllabusId, body as never);
+    return c.json(item, 201);
+  } catch (err) {
+    return c.json({ error: { code: 'ADD_FAILED', message: (err as Error).message } }, 500);
+  }
 });
