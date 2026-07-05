@@ -33,17 +33,25 @@ export function isAllowedOrigin(origin: string | undefined | null): boolean {
 export const cors = () => {
   return async (c: Context<{ Bindings: Env; Variables: ContextVars }>, next: () => Promise<void>): Promise<Response | void> => {
     const origin = c.req.header('Origin');
+
+    // If no Origin header, skip CORS (same-origin or non-browser)
     if (origin && isAllowedOrigin(origin)) {
+      // Set CORS headers on ALL responses, including preflight
       c.header('Access-Control-Allow-Origin', origin);
       c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Webhook-Secret, X-Hub-Secret');
       c.header('Access-Control-Allow-Credentials', 'true');
       c.header('Access-Control-Max-Age', '86400');
     }
-    // Handle preflight
-    if (c.req.header('Access-Control-Request-Method')) {
-      return new Response(null, { status: 204 });
+
+    // Handle preflight OPTIONS — must return CORS headers
+    if (c.req.method === 'OPTIONS' || c.req.header('Access-Control-Request-Method')) {
+      return new Response(null, {
+        status: 204,
+        headers: c.res.headers,
+      });
     }
+
     await next();
   };
 };
