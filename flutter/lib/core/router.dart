@@ -2,60 +2,84 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// App router — go_router with placeholder routes.
+import '../features/auth/models/user.dart';
+import '../features/auth/pages/login_page.dart';
+import '../features/auth/pages/register_page.dart';
+import '../features/auth/providers/auth_provider.dart';
+import '../features/student/pages/student_dashboard_page.dart';
+import '../features/teacher/pages/teacher_dashboard_page.dart';
+
+/// App router — go_router with role-based auth guards (Task 1.8).
 ///
-/// Task 1.8 will add full role-based redirect logic.
-/// For now, this provides the route structure with placeholder pages
-/// so the app builds and router initializes correctly.
+/// Redirect logic:
+/// - Unauthenticated + protected route → /login
+/// - Authenticated + /login or /register → dashboard (role-based)
+/// - Role mismatch (e.g. teacher on /student) → own dashboard
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/login',
+    redirect: (context, state) {
+      final auth = ref.read(authProvider);
+      final path = state.path ?? '';
+      final isAuthRoute = path == '/login' || path == '/register' || path.startsWith('/r/');
+
+      // Unauthenticated → /login (except auth routes)
+      if (!auth.isAuthenticated && !isAuthRoute) {
+        return '/login';
+      }
+      // Authenticated on auth route → dashboard
+      if (auth.isAuthenticated && isAuthRoute) {
+        return _dashboardForRole(auth.user!.role);
+      }
+      // Role mismatch — redirect to own dashboard
+      if (auth.isAuthenticated) {
+        final role = auth.user!.role;
+        final onTeacherRoute = path.startsWith('/teacher');
+        final onStudentRoute = path.startsWith('/student');
+        final onPartnerRoute = path.startsWith('/partner');
+        if ((onStudentRoute || onPartnerRoute) && role == UserRole.teacher) return '/teacher';
+        if ((onTeacherRoute || onPartnerRoute) && role == UserRole.student) return '/student';
+        if ((onTeacherRoute || onStudentRoute) && role == UserRole.partner) return '/partner';
+      }
+      return null;
+    },
     routes: [
+      GoRoute(path: '/login', builder: (c, s) => const LoginPage()),
+      GoRoute(path: '/register', builder: (c, s) => const RegisterPage()),
       GoRoute(
-        path: '/login',
-        builder: (context, state) => const _Placeholder(title: 'Login'),
+        path: '/r/:code',
+        builder: (c, s) => RegisterPage(referralCode: s.pathParameters['code']),
       ),
-      GoRoute(
-        path: '/register',
-        builder: (context, state) => const _Placeholder(title: 'Register'),
-      ),
-      GoRoute(
-        path: '/teacher',
-        builder: (context, state) => const _Placeholder(title: 'Teacher Dashboard'),
-      ),
-      GoRoute(
-        path: '/student',
-        builder: (context, state) => const _Placeholder(title: 'Student Dashboard'),
-      ),
+      GoRoute(path: '/teacher', builder: (c, s) => const TeacherDashboardPage()),
+      GoRoute(path: '/student', builder: (c, s) => const StudentDashboardPage()),
       GoRoute(
         path: '/partner',
-        builder: (context, state) => const _Placeholder(title: 'Partner Dashboard'),
+        builder: (c, s) => Scaffold(
+          appBar: AppBar(title: const Text('Partner Dashboard')),
+          body: const Center(child: Text('Partner Dashboard — Task 15.8')),
+        ),
+      ),
+      GoRoute(
+        path: '/admin',
+        builder: (c, s) => Scaffold(
+          appBar: AppBar(title: const Text('Admin')),
+          body: const Center(child: Text('Admin — use frontend-admin')),
+        ),
       ),
     ],
+    errorBuilder: (c, s) => Scaffold(body: Center(child: Text('Not found: ${s.path}'))),
   );
 });
 
-class _Placeholder extends StatelessWidget {
-  const _Placeholder({required this.title});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 16),
-            Text(
-              'Placeholder — implemented in subsequent tasks',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-        ),
-      ),
-    );
+String _dashboardForRole(UserRole role) {
+  switch (role) {
+    case UserRole.teacher:
+      return '/teacher';
+    case UserRole.student:
+      return '/student';
+    case UserRole.partner:
+      return '/partner';
+    case UserRole.admin:
+      return '/admin';
   }
 }
