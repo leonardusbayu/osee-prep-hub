@@ -54,4 +54,4 @@ yarn-error.log*
 # Temp
 tmp/
 temp/
-*.tmp
+*.tmpsupabase/
