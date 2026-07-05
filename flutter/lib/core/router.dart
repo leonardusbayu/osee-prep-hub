@@ -6,12 +6,14 @@ import '../features/auth/models/user.dart';
 import '../features/auth/pages/login_page.dart';
 import '../features/auth/pages/register_page.dart';
 import '../features/auth/providers/auth_provider.dart';
-import '../features/auth/models/user.dart';
+import '../features/landing/pages/landing_page.dart';
 import '../features/student/pages/student_dashboard_page.dart';
 import '../features/teacher/pages/teacher_dashboard_page.dart';
 import '../features/teacher/pages/order_page.dart';
 import '../features/teacher/pages/ai_grader_page.dart';
 import '../features/teacher/pages/material_generator_page.dart';
+import '../features/partner/pages/partner_dashboard_page.dart';
+import '../features/ambassador/pages/ambassador_dashboard_page.dart';
 
 /// App router — go_router with role-based auth guards (Task 1.8).
 ///
@@ -48,6 +50,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(path: '/', builder: (c, s) => const LandingPage()),
       GoRoute(path: '/login', builder: (c, s) => const LoginPage()),
       GoRoute(path: '/register', builder: (c, s) => const RegisterPage()),
       GoRoute(
@@ -59,13 +62,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/teacher/ai-grader', builder: (c, s) => const AiGraderPage()),
       GoRoute(path: '/teacher/generator', builder: (c, s) => const MaterialGeneratorPage()),
       GoRoute(path: '/student', builder: (c, s) => const StudentDashboardPage()),
-      GoRoute(
-        path: '/partner',
-        builder: (c, s) => Scaffold(
-          appBar: AppBar(title: const Text('Partner Dashboard')),
-          body: const Center(child: Text('Partner Dashboard — Task 15.8')),
-        ),
-      ),
+      GoRoute(path: '/partner', builder: (c, s) => const PartnerDashboardPage()),
+      GoRoute(path: '/ambassador', builder: (c, s) => const AmbassadorDashboardPage()),
       GoRoute(
         path: '/admin',
         builder: (c, s) => Scaffold(
