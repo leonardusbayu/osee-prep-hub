@@ -36,13 +36,18 @@ export async function createGradingEntry(
   input: Record<string, unknown>
 ): Promise<string> {
   const supabase = getSupabase(env);
+  // Actual table columns: teacher_id, student_id, submission_type, exam_type,
+  //   rubric_type, rubric_config, student_response, audio_url, status, etc.
   const { data, error } = await supabase
     .from('ai_grading_queue')
     .insert({
       teacher_id: userId,
-      grading_type: gradingType,
+      submission_type: gradingType,
+      exam_type: (input.examType as string) ?? 'IELTS',
+      rubric_type: (input.rubric as string) ?? 'ielts_task2',
+      rubric_config: { level: input.level },
+      student_response: (input.essay as string) ?? null,
       status: 'pending',
-      input,
     })
     .select('id')
     .single();
@@ -116,21 +121,25 @@ export async function processGradingEntry(env: Env, entryId: string): Promise<vo
     .eq('id', entryId);
 
   try {
-    // Grade the essay
+    // Grade the essay — actual table stores essay in student_response,
+    // rubric in rubric_type, exam type in exam_type, level in rubric_config
+    const rubricConfig = (entry as Record<string, unknown>).rubric_config as Record<string, unknown> | null;
     const result = await gradeWriting(env, {
-      essay: entry.input.essay as string,
-      rubric: entry.input.rubric as string,
-      examType: entry.input.examType as string,
-      level: entry.input.level as string | undefined,
+      essay: ((entry as Record<string, unknown>).student_response as string) ?? '',
+      rubric: (entry as Record<string, unknown>).rubric_type as string,
+      examType: (entry as Record<string, unknown>).exam_type as string,
+      level: (rubricConfig?.level as string) ?? undefined,
     });
 
-    // Store result
+    // Store result — actual table uses ai_score, ai_band, ai_feedback columns
     await supabase
       .from('ai_grading_queue')
       .update({
         status: 'completed',
-        result: result as unknown as Record<string, unknown>,
-        updated_at: new Date().toISOString(),
+        ai_score: (result.score as number) ?? null,
+        ai_band: parseFloat(String(result.band)) || null,
+        ai_feedback: result as unknown as Record<string, unknown>,
+        completed_at: new Date().toISOString(),
       })
       .eq('id', entryId);
   } catch (err) {
