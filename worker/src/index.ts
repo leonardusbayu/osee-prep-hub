@@ -3,6 +3,8 @@ import { logger } from 'hono/logger';
 import { cors } from './middleware/cors';
 import { authRoutes } from './routes/auth';
 import { webhookRoutes } from './routes/webhook';
+import { teacherRoutes } from './routes/teacher';
+import { studentRoutes } from './routes/student';
 import type { Env, ContextVars } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -19,6 +21,8 @@ app.get('/api/health', (c) => {
 // Routes
 app.route('/api/auth', authRoutes);
 app.route('/api/webhook', webhookRoutes);
+app.route('/api/teacher', teacherRoutes);
+app.route('/api/student', studentRoutes);
 
 // Root
 app.get('/', (c) => {

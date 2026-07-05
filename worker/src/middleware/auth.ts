@@ -98,4 +98,17 @@ export const optionalAuth = () => {
   };
 };
 
+/**
+ * Helper to get the authenticated user from context.
+ * Throws 500-style error if user is null (shouldn't happen after requireAuth,
+ * but TypeScript can't know that).
+ */
+export function getAuthedUser(c: Context<{ Bindings: Env; Variables: ContextVars }>): User {
+  const user = c.get('user');
+  if (!user) {
+    throw new Error('User not authenticated — requireAuth middleware missing?');
+  }
+  return user;
+}
+
 export { COOKIE_NAME };

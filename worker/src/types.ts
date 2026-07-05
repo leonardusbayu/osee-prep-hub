@@ -140,5 +140,4 @@ export interface ApiError {
 /** Hono context variables set by middleware. */
 export interface ContextVars {
   user: User | null;
-  requestId: string;
 }
