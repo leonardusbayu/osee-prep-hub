@@ -23,6 +23,9 @@ class ApiClient {
         'Content-Type': 'application/json',
         if (authToken != null) 'Authorization': 'Bearer $authToken',
       },
+      // Required for cross-origin requests in Flutter Web
+      // Without this, the browser blocks the response from being read
+      extra: {'withCredentials': true},
     ));
 
     if (kDebugMode) {
