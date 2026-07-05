@@ -1,0 +1,35 @@
+# Local development secrets — DO NOT COMMIT REAL VALUES
+# Copy this file to .dev.vars and fill with real values for local dev.
+
+SUPABASE_URL=https://placeholder.supabase.co
+SUPABASE_ANON_KEY=placeholder
+SUPABASE_SERVICE_KEY=placeholder
+
+JWT_SECRET=local-dev-secret-replace-in-production-xxxxxxxxxxxxxxxx
+JWT_EXPIRY=7d
+
+OPENAI_API_KEY=placeholder
+
+EDUBOT_API_URL=https://edubot-webapp.pages.dev
+EDUBOT_INTERNAL_SECRET=placeholder
+
+WEBHOOK_SECRET_IBT=placeholder
+WEBHOOK_SECRET_ITP=placeholder
+WEBHOOK_SECRET_IELTS=placeholder
+WEBHOOK_SECRET_TOEIC=placeholder
+WEBHOOK_SECRET_BOOKING=placeholder
+WEBHOOK_SECRET_EDUBOT=placeholder
+
+WEBAPP_URL=http://localhost:8787
+
+TRIPAY_API_KEY=placeholder
+TRIPAY_PRIVATE_KEY=placeholder
+TRIPAY_MERCHANT_CODE=placeholder
+
+TELEGRAM_BOT_TOKEN=placeholder
+TELEGRAM_CHANNEL_ID=-1003884450070
+
+OSEE_BOOKING_API_URL=https://osee.co.id/api/hub
+OSEE_BOOKING_API_SECRET=placeholder
+
+ENVIRONMENT=development

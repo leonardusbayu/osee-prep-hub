@@ -8,7 +8,9 @@ describe('smoke test', () => {
   });
 
   it('environment is node (not jsdom)', () => {
-    expect(typeof window).toBe('undefined');
+    // In Node environment, `window` is undefined. Avoid TS error by referencing safely.
+    const hasWindow = typeof globalThis !== 'undefined' && 'window' in globalThis;
+    expect(hasWindow).toBe(false);
   });
 
   it('TypeScript features work', () => {
