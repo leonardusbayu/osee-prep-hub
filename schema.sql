@@ -16,15 +16,17 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm"; -- for fuzzy text search
 CREATE TABLE unified_profiles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email TEXT UNIQUE NOT NULL,
+  password_hash TEXT,           -- PBKDF2 hash (added for email/password auth — not in original blueprint)
   phone TEXT,
   display_name TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('student', 'teacher', 'admin', 'institution')),
+  role TEXT NOT NULL CHECK (role IN ('student', 'teacher', 'partner', 'admin', 'institution')),
   avatar_url TEXT,
 
   -- Cross-platform linking
   telegram_id TEXT,          -- links to EduBot
   edubot_user_id INTEGER,    -- EduBot D1 user.id
   osee_customer_id TEXT,     -- osee.co.id customer ID (if exists)
+  referred_by UUID,          -- teacher who referred this student/partner (added for referral system)
 
   -- Student-specific
   target_exam TEXT CHECK (target_exam IN ('TOEFL_IBT', 'TOEFL_ITP', 'IELTS', 'TOEIC', 'GENERAL')),
