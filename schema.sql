@@ -812,8 +812,9 @@ CREATE POLICY progress_student_select ON student_progress_unified
     student_id = auth.uid()
     OR EXISTS (
       SELECT 1 FROM classroom_enrollments ce
+      JOIN classrooms c ON c.id = ce.classroom_id
       WHERE ce.student_id = student_progress_unified.student_id
-      AND ce.teacher_id = auth.uid()
+      AND c.teacher_id = auth.uid()
       AND ce.is_active = TRUE
     )
     OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin'
