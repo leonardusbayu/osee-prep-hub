@@ -1011,3 +1011,34 @@ CREATE TRIGGER pricing_config_updated_at
   BEFORE UPDATE ON pricing_config
   FOR EACH ROW
   EXECUTE FUNCTION update_pricing_config_updated_at();
+
+-- ============================================================
+-- VECTOR SEARCH FUNCTION (Task 4.5)
+-- match_documents — cosine similarity search over knowledge_base_embeddings
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION match_documents(
+  query_embedding VECTOR(1536),
+  match_count INTEGER DEFAULT 10,
+  filter JSONB DEFAULT '{}'::jsonb
+)
+RETURNS TABLE (
+  id UUID,
+  document_id UUID,
+  chunk_index INTEGER,
+  chunk_text TEXT,
+  metadata JSONB,
+  similarity REAL
+) AS $$
+  SELECT
+    e.id,
+    e.document_id,
+    e.chunk_index,
+    e.chunk_text,
+    e.metadata,
+    1 - (e.embedding <=> query_embedding) AS similarity
+  FROM knowledge_base_embeddings e
+  WHERE e.metadata @> filter
+  ORDER BY e.embedding <=> query_embedding
+  LIMIT match_count;
+$$ LANGUAGE SQL;
