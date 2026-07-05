@@ -6,10 +6,14 @@ import type { Env, ContextVars } from '../types';
  * Blocks non-osee origins per Task 1.2 acceptance criteria.
  */
 const ALLOWED_ORIGIN_SUFFIX = '.osee.co.id';
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/[a-z0-9]+\.osee-prep-hub\.pages\.dev$/, // any Pages deployment URL
+  /^https:\/\/[a-z0-9]+\.osee-prep-hub-admin\.pages\.dev$/,
+];
 const ALLOWED_EXACT_ORIGINS = new Set<string>([
-  'http://localhost:5173', // Vite admin dev
-  'http://localhost:8080', // Flutter Web dev
-  'http://localhost:8787', // Worker dev (self)
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://localhost:8787',
   'https://prep.osee.co.id',
   'https://osee-prep-hub.pages.dev',
 ]);
@@ -17,6 +21,7 @@ const ALLOWED_EXACT_ORIGINS = new Set<string>([
 export function isAllowedOrigin(origin: string | undefined | null): boolean {
   if (!origin) return false;
   if (ALLOWED_EXACT_ORIGINS.has(origin)) return true;
+  if (ALLOWED_ORIGIN_PATTERNS.some((p) => p.test(origin))) return true;
   try {
     const url = new URL(origin);
     return url.hostname.endsWith(ALLOWED_ORIGIN_SUFFIX);

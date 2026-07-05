@@ -1,72 +1,254 @@
 import 'package:flutter/material.dart';
 
-/// OSEE Prep Hub Material 3 theme.
-///
-/// Brand colors aligned with the OSEE ecosystem (blue primary, with
-/// accessible contrast ratios for Indonesian-language education audience).
+/// OSEE Prep Hub — Magazine-style editorial theme.
+/// Clean, sophisticated, with strong typography hierarchy.
 class OseeTheme {
   OseeTheme._();
 
-  static const Color primary = Color(0xFF1D4ED8);
-  static const Color primaryLight = Color(0xFF3B82F6);
-  static const Color primaryDark = Color(0xFF1E3A8A);
-  static const Color accent = Color(0xFF06B6D4);
-  static const Color success = Color(0xFF10B981);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
-  static const Color background = Color(0xFFF8FAFC);
-  static const Color surface = Colors.white;
-  static const Color onPrimary = Colors.white;
-  static const Color onSurface = Color(0xFF0F172A);
+  // Editorial color palette
+  static const Color ink = Color(0xFF1A1A2E);       // deep navy-black
+  static const Color paper = Color(0xFFF7F5F0);      // warm off-white
+  static const Color accent = Color(0xFFE63946);     // magazine red
+  static const Color gold = Color(0xFFC9A96E);       // muted gold
+  static const Color sage = Color(0xFF6B8E7F);       // sage green
+  static const Color cloud = Color(0xFFE8E6E1);      // light grey
+  static const Color stone = Color(0xFF9B9B9B);      // medium grey
 
   static ThemeData light() {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: primary,
+    final scheme = ColorScheme.fromSeed(
+      seedColor: accent,
       brightness: Brightness.light,
-      primary: primary,
-      secondary: accent,
-      surface: surface,
-      error: error,
-      onPrimary: onPrimary,
-      onSurface: onSurface,
+      primary: accent,
+      secondary: gold,
+      surface: paper,
+      onSurface: ink,
+      error: accent,
     );
 
     return ThemeData(
       useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: background,
-      appBarTheme: AppBarTheme(
-        backgroundColor: primary,
-        foregroundColor: onPrimary,
-        elevation: 0,
-        centerTitle: false,
-      ),
-      cardTheme: CardThemeData(
-        elevation: 1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+      colorScheme: scheme,
+      scaffoldBackgroundColor: paper,
+      fontFamily: 'Georgia',
+
+      // Magazine-style typography
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 56,
+          fontWeight: FontWeight.w700,
+          color: ink,
+          height: 1.1,
+          letterSpacing: -1.5,
+        ),
+        displayMedium: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 40,
+          fontWeight: FontWeight.w700,
+          color: ink,
+          height: 1.15,
+          letterSpacing: -0.8,
+        ),
+        displaySmall: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
+          color: ink,
+          height: 1.2,
+        ),
+        headlineLarge: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          color: ink,
+          height: 1.3,
+        ),
+        headlineMedium: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: ink,
+        ),
+        headlineSmall: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 18,
+          fontWeight: FontWeight.w500,
+          color: ink,
+        ),
+        titleLarge: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: ink,
+        ),
+        titleMedium: TextStyle(
+          fontFamily: 'Helvetica',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: ink,
+          letterSpacing: 0.5,
+        ),
+        titleSmall: TextStyle(
+          fontFamily: 'Helvetica',
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: stone,
+          letterSpacing: 1.5,
+        ),
+        bodyLarge: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          color: ink,
+          height: 1.6,
+        ),
+        bodyMedium: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: ink,
+          height: 1.5,
+        ),
+        bodySmall: TextStyle(
+          fontFamily: 'Helvetica',
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          color: stone,
+          height: 1.4,
+        ),
+        labelLarge: TextStyle(
+          fontFamily: 'Helvetica',
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+          letterSpacing: 1,
+        ),
+        labelSmall: TextStyle(
+          fontFamily: 'Helvetica',
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: stone,
+          letterSpacing: 2,
         ),
       ),
+
+      // Minimalist app bar
+      appBarTheme: const AppBarTheme(
+        backgroundColor: paper,
+        foregroundColor: ink,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: ink,
+        ),
+        iconTheme: IconThemeData(color: ink),
+      ),
+
+      // Editorial-style cards
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(2),
+        ),
+        margin: EdgeInsets.zero,
+      ),
+
+      // Bold buttons
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: onPrimary,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          backgroundColor: ink,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(2),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: 'Helvetica',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
           ),
         ),
       ),
+
+      // Filled buttons — accent red
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: accent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(2),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: 'Helvetica',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
+
+      // Text buttons — underlined like links
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: accent,
+          textStyle: const TextStyle(
+            fontFamily: 'Helvetica',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+      ),
+
+      // Clean input fields
       inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+        border: UnderlineInputBorder(
+          borderSide: BorderSide(color: cloud, width: 1),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: primary, width: 2),
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: cloud, width: 1),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: ink, width: 2),
+        ),
+        errorBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: accent, width: 1),
+        ),
+        labelStyle: const TextStyle(
+          fontFamily: 'Helvetica',
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: stone,
+          letterSpacing: 1,
+        ),
+        hintStyle: TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 16,
+          color: stone.withOpacity(0.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        filled: false,
+      ),
+
+      // Bottom nav
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: paper,
+        selectedItemColor: accent,
+        unselectedItemColor: stone,
+        type: BottomNavigationBarType.fixed,
+      ),
+
+      // Dividers
+      dividerTheme: const DividerThemeData(
+        color: cloud,
+        thickness: 1,
+        space: 1,
       ),
     );
   }
