@@ -26,6 +26,7 @@ interface CliArgs {
   dryRun: boolean;
   limit?: number;
   tier: string;
+  noEmbeddings: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -33,6 +34,7 @@ function parseArgs(argv: string[]): CliArgs {
     source: 'docs/knowledge-base/tier1',
     dryRun: false,
     tier: '1',
+    noEmbeddings: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -40,6 +42,7 @@ function parseArgs(argv: string[]): CliArgs {
     if (arg === '--dry-run') args.dryRun = true;
     if (arg === '--limit') args.limit = parseInt(argv[++i], 10);
     if (arg === '--tier') args.tier = argv[++i] ?? '1';
+    if (arg === '--no-embeddings') args.noEmbeddings = true;
   }
   return args;
 }
@@ -120,7 +123,7 @@ async function insertDocument(
   supabaseKey: string,
   filePath: string,
   chunks: string[],
-  embedding: number[],
+  embedding: number[] | null,
   tier: string
 ): Promise<void> {
   // Insert into knowledge_base_documents
@@ -148,6 +151,11 @@ async function insertDocument(
   }
   const docJson = (await docResponse.json()) as Array<{ id: string }>;
   const docId = docJson[0]?.id;
+
+  if (!embedding) {
+    console.log(`  INGESTED (text only, no embedding): ${filePath} → ${chunks.length} chunks`);
+    return;
+  }
 
   // Insert embedding into knowledge_base_embeddings
   const embResponse = await fetch(`${supabaseUrl}/rest/v1/knowledge_base_embeddings`, {
@@ -177,7 +185,7 @@ async function main() {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
-  if (!args.dryRun && !apiKey) {
+  if (!args.dryRun && !args.noEmbeddings && !apiKey) {
     console.error('Error: OPENAI_API_KEY environment variable not set');
     process.exit(1);
   }
@@ -190,6 +198,7 @@ async function main() {
   console.log(`Source: ${sourcePath}`);
   console.log(`Tier: ${args.tier}`);
   console.log(`Dry run: ${args.dryRun}`);
+  console.log(`No embeddings: ${args.noEmbeddings}`);
 
   if (!existsSync(sourcePath)) {
     console.error(`Source path does not exist: ${sourcePath}`);
@@ -231,10 +240,12 @@ async function main() {
         continue;
       }
 
-      // Generate embedding for the first chunk (representative)
-      const embedding = await generateEmbedding(chunks[0], apiKey!);
+      // Generate embedding for the first chunk (representative) — skip if --no-embeddings
+      let embedding: number[] | null = null;
+      if (!args.noEmbeddings) {
+        embedding = await generateEmbedding(chunks[0], apiKey!);
+      }
       await insertDocument(supabaseUrl!, supabaseKey!, file, chunks, embedding, args.tier);
-      console.log(`  INGESTED: ${file} → ${chunks.length} chunks`);
       processed++;
     } catch (err) {
       console.error(`  FAILED: ${file} → ${(err as Error).message}`);
