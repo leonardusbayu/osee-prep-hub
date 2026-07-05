@@ -10,6 +10,11 @@ import { uploadRoutes } from './routes/upload';
 import { orderRoutes } from './routes/orders';
 import { voucherRoutes } from './routes/voucher';
 import { partnerRoutes } from './routes/partner';
+import { commissionRoutes } from './routes/commission';
+import { videoRoutes } from './routes/video';
+import { classRoutes } from './routes/classes';
+import { externalRoutes } from './routes/external';
+import { ambassadorRoutes } from './routes/ambassador';
 import type { Env, ContextVars } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -27,12 +32,17 @@ app.get('/api/health', (c) => {
 app.route('/api/auth', authRoutes);
 app.route('/api/webhook', webhookRoutes);
 app.route('/api/teacher', teacherRoutes);
+app.route('/api/teacher/commission', commissionRoutes);
 app.route('/api/student', studentRoutes);
 app.route('/api/ai', aiRoutes);
 app.route('/api/upload', uploadRoutes);
 app.route('/api/orders', orderRoutes);
 app.route('/api/vouchers', voucherRoutes);
 app.route('/api/partner', partnerRoutes);
+app.route('/api/videos', videoRoutes);
+app.route('/api/classes', classRoutes);
+app.route('/api/external', externalRoutes);
+app.route('/api/ambassador', ambassadorRoutes);
 
 // Root
 app.get('/', (c) => {
