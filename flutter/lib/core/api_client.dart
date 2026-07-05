@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 class ApiClient {
   ApiClient._();
 
-  static const String _defaultBaseUrl = 'http://localhost:8787/api';
+  static const String _defaultBaseUrl = 'https://osee-prep-hub-worker.edubot-leonardus.workers.dev/api';
 
   /// Build a configured Dio instance.
   ///
