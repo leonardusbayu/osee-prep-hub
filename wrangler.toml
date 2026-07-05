@@ -1,0 +1,32 @@
+name = "osee-prep-hub"
+main = "worker/src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+WEBAPP_URL = "http://localhost:8787"
+
+# Secrets (set via `wrangler secret put <NAME>`):
+# SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY
+# JWT_SECRET, OPENAI_API_KEY
+# EDUBOT_API_URL, EDUBOT_INTERNAL_SECRET
+# WEBHOOK_SECRET_IBT, WEBHOOK_SECRET_ITP, WEBHOOK_SECRET_IELTS,
+# WEBHOOK_SECRET_TOEIC, WEBHOOK_SECRET_BOOKING, WEBHOOK_SECRET_EDUBOT
+# R2_BUCKET_VIDEOS, R2_BUCKET_AUDIO, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
+# TRIPAY_API_KEY, TRIPAY_PRIVATE_KEY, TRIPAY_MERCHANT_CODE
+# TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
+# OSEE_BOOKING_API_URL, OSEE_BOOKING_API_SECRET
+
+# R2 bindings
+[[r2_buckets]]
+binding = "R2_VIDEOS"
+bucket_name = "osee-videos"
+
+[[r2_buckets]]
+binding = "R2_AUDIO"
+bucket_name = "osee-audio"
+
+# Cron triggers (for webhook processing + class reminders)
+[triggers]
+crons = ["*/1 * * * *"]

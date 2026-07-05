@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Cloudflare
+.wrangler/
+.dev.vars
+.mf/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+!.dev.vars.example
+
+# Flutter
+flutter/build/
+flutter/.dart_tool/
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
+flutter/.packages
+flutter/pubspec.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Sisyphus evidence (QA artifacts — not source)
+.sisyphus/evidence/
+.sisyphus/drafts/
+
+# Temp
+tmp/
+temp/
+*.tmp

@@ -1,0 +1,53 @@
+# Supabase
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_ANON_KEY=xxx
+SUPABASE_SERVICE_KEY=xxx
+
+# JWT
+JWT_SECRET=xxx
+JWT_EXPIRY=7d
+
+# OpenAI
+OPENAI_API_KEY=xxx
+
+# Cloudflare
+CF_ACCOUNT_ID=xxx
+CF_API_TOKEN=xxx
+
+# EduBot bridge
+EDUBOT_API_URL=https://edubot-webapp.pages.dev
+EDUBOT_INTERNAL_SECRET=xxx
+
+# Webhook secrets (shared with each practice platform)
+WEBHOOK_SECRET_IBT=xxx
+WEBHOOK_SECRET_ITP=xxx
+WEBHOOK_SECRET_IELTS=xxx
+WEBHOOK_SECRET_TOEIC=xxx
+WEBHOOK_SECRET_BOOKING=xxx
+WEBHOOK_SECRET_EDUBOT=xxx
+
+# Frontend
+WEBAPP_URL=https://prep.osee.co.id
+
+# Cloudflare R2 (video + audio storage)
+R2_BUCKET_VIDEOS=osee-videos
+R2_BUCKET_AUDIO=osee-audio
+R2_ACCOUNT_ID=xxx
+R2_ACCESS_KEY_ID=xxx
+R2_SECRET_ACCESS_KEY=xxx
+
+# Payment (TriPay — reuse EduBot's)
+TRIPAY_API_KEY=xxx
+TRIPAY_PRIVATE_KEY=xxx
+TRIPAY_MERCHANT_CODE=xxx
+
+# Telegram (for EduBot bridge — live class notifications)
+TELEGRAM_BOT_TOKEN=xxx
+TELEGRAM_CHANNEL_ID=-1003884450070
+
+# OSEE booking bridge (for official test booking — Task 15.10)
+OSEE_BOOKING_API_URL=https://osee.co.id/api/hub
+OSEE_BOOKING_API_SECRET=xxx
+
+# Environment
+ENVIRONMENT=development

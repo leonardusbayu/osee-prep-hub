@@ -1,0 +1,21 @@
+{
+  "name": "osee-prep-hub",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "worker",
+    "frontend-admin"
+  ],
+  "scripts": {
+    "dev:worker": "npm --workspace worker run dev",
+    "test:worker": "npm --workspace worker run test",
+    "build:admin": "npm --workspace frontend-admin run build",
+    "verify:schema": "tsx scripts/verify-schema.ts",
+    "seed:pricing": "tsx scripts/seed-pricing.ts",
+    "ingest:kb": "tsx scripts/ingest-knowledge-base.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.0"
+  }
+}
