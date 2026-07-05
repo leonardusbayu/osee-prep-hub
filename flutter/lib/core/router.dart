@@ -6,8 +6,12 @@ import '../features/auth/models/user.dart';
 import '../features/auth/pages/login_page.dart';
 import '../features/auth/pages/register_page.dart';
 import '../features/auth/providers/auth_provider.dart';
+import '../features/auth/models/user.dart';
 import '../features/student/pages/student_dashboard_page.dart';
 import '../features/teacher/pages/teacher_dashboard_page.dart';
+import '../features/teacher/pages/order_page.dart';
+import '../features/teacher/pages/ai_grader_page.dart';
+import '../features/teacher/pages/material_generator_page.dart';
 
 /// App router — go_router with role-based auth guards (Task 1.8).
 ///
@@ -51,6 +55,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (c, s) => RegisterPage(referralCode: s.pathParameters['code']),
       ),
       GoRoute(path: '/teacher', builder: (c, s) => const TeacherDashboardPage()),
+      GoRoute(path: '/teacher/orders', builder: (c, s) => const OrderPage()),
+      GoRoute(path: '/teacher/ai-grader', builder: (c, s) => const AiGraderPage()),
+      GoRoute(path: '/teacher/generator', builder: (c, s) => const MaterialGeneratorPage()),
       GoRoute(path: '/student', builder: (c, s) => const StudentDashboardPage()),
       GoRoute(
         path: '/partner',
