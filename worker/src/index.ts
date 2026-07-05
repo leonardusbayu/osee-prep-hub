@@ -7,6 +7,9 @@ import { teacherRoutes } from './routes/teacher';
 import { studentRoutes } from './routes/student';
 import { aiRoutes } from './routes/ai';
 import { uploadRoutes } from './routes/upload';
+import { orderRoutes } from './routes/orders';
+import { voucherRoutes } from './routes/voucher';
+import { partnerRoutes } from './routes/partner';
 import type { Env, ContextVars } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -27,6 +30,9 @@ app.route('/api/teacher', teacherRoutes);
 app.route('/api/student', studentRoutes);
 app.route('/api/ai', aiRoutes);
 app.route('/api/upload', uploadRoutes);
+app.route('/api/orders', orderRoutes);
+app.route('/api/vouchers', voucherRoutes);
+app.route('/api/partner', partnerRoutes);
 
 // Root
 app.get('/', (c) => {
