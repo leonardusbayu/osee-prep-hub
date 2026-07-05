@@ -111,25 +111,19 @@ webhookRoutes.post('/edubot', webhookAuth('edubot'), async (c) => {
  * In production, this is triggered by the cron trigger in wrangler.toml.
  */
 webhookRoutes.post('/process', async (c) => {
-  // TODO: Task 3.2 will implement the full processing pipeline.
-  // For now, return a placeholder indicating the endpoint exists.
-  const supabase = getSupabase(c.env);
-  const { data, error } = await supabase
-    .from('webhook_events')
-    .select('id, platform, event_type')
-    .eq('processed', false)
-    .order('created_at', { ascending: true })
-    .limit(100);
-
-  if (error) {
-    return c.json({ error: { code: 'QUERY_FAILED', message: error.message } }, 500);
+  try {
+    const { processWebhookBatch } = await import('../services/webhook-processor');
+    const result = await processWebhookBatch(c.env, 100);
+    return c.json({
+      total: result.total,
+      succeeded: result.succeeded,
+      failed: result.failed,
+      errors: result.errors,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Processing failed';
+    return c.json({ error: { code: 'PROCESSING_FAILED', message } }, 500);
   }
-
-  return c.json({
-    queued: data?.length ?? 0,
-    events: data ?? [],
-    note: 'Processing pipeline will be implemented in Task 3.2',
-  });
 });
 
 // ---------- Handler function ----------
