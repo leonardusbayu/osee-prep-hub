@@ -11,6 +11,7 @@ import {
   processGradingEntry,
   processPendingGrading,
 } from '../services/grading-queue';
+import { evaluateSpeaking } from '../services/speaking-bridge';
 
 export const aiRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -151,5 +152,36 @@ aiRoutes.post('/generate-material', async (c) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Generation failed';
     return c.json({ error: { code: 'GENERATION_FAILED', message } }, 500);
+  }
+});
+
+/** POST /api/ai/grade-speaking — evaluate speaking recording via EduBot bridge (Task 7.1) */
+aiRoutes.post('/grade-speaking', async (c) => {
+  const user = getAuthedUser(c);
+  let body: { audio_url?: string; examType?: string; prompt?: string; level?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.audio_url?.trim()) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'audio_url required' } }, 400);
+  }
+  // Check speaking quota (Task 7.4)
+  try { await checkQuota(c.env, user.id, user.role, 'speaking'); } catch (err) {
+    if ((err as Error & { code?: string }).code === 'QUOTA_EXCEEDED') {
+      return c.json({ error: { code: 'QUOTA_EXCEEDED', message: (err as Error).message } }, 429);
+    }
+    return c.json({ error: { code: 'QUOTA_CHECK_FAILED', message: (err as Error).message } }, 500);
+  }
+  try {
+    const result = await evaluateSpeaking(c.env, {
+      audioUrl: body.audio_url,
+      examType: body.examType,
+      prompt: body.prompt,
+      level: body.level,
+    });
+    return c.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Speaking evaluation failed';
+    return c.json({ error: { code: 'SPEAKING_FAILED', message } }, 500);
   }
 });

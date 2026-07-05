@@ -6,6 +6,7 @@ import { webhookRoutes } from './routes/webhook';
 import { teacherRoutes } from './routes/teacher';
 import { studentRoutes } from './routes/student';
 import { aiRoutes } from './routes/ai';
+import { uploadRoutes } from './routes/upload';
 import type { Env, ContextVars } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -25,6 +26,7 @@ app.route('/api/webhook', webhookRoutes);
 app.route('/api/teacher', teacherRoutes);
 app.route('/api/student', studentRoutes);
 app.route('/api/ai', aiRoutes);
+app.route('/api/upload', uploadRoutes);
 
 // Root
 app.get('/', (c) => {
