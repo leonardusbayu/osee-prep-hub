@@ -14,6 +14,17 @@ class OseeTheme {
   static const Color cloud = Color(0xFFE8E6E1);      // light grey
   static const Color stone = Color(0xFF9B9B9B);      // medium grey
 
+  // Scrapbook palette — aged parchment, tape, ink, coffee stains
+  static const Color parchment = Color(0xFFEDE5D3);  // antique parchment
+  static const Color parchmentDark = Color(0xFFD9CEB5); // darker parchment
+  static const Color tape = Color(0x55FFE08A);       // washi tape (translucent yellow)
+  static const Color tapePink = Color(0x55FFB3BA);   // washi tape pink
+  static const Color coffeeRing = Color(0x228B6F47); // coffee stain ring
+  static const Color inkBleed = Color(0x331A1A2E);   // ink bleed shadow
+  static const Color polaroidWhite = Color(0xFFFAF8F3); // polaroid card white
+  static const Color clippingYellow = Color(0xFFF5EFD0); // aged clipping yellow
+  static const Color redStamp = Color(0xFFD44545);   // red stamp / sticker
+
   // Dark editorial palette (evening edition)
   static const Color inkDark = Color(0xFF0E0E1A);     // near-black
   static const Color paperDark = Color(0xFF1F1F2E);   // dark navy paper

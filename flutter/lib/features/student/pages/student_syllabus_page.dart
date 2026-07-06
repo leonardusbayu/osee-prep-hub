@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/api_client.dart';
+import 'scrapbook_lesson.dart';
 
 /// Student Workbook — magazine-style interactive learning reader.
 ///
@@ -296,7 +297,23 @@ class _ReadingPane extends StatelessWidget {
     final minutes = item['estimated_minutes'] as int?;
 
     if (content != null) {
-      return _WorkbookPage(item: item, content: content, isDone: isDone, onToggleDone: onToggleDone);
+      return ScrapbookLesson(
+        title: content['title'] as String? ?? title,
+        summary: content['summary'] as String?,
+        theory: (content['theory'] as String? ?? '').replaceAll('\\n', '\n'),
+        keyPoints: ((content['key_points'] as List?) ?? const []).cast<String>(),
+        examples: ((content['examples'] as List?) ?? const []).cast<Map<String, dynamic>>(),
+        exercises: ((content['exercises'] as List?) ?? const []).cast<Map<String, dynamic>>(),
+        vocabulary: ((content['vocabulary'] as List?) ?? const []).cast<Map<String, dynamic>>(),
+        practicePrompt: content['practice_prompt'] as String?,
+        sourceLabel: _sourceLabel(src),
+        difficulty: item['difficulty'] as String?,
+        minutes: minutes,
+        onDone: onToggleDone,
+        isDone: isDone,
+        onDeepLink: _deepLinkUrl(item) != null ? () => _openLink(context, _deepLinkUrl(item)!) : null,
+        deepLinkLabel: _deepLinkLabel(src),
+      );
     }
 
     // No AI content — simple link card
@@ -322,16 +339,50 @@ class _ReadingPane extends StatelessWidget {
 
   String _sourceLabel(String src) {
     switch (src) {
-      case 'platform_ibt': return 'TOEFL iBT';
-      case 'platform_itp': return 'TOEFL ITP';
+      case 'platform_ibt': return 'iBT';
+      case 'platform_itp': return 'ITP';
       case 'platform_ielts': return 'IELTS';
       case 'platform_toeic': return 'TOEIC';
       case 'edubot': return 'EduBot';
       case 'ai_generated': return 'AI';
       case 'video_lesson': return 'Video';
-      case 'live_class': return 'Live Class';
-      default: return 'your teacher';
+      case 'live_class': return 'Live';
+      default: return 'Custom';
     }
+  }
+
+  String? _deepLinkUrl(Map<String, dynamic> item) {
+    final url = item['source_platform_url'] as String?;
+    if (url != null && url.isNotEmpty) return url;
+    final src = item['source_type'] as String? ?? '';
+    final matId = item['source_material_id'] as String? ?? '';
+    switch (src) {
+      case 'platform_ibt': return 'https://ibt.osee.co.id/material/$matId';
+      case 'platform_itp': return 'https://test.osee.co.id/material/$matId';
+      case 'platform_ielts': return 'https://ielts.osee.co.id/material/$matId';
+      case 'platform_toeic': return 'https://toeic.osee.co.id/material/$matId';
+      case 'edubot': return null;
+      case 'video_lesson': return 'https://youtube.com/watch?v=$matId';
+      default: return null;
+    }
+  }
+
+  String? _deepLinkLabel(String src) {
+    switch (src) {
+      case 'platform_ibt': return 'practice on ibt';
+      case 'platform_itp': return 'practice on itp';
+      case 'platform_ielts': return 'practice on ielts';
+      case 'platform_toeic': return 'practice on toeic';
+      case 'video_lesson': return 'watch on youtube';
+      case 'edubot': return null;
+      default: return null;
+    }
+  }
+
+  void _openLink(BuildContext context, String url) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Open: $url'), duration: const Duration(seconds: 4)),
+    );
   }
 }
 
