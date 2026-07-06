@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,17 +83,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-/// Uses dart:html HttpRequest directly — guaranteed to work in Flutter Web.
+/// Uses dart:html HttpRequest — the browser's native AJAX.
+/// CRITICAL: must call .send() after .open() or nothing happens.
 Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
   final url = '$_apiUrl$path';
-  final completer = html.HttpRequest();
-  completer.open('POST', url, async: true);
-  completer.withCredentials = true;
-  completer.setRequestHeader('Content-Type', 'application/json');
+  final completer = CompletableHttpRequest();
 
-  final result = await completer.onLoad.first;
-  final status = completer.status ?? 0;
-  final responseText = completer.responseText ?? '{}';
+  final req = html.HttpRequest();
+  req.open('POST', url);
+  req.withCredentials = true;
+  req.setRequestHeader('Content-Type', 'application/json');
+  req.onLoad.listen((_) => completer.complete(req));
+  req.onError.listen((e) => completer.completeError(Exception('Network error: ${req.status}')));
+
+  // THIS IS THE LINE THAT WAS MISSING — send the actual request!
+  req.send(jsonEncode(body));
+
+  final response = await completer.future;
+  final status = response.status ?? 0;
+  final responseText = response.responseText ?? '{}';
   final data = jsonDecode(responseText) as Map<String, dynamic>;
 
   if (status >= 400) {
@@ -100,6 +109,13 @@ Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async
     throw Exception(err?['message'] ?? 'Request failed ($status)');
   }
   return data;
+}
+
+class CompletableHttpRequest {
+  final _completer = Completer<html.HttpRequest>();
+  Future<html.HttpRequest> get future => _completer.future;
+  void complete(html.HttpRequest req) => _completer.complete(req);
+  void completeError(Object e) => _completer.completeError(e);
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) => AuthNotifier());
