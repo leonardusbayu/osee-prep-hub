@@ -366,6 +366,16 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
           tooltip: 'Add column',
           onPressed: _addColumn,
         ),
+        IconButton(
+          icon: const Icon(Icons.auto_awesome, color: OseeTheme.accent),
+          tooltip: 'Mind-map recipe (AI)',
+          onPressed: () => context.go('/teacher/syllabi/${widget.syllabusId}/recipe'),
+        ),
+        IconButton(
+          icon: const Icon(Icons.group_add, color: OseeTheme.ink),
+          tooltip: 'Assign to students',
+          onPressed: () => context.go('/teacher/syllabi/${widget.syllabusId}/assign?name=${Uri.encodeComponent(_syllabus?.name ?? "")}'),
+        ),
         const SizedBox(width: 6),
         Padding(
           padding: const EdgeInsets.only(right: 16, top: 4, bottom: 4),

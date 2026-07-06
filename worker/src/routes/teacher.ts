@@ -20,6 +20,12 @@ import {
 } from '../services/syllabus';
 import { getPricingForRole } from '../services/pricing';
 import { buildTeacherDashboard } from '../services/teacher-dashboard';
+import {
+  assignSyllabusToStudent,
+  assignSyllabusToClassroom,
+  unassignSyllabusFromStudent,
+  getSyllabusAssignments,
+} from '../services/syllabus-assignment';
 
 export const teacherRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -228,5 +234,74 @@ teacherRoutes.get('/pricing', async (c) => {
     return c.json({ pricing });
   } catch (err) {
     return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+// ---------- Syllabus assignment endpoints ----------
+
+/** POST /api/teacher/syllabi/:id/assign/student — assign syllabus to one student */
+teacherRoutes.post('/syllabi/:id/assign/student', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  let body: { student_id?: string; notes?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.student_id) {
+    return c.json({ error: { code: 'INVALID_STUDENT', message: 'student_id required' } }, 400);
+  }
+  try {
+    const result = await assignSyllabusToStudent(c.env, syllabusId, body.student_id, user.id, body.notes);
+    return c.json(result, 201);
+  } catch (err) {
+    const message = (err as Error).message;
+    const status = message.includes('not found') || message.includes('Not your') ? 404 : 400;
+    return c.json({ error: { code: 'ASSIGN_FAILED', message } }, status);
+  }
+});
+
+/** POST /api/teacher/syllabi/:id/assign/classroom — link syllabus to a classroom */
+teacherRoutes.post('/syllabi/:id/assign/classroom', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  let body: { classroom_id?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.classroom_id) {
+    return c.json({ error: { code: 'INVALID_CLASSROOM', message: 'classroom_id required' } }, 400);
+  }
+  try {
+    const result = await assignSyllabusToClassroom(c.env, syllabusId, body.classroom_id, user.id);
+    return c.json(result);
+  } catch (err) {
+    const message = (err as Error).message;
+    const status = message.includes('not found') || message.includes('Not your') ? 404 : 400;
+    return c.json({ error: { code: 'ASSIGN_FAILED', message } }, status);
+  }
+});
+
+/** DELETE /api/teacher/syllabi/:id/assign/student/:studentId — unassign */
+teacherRoutes.delete('/syllabi/:id/assign/student/:studentId', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  const studentId = c.req.param('studentId');
+  try {
+    await unassignSyllabusFromStudent(c.env, syllabusId, studentId, user.id);
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: { code: 'UNASSIGN_FAILED', message: (err as Error).message } }, 400);
+  }
+});
+
+/** GET /api/teacher/syllabi/:id/assignments — who sees this syllabus */
+teacherRoutes.get('/syllabi/:id/assignments', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  try {
+    const result = await getSyllabusAssignments(c.env, syllabusId, user.id);
+    return c.json(result);
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 400);
   }
 });

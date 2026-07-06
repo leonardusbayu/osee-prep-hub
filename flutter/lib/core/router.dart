@@ -15,6 +15,8 @@ import '../features/teacher/pages/ai_grader_page.dart';
 import '../features/teacher/pages/material_generator_page.dart';
 import '../features/syllabus/pages/syllabus_list_page.dart';
 import '../features/syllabus/pages/syllabus_builder_page.dart';
+import '../features/syllabus/pages/syllabus_assign_page.dart';
+import '../features/teacher/pages/mind_map_recipe_page.dart';
 import '../features/partner/pages/partner_dashboard_page.dart';
 import '../features/ambassador/pages/ambassador_dashboard_page.dart';
 
@@ -70,6 +72,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/teacher/syllabi/:id',
         builder: (c, s) => SyllabusBuilderPage(syllabusId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/teacher/syllabi/:id/assign',
+        builder: (c, s) => SyllabusAssignPage(syllabusId: s.pathParameters['id']!, syllabusName: s.uri.queryParameters['name'] ?? ''),
+      ),
+      GoRoute(
+        path: '/teacher/syllabi/:id/recipe',
+        builder: (c, s) => MindMapRecipePage(syllabusId: s.pathParameters['id']!),
       ),
       GoRoute(path: '/student', builder: (c, s) => const StudentDashboardPage()),
       GoRoute(path: '/student/syllabus', builder: (c, s) => const StudentSyllabusPage()),

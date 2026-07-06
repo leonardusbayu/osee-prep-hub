@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { enrollStudentByJoinCode, getStudentClassrooms } from '../services/classroom';
+import { getStudentSyllabi } from '../services/syllabus-assignment';
 import { getSupabase } from '../services/supabase';
 
 export const studentRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -100,23 +101,14 @@ studentRoutes.get('/dashboard', async (c) => {
   });
 });
 
-/** GET /api/student/syllabus — get assigned syllabus (Task 11.2) */
+/** GET /api/student/syllabus — get all syllabi visible to this student
+ *  (classroom-linked published + individually assigned). */
 studentRoutes.get('/syllabus', async (c) => {
   const user = getAuthedUser(c);
-  const supabase = getSupabase(c.env);
-
-  // Get student's classrooms, then find syllabi for those classrooms
-  const classrooms = await getStudentClassrooms(c.env, user.id);
-  const classroomIds = classrooms.map((c) => c.id);
-  if (classroomIds.length === 0) {
-    return c.json({ syllabi: [] });
+  try {
+    const syllabi = await getStudentSyllabi(c.env, user.id);
+    return c.json({ syllabi });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
   }
-
-  const { data: syllabi } = await supabase
-    .from('syllabi')
-    .select('*, syllabus_items(*)')
-    .in('classroom_id', classroomIds)
-    .eq('is_published', true);
-
-  return c.json({ syllabi: syllabi ?? [] });
 });

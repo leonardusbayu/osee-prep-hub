@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { searchDocuments } from '../services/rag-search';
-import { generateMaterial } from '../services/ai-generation';
+import { generateMaterial, generateMindMapRecipe } from '../services/ai-generation';
 import { checkQuota, getQuotaStatus } from '../services/quota';
 import {
   createGradingEntry,
@@ -183,5 +183,42 @@ aiRoutes.post('/grade-speaking', async (c) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Speaking evaluation failed';
     return c.json({ error: { code: 'SPEAKING_FAILED', message } }, 500);
+  }
+});
+
+/** POST /api/ai/mind-map-recipe — teacher dumps topic + notes, AI generates a workbook unit
+ *  with theory, examples, exercises, vocabulary, and a practice prompt.
+ *  Inspired by remalt.com's "dump ideas → AI generates structured content" pattern.
+ *  Returns the recipe + an ai_generated_content payload suitable for syllabus_items. */
+aiRoutes.post('/mind-map-recipe', async (c) => {
+  const user = getAuthedUser(c);
+  let body: { topic?: string; notes?: string; exam?: string; level?: string; item_type?: string; estimated_minutes?: number };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.topic?.trim() || !body.notes?.trim()) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'topic and notes required' } }, 400);
+  }
+  // Check generation quota
+  try { await checkQuota(c.env, user.id, user.role, 'generation'); } catch (err) {
+    if ((err as Error & { code?: string }).code === 'QUOTA_EXCEEDED') {
+      return c.json({ error: { code: 'QUOTA_EXCEEDED', message: (err as Error).message } }, 429);
+    }
+    return c.json({ error: { code: 'QUOTA_CHECK_FAILED', message: (err as Error).message } }, 500);
+  }
+  try {
+    const recipe = await generateMindMapRecipe(c.env, {
+      topic: body.topic,
+      notes: body.notes,
+      exam: body.exam,
+      level: body.level,
+      item_type: body.item_type,
+      estimated_minutes: body.estimated_minutes,
+    });
+    console.log(`mind-map-recipe user=${user.id} topic=${body.topic}`);
+    return c.json(recipe);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Recipe generation failed';
+    return c.json({ error: { code: 'RECIPE_FAILED', message } }, 500);
   }
 });
