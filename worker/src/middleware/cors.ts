@@ -7,8 +7,8 @@ import type { Env, ContextVars } from '../types';
  */
 const ALLOWED_ORIGIN_SUFFIX = '.osee.co.id';
 const ALLOWED_ORIGIN_PATTERNS = [
-  /^https:\/\/[a-z0-9]+\.osee-prep-hub\.pages\.dev$/, // any Pages deployment URL
-  /^https:\/\/[a-z0-9]+\.osee-prep-hub-admin\.pages\.dev$/,
+  /^https:\/\/[a-z0-9-]+\.osee-prep-hub\.pages\.dev$/, // any Pages deployment URL (incl. branch aliases with hyphens)
+  /^https:\/\/[a-z0-9-]+\.osee-prep-hub-admin\.pages\.dev$/,
 ];
 const ALLOWED_EXACT_ORIGINS = new Set<string>([
   'http://localhost:5173',
@@ -16,6 +16,7 @@ const ALLOWED_EXACT_ORIGINS = new Set<string>([
   'http://localhost:8787',
   'https://prep.osee.co.id',
   'https://osee-prep-hub.pages.dev',
+  'https://osee-prep-hub-admin.pages.dev',
 ]);
 
 export function isAllowedOrigin(origin: string | undefined | null): boolean {
