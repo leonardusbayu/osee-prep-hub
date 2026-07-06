@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'package:flutter/gestures.dart' show PointerSignalEvent, PointerScrollEvent;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -84,9 +85,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
   bool _showOnboarding = false;
   int _onboardingStep = 0;
 
-  // Canvas transform
-  Offset _pan = Offset.zero;
-  double _zoom = 1.0;
+  // Canvas transform — now driven by InteractiveViewer (see _xformCtrl)
   Offset? _dragStart;
 
   // Node positions (in canvas space, before transform)
@@ -145,6 +144,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
   @override
   void dispose() {
     _autosaveTimer?.cancel();
+    _xformCtrl.dispose();
     _teardownFileDrop();
     super.dispose();
   }
@@ -833,10 +833,22 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     }
   }
 
-  // ---- Canvas transform helpers ----
+  // Canvas transform — now driven by InteractiveViewer
+  final TransformationController _xformCtrl = TransformationController();
+  bool _isSpacePressed = false;
 
-  Offset _canvasToScreen(Offset p) => (p * _zoom) + _pan;
-  Offset _screenToCanvas(Offset p) => (p - _pan) / _zoom;
+  // ---- Canvas transform helpers (kept for compatibility) ----
+
+  Offset _canvasToScreen(Offset p) => _xformCtrl.toScene(p) as Offset;
+  Offset _screenToCanvas(Offset p) {
+    final matrix = _xformCtrl.value;
+    final inverse = Matrix4.inverted(matrix);
+    final result = MatrixUtils.transformPoint(inverse, p);
+    return result;
+  }
+
+  double get _zoom => _xformCtrl.value[0];
+  Offset get _pan => Offset(_xformCtrl.value[12], _xformCtrl.value[13]);
 
   void _fitToScreen() {
     if (_nodePositions.isEmpty) return;
@@ -859,11 +871,10 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     if (contentWidth <= 0 || contentHeight <= 0) return;
     final zoomX = (screenW - 80) / contentWidth;
     final zoomY = (screenH - 80) / contentHeight;
-    _zoom = math.min(zoomX, zoomY).clamp(0.2, 2.0);
-    _pan = Offset(
-      (screenW - contentWidth * _zoom) / 2 - minX * _zoom,
-      (screenH - contentHeight * _zoom) / 2 - minY * _zoom + 20,
-    );
+    final z = math.min(zoomX, zoomY).clamp(0.2, 2.0);
+    final panX = (screenW - contentWidth * z) / 2 - minX * z;
+    final panY = (screenH - contentHeight * z) / 2 - minY * z + 20;
+    _xformCtrl.value = Matrix4.identity()..scale(z)..translate(panX / z, panY / z);
     setState(() {});
   }
 
@@ -887,127 +898,186 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
           children: [
             // Material library sidebar (Tier 1)
             if (_libraryOpen) _buildMaterialLibrary(),
-            // Canvas area (shifted right if library is open)
-            GestureDetector(
-              onTap: () => setState(() {
-                _selectedNode = null;
-                _selectedNodes.clear();
-                _selectionRect = null;
-              }),
-            onPanStart: (d) {
-              if (_draggingNode == null && _resizingNode == null) {
-                _dragStart = d.globalPosition;
-                setState(() {
-                  _selectionStart = _screenToCanvas(d.globalPosition);
-                  _selectionRect = null;
-                });
-              }
-            },
-            onPanUpdate: (d) {
-              if (_draggingNode != null) {
-                setState(() {
-                  final canvasPos = _screenToCanvas(d.globalPosition);
-                  if (_selectedNodes.contains(_draggingNode) && _selectedNodes.length > 1) {
-                    final delta = canvasPos - (_nodePositions[_draggingNode!] ?? canvasPos);
-                    for (final id in _selectedNodes) {
-                      _nodePositions[id] = (_nodePositions[id] ?? canvasPos) + delta;
-                    }
-                  } else {
-                    _nodePositions[_draggingNode!] = canvasPos;
-                  }
-                  _isDraggingNode = true;
-                });
-              } else if (_resizingNode != null) {
-                setState(() {
-                  final canvasPos = _screenToCanvas(d.globalPosition);
-                  final nodePos = _nodePositions[_resizingNode!]!;
-                  _nodeSizes[_resizingNode!] = Size(
-                    (canvasPos.dx - nodePos.dx).clamp(160, 800),
-                    (canvasPos.dy - nodePos.dy).clamp(80, 600),
-                  );
-                });
-              } else if (_selectionStart != null) {
-                setState(() {
-                  final current = _screenToCanvas(d.globalPosition);
-                  _selectionRect = Rect.fromPoints(_selectionStart!, current);
+            // Canvas — InteractiveViewer handles pan + pinch/scroll zoom
+            Listener(
+              onPointerSignal: _handlePointerSignal,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => setState(() {
+                  _selectedNode = null;
                   _selectedNodes.clear();
-                  for (final entry in _nodePositions.entries) {
-                    final size = _nodeSizes[entry.key] ?? const Size(360, 200);
-                    final nodeRect = Rect.fromLTWH(entry.value.dx, entry.value.dy, size.width, size.height);
-                    if (_selectionRect!.overlaps(nodeRect)) {
-                      _selectedNodes.add(entry.key);
-                    }
-                  }
-                });
-              } else if (_dragStart != null) {
-                setState(() {
-                  _pan = _pan + d.delta;
-                });
-              }
-            },
-            onPanEnd: (_) {
-              _dragStart = null;
-              _draggingNode = null;
-              _resizingNode = null;
-              _selectionStart = null;
-              _selectionRect = null;
-              setState(() => _isDraggingNode = false);
-            },
-            child: Stack(
-              children: [
-                _GridBackground(pan: _pan, zoom: _zoom),
-                if (_selectionRect != null)
-                  Positioned(
-                    left: _canvasToScreen(_selectionRect!.topLeft).dx,
-                    top: _canvasToScreen(_selectionRect!.topLeft).dy,
-                    width: _selectionRect!.width * _zoom,
-                    height: _selectionRect!.height * _zoom,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1F2937).withOpacity(0.06),
-                        border: Border.all(color: const Color(0xFF1F2937).withOpacity(0.3), width: 1),
-                      ),
-                    ),
-                  ),
-                ..._buildEdges(),
-                ..._nodes.entries.map((e) => _buildNode(e.key, e.value)),
-                ..._selectedNodes.map((id) {
-                  final pos = _nodePositions[id];
-                  final size = _nodeSizes[id] ?? const Size(360, 200);
-                  if (pos == null) return const SizedBox.shrink();
-                  final screenPos = _canvasToScreen(pos);
-                  return Positioned(
-                    left: screenPos.dx - 4,
-                    top: screenPos.dy - 4,
-                    width: size.width * _zoom + 8,
-                    height: size.height * _zoom + 8,
-                    child: IgnorePointer(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFF1F2937), width: 2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  );
+                  _selectionRect = null;
                 }),
-              ],
+                onPanStart: (d) {
+                  if (_draggingNode == null && _resizingNode == null) {
+                    _dragStart = d.globalPosition;
+                    setState(() {
+                      _selectionStart = _screenToCanvas(d.globalPosition);
+                      _selectionRect = null;
+                    });
+                  }
+                },
+                onPanUpdate: (d) {
+                  if (_draggingNode != null) {
+                    setState(() {
+                      final canvasPos = _screenToCanvas(d.globalPosition);
+                      if (_selectedNodes.contains(_draggingNode) && _selectedNodes.length > 1) {
+                        final delta = canvasPos - (_nodePositions[_draggingNode!] ?? canvasPos);
+                        for (final id in _selectedNodes) {
+                          _nodePositions[id] = (_nodePositions[id] ?? canvasPos) + delta;
+                        }
+                      } else {
+                        final newPos = _snapToGrid ? _snapOffset(canvasPos) : canvasPos;
+                        _nodePositions[_draggingNode!] = newPos;
+                      }
+                      _isDraggingNode = true;
+                    });
+                  } else if (_resizingNode != null) {
+                    setState(() {
+                      final canvasPos = _screenToCanvas(d.globalPosition);
+                      final nodePos = _nodePositions[_resizingNode!]!;
+                      _nodeSizes[_resizingNode!] = Size(
+                        (canvasPos.dx - nodePos.dx).clamp(160, 800),
+                        (canvasPos.dy - nodePos.dy).clamp(80, 600),
+                      );
+                    });
+                  } else if (_selectionStart != null) {
+                    setState(() {
+                      final current = _screenToCanvas(d.globalPosition);
+                      _selectionRect = Rect.fromPoints(_selectionStart!, current);
+                      _selectedNodes.clear();
+                      for (final entry in _nodePositions.entries) {
+                        final size = _nodeSizes[entry.key] ?? const Size(360, 200);
+                        final nodeRect = Rect.fromLTWH(entry.value.dx, entry.value.dy, size.width, size.height);
+                        if (_selectionRect!.overlaps(nodeRect)) {
+                          _selectedNodes.add(entry.key);
+                        }
+                      }
+                    });
+                  }
+                },
+                onPanEnd: (_) {
+                  if (_draggingNode != null || _resizingNode != null) {
+                    _markDirty();
+                    _pushUndoSnapshot();
+                  }
+                  _dragStart = null;
+                  _draggingNode = null;
+                  _resizingNode = null;
+                  _selectionStart = null;
+                  _selectionRect = null;
+                  setState(() => _isDraggingNode = false);
+                },
+                // InteractiveViewer gives smooth pan + zoom for the canvas content.
+                // When no node is being dragged/resized, InteractiveViewer captures
+                // pan gestures to scroll the canvas. When a node IS being dragged,
+                // the GestureDetector above takes priority (HitTestBehavior.translucent
+                // lets both layers participate, but the node's own GestureDetector
+                // wins for that node's region).
+                child: InteractiveViewer(
+                  transformationController: _xformCtrl,
+                  boundaryMargin: const EdgeInsets.all(2000),
+                  minScale: 0.1,
+                  maxScale: 4.0,
+                  // When a node drag is active, disable InteractiveViewer's pan
+                  // so the GestureDetector handles the node drag, not canvas pan.
+                  panEnabled: _draggingNode == null && _resizingNode == null,
+                  scaleEnabled: _draggingNode == null && _resizingNode == null,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _GridBackground(pan: _pan, zoom: _zoom),
+                      if (_selectionRect != null)
+                        Positioned(
+                          left: _selectionRect!.topLeft.dx,
+                          top: _selectionRect!.topLeft.dy,
+                          width: _selectionRect!.width,
+                          height: _selectionRect!.height,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1F2937).withValues(alpha: 0.06),
+                              border: Border.all(color: const Color(0xFF1F2937).withValues(alpha: 0.3), width: 1),
+                            ),
+                          ),
+                        ),
+                      ..._buildEdges(),
+                      ..._nodes.entries.map((e) => RepaintBoundary(child: _buildNode(e.key, e.value))),
+                      ..._selectedNodes.map((id) {
+                        final pos = _nodePositions[id];
+                        final size = _nodeSizes[id] ?? const Size(360, 200);
+                        if (pos == null) return const SizedBox.shrink();
+                        return Positioned(
+                          left: pos.dx - 4,
+                          top: pos.dy - 4,
+                          width: size.width + 8,
+                          height: size.height + 8,
+                          child: IgnorePointer(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: const Color(0xFF1F2937), width: 2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-          _buildFloatingToolbar(),
-          if (_selectedNode != null) _buildSidePanel(),
-          _buildBottomLeftControls(),
-          _buildZoomControls(),
-          _buildMiniMap(),
-          // File drop overlay (Tier 1)
-          if (_isDraggingFile) _buildFileDropOverlay(),
-          // Onboarding overlay (Tier 4)
-          if (_showOnboarding) _buildOnboardingOverlay(),
-          // Library toggle button (when closed)
-          if (!_libraryOpen) _buildLibraryToggle(),
-        ],
+            _buildFloatingToolbar(),
+            if (_selectedNode != null) _buildSidePanel(),
+            _buildBottomLeftControls(),
+            _buildZoomControls(),
+            _buildMiniMap(),
+            // File drop overlay (Tier 1)
+            if (_isDraggingFile) _buildFileDropOverlay(),
+            // Onboarding overlay (Tier 4)
+            if (_showOnboarding) _buildOnboardingOverlay(),
+            // Library toggle button (when closed)
+            if (!_libraryOpen) _buildLibraryToggle(),
+          ],
+        ),
       ),
-      ),
+    );
+  }
+
+  // ============================================================
+  // SCROLL-WHEEL ZOOM + SNAP-TO-GRID (Fix 2 + 3)
+  // ============================================================
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      // Ctrl+scroll = zoom (like Figma/Miro)
+      if (HardwareKeyboard.instance.isControlPressed) {
+        final delta = -event.scrollDelta.dy / 500.0;
+        final currentScale = _zoom;
+        final newScale = (currentScale + delta).clamp(0.1, 4.0);
+        final focal = event.position;
+        // Zoom around the cursor position
+        final matrix = _xformCtrl.value.clone();
+        final scale = newScale / currentScale;
+        final translatedFocal = MatrixUtils.transformPoint(
+          Matrix4.inverted(matrix),
+          focal,
+        );
+        matrix.scale(scale, scale, 1.0);
+        matrix.translate(
+          translatedFocal.dx * (1 - scale),
+          translatedFocal.dy * (1 - scale),
+        );
+        _xformCtrl.value = matrix;
+        setState(() {});
+      }
+    }
+  }
+
+  Offset _snapOffset(Offset p) {
+    if (!_snapToGrid) return p;
+    return Offset(
+      (p.dx / _gridSize).round() * _gridSize,
+      (p.dy / _gridSize).round() * _gridSize,
     );
   }
 
@@ -1181,14 +1251,14 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
       final to = _nodePositions[e.to];
       if (from == null || to == null) return const SizedBox.shrink();
       final fromSize = _nodeSizes[e.from] ?? const Size(360, 200);
-      final toSize = _nodeSizes[e.to] ?? const Size(360, 200);
-      final fromScreen = _canvasToScreen(from + Offset(fromSize.width, 30));
-      final toScreen = _canvasToScreen(to + const Offset(0, 30));
+      // Canvas-space coordinates — InteractiveViewer handles the screen transform
+      final fromPoint = from + Offset(fromSize.width, 30);
+      final toPoint = to + const Offset(0, 30);
       return CustomPaint(
         size: Size.infinite,
         painter: _EdgePainter(
-          from: fromScreen,
-          to: toScreen,
+          from: fromPoint,
+          to: toPoint,
           color: e.faded ? const Color(0x1A1F2937) : const Color(0xFF10B981),
         ),
       );
@@ -1202,7 +1272,6 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
   Widget _buildNode(String id, _NodeData node) {
     final pos = _nodePositions[id];
     if (pos == null) return const SizedBox.shrink();
-    final screenPos = _canvasToScreen(pos);
     final isSelected = _selectedNode == id;
     final hasContent = node.content != null;
     final size = _nodeSizes[id] ?? const Size(360, 200);
@@ -1210,71 +1279,68 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     final isMultiSelected = _selectedNodes.contains(id);
 
     return Positioned(
-      left: screenPos.dx,
-      top: screenPos.dy,
-      child: Transform.scale(
-        scale: _zoom,
-        child: SizedBox(
-          width: size.width,
-          height: size.height,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              GestureDetector(
-                onPanStart: (_) => setState(() => _draggingNode = id),
-                onTap: () => setState(() => _selectedNode = isSelected ? null : id),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  transform: isDragging ? (Matrix4.identity()..scale(1.02)) : Matrix4.identity(),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSelected
-                          ? node.color
-                          : isMultiSelected
-                              ? const Color(0xFF1F2937)
-                              : const Color(0xFFE5E7EB),
-                      width: isSelected || isMultiSelected ? 2 : 1,
-                    ),
-                    boxShadow: isDragging
-                        ? [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 20, spreadRadius: 2, offset: const Offset(0, 8))]
-                        : isSelected
-                            ? [BoxShadow(color: node.color.withOpacity(0.2), blurRadius: 12, spreadRadius: 1)]
-                            : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
+      left: pos.dx,
+      top: pos.dy,
+      child: SizedBox(
+        width: size.width,
+        height: size.height,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            GestureDetector(
+              onPanStart: (_) => setState(() => _draggingNode = id),
+              onTap: () => setState(() => _selectedNode = isSelected ? null : id),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                transform: isDragging ? (Matrix4.identity()..scale(1.02)) : Matrix4.identity(),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isSelected
+                        ? node.color
+                        : isMultiSelected
+                            ? const Color(0xFF1F2937)
+                            : const Color(0xFFE5E7EB),
+                    width: isSelected || isMultiSelected ? 2 : 1,
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildNodeHeader(id, node, hasContent),
-                      Expanded(child: _buildNodeBody(id, node)),
-                    ],
+                  boxShadow: isDragging
+                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, spreadRadius: 2, offset: const Offset(0, 8))]
+                      : isSelected
+                          ? [BoxShadow(color: node.color.withValues(alpha: 0.2), blurRadius: 12, spreadRadius: 1)]
+                          : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 1))],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildNodeHeader(id, node, hasContent),
+                    Expanded(child: _buildNodeBody(id, node)),
+                  ],
+                ),
+              ),
+            ),
+            // Resize handle
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: GestureDetector(
+                onPanStart: (_) => setState(() => _resizingNode = id),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeDownRight,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE5E7EB),
+                      borderRadius: BorderRadius.only(bottomRight: Radius.circular(6)),
+                    ),
+                    child: const Icon(Icons.open_in_full, size: 10, color: Color(0xFF6B7280)),
                   ),
                 ),
               ),
-              // Resize handle
-              Positioned(
-                right: -2,
-                bottom: -2,
-                child: GestureDetector(
-                  onPanStart: (_) => setState(() => _resizingNode = id),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.resizeDownRight,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE5E7EB),
-                        borderRadius: BorderRadius.only(bottomRight: Radius.circular(6)),
-                      ),
-                      child: const Icon(Icons.open_in_full, size: 10, color: Color(0xFF6B7280)),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1814,6 +1880,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
   // ============================================================
 
   Widget _buildZoomControls() {
+    final z = _zoom;
     return Positioned(
       bottom: 16,
       right: 16,
@@ -1828,15 +1895,23 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
           children: [
             IconButton(
               icon: const Icon(Icons.remove, size: 14, color: Color(0xFF1F2937)),
-              onPressed: () => setState(() => _zoom = (_zoom - 0.1).clamp(0.2, 3.0)),
+              onPressed: () {
+                final newScale = (z - 0.1).clamp(0.1, 4.0);
+                _xformCtrl.value = Matrix4.identity()..scale(newScale)..translate(0, 0);
+                setState(() {});
+              },
               iconSize: 14,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               tooltip: 'Zoom out',
             ),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 6), child: Text('${(_zoom * 100).round()}%', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 10, color: Color(0xFF1F2937)))),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 6), child: Text('${(z * 100).round()}%', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 10, color: Color(0xFF1F2937)))),
             IconButton(
               icon: const Icon(Icons.add, size: 14, color: Color(0xFF1F2937)),
-              onPressed: () => setState(() => _zoom = (_zoom + 0.1).clamp(0.2, 3.0)),
+              onPressed: () {
+                final newScale = (z + 0.1).clamp(0.1, 4.0);
+                _xformCtrl.value = Matrix4.identity()..scale(newScale)..translate(0, 0);
+                setState(() {});
+              },
               iconSize: 14,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               tooltip: 'Zoom in',
@@ -2902,31 +2977,32 @@ class _GridBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(size: Size.infinite, painter: _GridPainter(pan: pan, zoom: zoom));
+    // Inside InteractiveViewer — paint a large static grid that gets
+    // transformed along with the canvas content. Size covers a wide area.
+    return SizedBox(
+      width: 10000,
+      height: 10000,
+      child: CustomPaint(painter: const _GridPainter()),
+    );
   }
 }
 
 class _GridPainter extends CustomPainter {
-  const _GridPainter({required this.pan, required this.zoom});
-  final Offset pan;
-  final double zoom;
+  const _GridPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
     const spacing = 40.0;
-    final effectiveSpacing = spacing * zoom;
-    final offsetX = pan.dx % effectiveSpacing;
-    final offsetY = pan.dy % effectiveSpacing;
     final paint = Paint()..color = const Color(0x14000000).withValues(alpha: 0.06);
-    for (var x = offsetX; x < size.width; x += effectiveSpacing) {
-      for (var y = offsetY; y < size.height; y += effectiveSpacing) {
+    for (var x = 0.0; x < size.width; x += spacing) {
+      for (var y = 0.0; y < size.height; y += spacing) {
         canvas.drawCircle(Offset(x, y), 1, paint);
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _GridPainter old) => pan != old.pan || zoom != old.zoom;
+  bool shouldRepaint(covariant _GridPainter old) => false;
 }
 
 // ============================================================
@@ -3013,9 +3089,9 @@ class _MiniMapPainter extends CustomPainter {
       maxX = math.max(maxX, entry.value.dx + s.width);
       maxY = math.max(maxY, entry.value.dy + s.height);
     }
-    // Include viewport in bounds
-    final vpCanvas = Offset(-pan.dx / zoom, -pan.dy / zoom);
-    final vpSize = Size(viewportSize.width / zoom, viewportSize.height / zoom);
+    // Viewport in canvas space: top-left = -pan/zoom, size = viewport/zoom
+    final vpCanvas = Offset(-pan.dx / (zoom > 0 ? zoom : 1), -pan.dy / (zoom > 0 ? zoom : 1));
+    final vpSize = Size(viewportSize.width / (zoom > 0 ? zoom : 1), viewportSize.height / (zoom > 0 ? zoom : 1));
     minX = math.min(minX, vpCanvas.dx);
     minY = math.min(minY, vpCanvas.dy);
     maxX = math.max(maxX, vpCanvas.dx + vpSize.width);
