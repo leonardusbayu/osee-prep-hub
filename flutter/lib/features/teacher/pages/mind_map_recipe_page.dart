@@ -884,9 +884,9 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final isMobile = MediaQuery.of(context).size.width < 768;
     if (isMobile) {
-      return _buildMobileReadOnlyView();
+      return _buildMobileWizard();
     }
     return Focus(
       autofocus: true,
@@ -979,49 +979,53 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
                   boundaryMargin: const EdgeInsets.all(2000),
                   minScale: 0.1,
                   maxScale: 4.0,
-                  // When a node drag is active, disable InteractiveViewer's pan
-                  // so the GestureDetector handles the node drag, not canvas pan.
                   panEnabled: _draggingNode == null && _resizingNode == null,
                   scaleEnabled: _draggingNode == null && _resizingNode == null,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      _GridBackground(pan: _pan, zoom: _zoom),
-                      if (_selectionRect != null)
-                        Positioned(
-                          left: _selectionRect!.topLeft.dx,
-                          top: _selectionRect!.topLeft.dy,
-                          width: _selectionRect!.width,
-                          height: _selectionRect!.height,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1F2937).withValues(alpha: 0.06),
-                              border: Border.all(color: const Color(0xFF1F2937).withValues(alpha: 0.3), width: 1),
-                            ),
-                          ),
-                        ),
-                      ..._buildEdges(),
-                      ..._nodes.entries.map((e) => RepaintBoundary(child: _buildNode(e.key, e.value))),
-                      ..._selectedNodes.map((id) {
-                        final pos = _nodePositions[id];
-                        final size = _nodeSizes[id] ?? const Size(360, 200);
-                        if (pos == null) return const SizedBox.shrink();
-                        return Positioned(
-                          left: pos.dx - 4,
-                          top: pos.dy - 4,
-                          width: size.width + 8,
-                          height: size.height + 8,
-                          child: IgnorePointer(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: const Color(0xFF1F2937), width: 2),
-                                borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 4000,
+                    height: 3000,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(left: 0, top: 0, child: _GridBackground(pan: _pan, zoom: _zoom)),
+                        if (_selectionRect != null)
+                          Positioned(
+                            left: _selectionRect!.topLeft.dx,
+                            top: _selectionRect!.topLeft.dy,
+                            width: _selectionRect!.width,
+                            height: _selectionRect!.height,
+                            child: IgnorePointer(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1F2937).withValues(alpha: 0.06),
+                                  border: Border.all(color: const Color(0xFF1F2937).withValues(alpha: 0.3), width: 1),
+                                ),
                               ),
                             ),
                           ),
-                        );
-                      }),
-                    ],
+                        ..._buildEdges(),
+                        ..._nodes.entries.map((e) => RepaintBoundary(child: _buildNode(e.key, e.value))),
+                        ..._selectedNodes.map((id) {
+                          final pos = _nodePositions[id];
+                          final size = _nodeSizes[id] ?? const Size(360, 200);
+                          if (pos == null) return const SizedBox.shrink();
+                          return Positioned(
+                            left: pos.dx - 4,
+                            top: pos.dy - 4,
+                            width: size.width + 8,
+                            height: size.height + 8,
+                            child: IgnorePointer(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: const Color(0xFF1F2937), width: 2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -2444,36 +2448,473 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
   // MOBILE READ-ONLY VIEW (Tier 4)
   // ============================================================
 
-  Widget _buildMobileReadOnlyView() {
+  // ============================================================
+  // MOBILE WIZARD — step-by-step card wizard for small screens
+  // Same data/API as the desktop canvas, linear presentation
+  // ============================================================
+
+  int _wizardStep = 0;
+  static const List<String> _wizardSteps = [
+    'Setup', 'Sources', 'Theory', 'Examples', 'Exercises', 'Vocabulary', 'Practice', 'Assessment', 'Review'
+  ];
+
+  Widget _buildMobileWizard() {
     return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Brainboard (read-only)', style: TextStyle(fontFamily: 'Helvetica', fontSize: 14, color: Color(0xFF1F2937))),
+        shape: const Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
+          onPressed: () => context.go('/teacher/syllabi/${widget.syllabusId}'),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_boardTitle.isEmpty ? 'Lesson Builder' : _boardTitle, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1F2937))),
+            Text('Step ${_wizardStep + 1} of ${_wizardSteps.length}: ${_wizardSteps[_wizardStep]}', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 10, color: Color(0xFF6B7280))),
+          ],
+        ),
+        actions: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: _saveStatus.startsWith('SAVED') ? const Color(0xFF059669) : const Color(0xFF9CA3AF),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(_saveStatus, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 7, fontWeight: FontWeight.w700, letterSpacing: 1, color: Colors.white)),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          Container(width: double.infinity, padding: const EdgeInsets.all(12), color: const Color(0xFFFEF3C7), child: const Text('Open on desktop to edit this board.', style: TextStyle(fontFamily: 'Helvetica', fontSize: 11, color: Color(0xFF92400E)))),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _nodes.length,
-              itemBuilder: (_, i) {
-                final entry = _nodes.entries.elementAt(i);
-                final node = entry.value;
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: ListTile(
-                    leading: Icon(_nodeIcon(entry.key), color: node.color, size: 20),
-                    title: Text(node.title, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 12, fontWeight: FontWeight.w600)),
-                    subtitle: node.content != null
-                        ? Text((node.content!['summary'] ?? node.content!['title'] ?? '').toString(), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, color: Color(0xFF6B7280)))
-                        : null,
+          // Progress bar
+          LinearProgressIndicator(
+            value: (_wizardStep + 1) / _wizardSteps.length,
+            minHeight: 3,
+            backgroundColor: const Color(0xFFE5E7EB),
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF072c1f)),
+          ),
+          // Step content
+          Expanded(child: _buildWizardStep(_wizardStep)),
+          // Bottom navigation
+          SafeArea(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Color(0xFFE5E7EB)))),
+              child: Row(
+                children: [
+                  if (_wizardStep > 0)
+                    TextButton.icon(
+                      onPressed: () => setState(() => _wizardStep--),
+                      icon: const Icon(Icons.chevron_left, size: 18),
+                      label: const Text('Back', style: TextStyle(fontFamily: 'Helvetica', fontSize: 12, fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(foregroundColor: const Color(0xFF6B7280)),
+                    )
+                  else const SizedBox(width: 80),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_wizardSteps.length, (i) {
+                        return Container(
+                          width: 6, height: 6, margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: BoxDecoration(
+                            color: i == _wizardStep ? const Color(0xFF072c1f) : i < _wizardStep ? const Color(0xFF6B7280) : const Color(0xFFD1D5DB),
+                            shape: BoxShape.circle,
+                          ),
+                        );
+                      }),
+                    ),
                   ),
-                );
-              },
+                  if (_wizardStep < _wizardSteps.length - 1)
+                    FilledButton.icon(
+                      onPressed: () => setState(() => _wizardStep++),
+                      icon: const Icon(Icons.chevron_right, size: 18),
+                      label: const Text('Next', style: TextStyle(fontFamily: 'Helvetica', fontSize: 12, fontWeight: FontWeight.w700)),
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF072c1f)),
+                    )
+                  else FilledButton.icon(
+                    onPressed: () => _explicitSave(label: 'final save'),
+                    icon: const Icon(Icons.save, size: 16),
+                    label: const Text('Save', style: TextStyle(fontFamily: 'Helvetica', fontSize: 12, fontWeight: FontWeight.w700)),
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF059669)),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildWizardStep(int step) {
+    switch (step) {
+      case 0: return _wizardSetup();
+      case 1: return _wizardSources();
+      case 2: return _wizardGenNode('theory', 'Theory', 'Generate the theory explanation — 3-5 paragraphs with key points.');
+      case 3: return _wizardGenNode('examples', 'Examples', 'Generate worked examples that demonstrate the concept.');
+      case 4: return _wizardGenNode('exercises', 'Exercises', 'Generate 6-8 practice exercises mixing question types.');
+      case 5: return _wizardGenNode('vocabulary', 'Vocabulary', 'Generate 5-8 key vocabulary terms with definitions and examples.');
+      case 6: return _wizardGenNode('practice', 'Practice', 'Generate a free-form practice task for students.');
+      case 7: return _wizardAssessment();
+      case 8: return _wizardReview();
+      default: return const SizedBox.shrink();
+    }
+  }
+
+  // ---- Step 0: Setup ----
+  Widget _wizardSetup() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text('Lesson Setup', style: TextStyle(fontFamily: 'Helvetica', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1F2937))),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _topicCtl,
+          decoration: const InputDecoration(labelText: 'Topic', border: OutlineInputBorder(), isDense: true),
+          style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, color: Color(0xFF1F2937)),
+          onChanged: (_) => _markDirty(),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _notesCtl,
+          maxLines: 3,
+          decoration: const InputDecoration(labelText: 'Notes / Instructions', border: OutlineInputBorder(), isDense: true),
+          style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, color: Color(0xFF1F2937)),
+          onChanged: (_) => _markDirty(),
+        ),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _mobileDropdown('Exam', _exam, {'TOEFL_IBT': 'TOEFL iBT', 'TOEFL_ITP': 'TOEFL ITP', 'IELTS': 'IELTS', 'TOEIC': 'TOEIC', 'GENERAL': 'General'}, (v) => setState(() { _exam = v; _markDirty(); }))),
+          const SizedBox(width: 8),
+          Expanded(child: _mobileDropdown('Level', _level, {'A1': 'A1', 'A2': 'A2', 'B1': 'B1', 'B2': 'B2', 'C1': 'C1', 'C2': 'C2'}, (v) => setState(() { _level = v; _markDirty(); }))),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _mobileDropdown('Type', _itemType, {'grammar': 'Grammar', 'reading': 'Reading', 'writing': 'Writing', 'listening': 'Listening', 'speaking': 'Speaking', 'vocabulary': 'Vocabulary'}, (v) => setState(() { _itemType = v; _markDirty(); }))),
+          const SizedBox(width: 8),
+          Expanded(child: _mobileDropdown('Difficulty', _difficulty, {'easy': 'Easy', 'medium': 'Medium', 'hard': 'Hard', 'expert': 'Expert'}, (v) => setState(() { _difficulty = v; _markDirty(); }))),
+        ]),
+        const SizedBox(height: 16),
+        const Text('Sources on next step →', style: TextStyle(fontFamily: 'Georgia', fontSize: 11, fontStyle: FontStyle.italic, color: Color(0xFF6B7280))),
+      ],
+    );
+  }
+
+  // ---- Step 1: Sources ----
+  Widget _wizardSources() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Text('Sources', style: TextStyle(fontFamily: 'Helvetica', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1F2937))),
+              const Spacer(),
+              FilledButton.tonalIcon(
+                onPressed: _showAddMaterialDialog,
+                icon: const Icon(Icons.add, size: 14),
+                label: const Text('Add', style: TextStyle(fontSize: 12)),
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFFECFDF5), foregroundColor: const Color(0xFF072c1f)),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _sources.isEmpty
+              ? const Center(child: Text('No sources yet.\nAdd a URL or paste text to feed the AI.', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Georgia', fontSize: 13, color: Color(0xFF9CA3AF))))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _sources.length,
+                  itemBuilder: (_, i) {
+                    final s = _sources[i];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(s.type == 'youtube' ? Icons.play_circle_outline : s.type == 'text' ? Icons.text_snippet : Icons.link, color: const Color(0xFF6B8E7F), size: 20),
+                        title: Text(s.title ?? s.urlOrQuery, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 12, fontWeight: FontWeight.w600)),
+                        subtitle: Text(s.text != null ? '${s.text!.length} chars' : 'Not ingested yet', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, color: Color(0xFF9CA3AF))),
+                        trailing: s.text == null
+                            ? TextButton(onPressed: () => _ingestSource('source_$i', s), child: const Text('Fetch', style: TextStyle(fontSize: 11)))
+                            : const Icon(Icons.check_circle, color: Color(0xFF059669), size: 16),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  // ---- Steps 2-6: Generate nodes ----
+  Widget _wizardGenNode(String nodeId, String title, String description) {
+    final node = _nodes[nodeId];
+    final hasContent = node?.content != null;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Text(title, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1F2937))),
+              const Spacer(),
+              if (node?.isGenerating == true)
+                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF072c1f))),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(description, style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF6B7280), height: 1.4)),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: hasContent
+              ? _wizardNodeContent(node!)
+              : Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome, size: 40, color: node?.color ?? const Color(0xFF1E40AF)),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: node?.isGenerating == true ? null : () => _generateNode(nodeId),
+                          icon: const Icon(Icons.auto_awesome, size: 16),
+                          label: const Text('Generate', style: TextStyle(fontFamily: 'Helvetica', fontSize: 13, fontWeight: FontWeight.w700)),
+                          style: FilledButton.styleFrom(backgroundColor: node?.color ?? const Color(0xFF1E40AF), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Uses your topic, notes, sources, and RAG knowledge base.', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Georgia', fontSize: 10, color: Color(0xFF9CA3AF))),
+                      ],
+                    ),
+                  ),
+                ),
+        ),
+        if (hasContent)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: FilledButton.tonalIcon(
+              onPressed: node?.isGenerating == true ? null : () => _generateNode(nodeId),
+              icon: const Icon(Icons.refresh, size: 14),
+              label: const Text('Regenerate', style: TextStyle(fontSize: 12)),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF3F4F6), foregroundColor: const Color(0xFF1F2937)),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _wizardNodeContent(_NodeData node) {
+    final c = node.content!;
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: _buildContentCards(c, node.type),
+    );
+  }
+
+  List<Widget> _buildContentCards(Map<String, dynamic> content, String type) {
+    final cards = <Widget>[];
+    switch (type) {
+      case 'theory':
+        if (content['title'] != null) cards.add(_contentCard('Title', content['title'].toString()));
+        if (content['summary'] != null) cards.add(_contentCard('Summary', content['summary'].toString()));
+        if (content['theory'] != null) cards.add(_contentCard('Theory', content['theory'].toString()));
+        if (content['key_points'] is List) cards.add(_contentListCard('Key Points', (content['key_points'] as List).cast<String>()));
+      case 'examples':
+        if (content['examples'] is List) {
+          for (var i = 0; i < (content['examples'] as List).length; i++) {
+            final ex = (content['examples'] as List)[i] as Map;
+            cards.add(_contentCard('Example ${i + 1}', '${ex['input'] ?? ''}\n→ ${ex['output'] ?? ''}\n${ex['explanation'] ?? ''}'));
+          }
+        }
+      case 'exercises':
+        if (content['exercises'] is List) {
+          for (var i = 0; i < (content['exercises'] as List).length; i++) {
+            final ex = (content['exercises'] as List)[i] as Map;
+            cards.add(_contentCard('Q${i + 1} (${ex['type'] ?? 'question'})', '${ex['question'] ?? ''}\nAnswer: ${ex['answer'] ?? ''}'));
+          }
+        }
+      case 'vocabulary':
+        if (content['vocabulary'] is List) {
+          for (var i = 0; i < (content['vocabulary'] as List).length; i++) {
+            final v = (content['vocabulary'] as List)[i] as Map;
+            cards.add(_contentCard(v['word']?.toString() ?? 'Word', '${v['definition'] ?? ''}\nExample: ${v['example'] ?? ''}'));
+          }
+        }
+      case 'practice':
+        if (content['practice_prompt'] != null) cards.add(_contentCard('Practice Task', content['practice_prompt'].toString()));
+        if (content['practice_type'] != null) cards.add(_contentCard('Type', content['practice_type'].toString()));
+      default:
+        cards.add(_contentCard('Content', content.toString()));
+    }
+    return cards;
+  }
+
+  Widget _contentCard(String label, String body) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1, color: Color(0xFF6B7280))),
+            const SizedBox(height: 4),
+            Text(body, style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF1F2937), height: 1.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _contentListCard(String label, List<String> items) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1, color: Color(0xFF6B7280))),
+            const SizedBox(height: 4),
+            ...items.map((item) => Padding(padding: const EdgeInsets.only(top: 2), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('• ', style: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF10B981))), Expanded(child: Text(item, style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF1F2937), height: 1.4)))]))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---- Step 7: Assessment ----
+  Widget _wizardAssessment() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text('Assessment', style: TextStyle(fontFamily: 'Helvetica', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1F2937))),
+        const SizedBox(height: 8),
+        const Text('Generate assessment artifacts from your lesson content.', style: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF6B7280))),
+        const SizedBox(height: 16),
+        _assessButton('Answer Key', 'answer_key', Icons.vpn_key),
+        _assessButton('Rubric', 'rubric', Icons.grading),
+        _assessButton('Exit Ticket', 'exit_ticket', Icons.confirmation_number),
+        _assessButton('Quiz', 'quiz', Icons.quiz),
+      ],
+    );
+  }
+
+  Widget _assessButton(String label, String type, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: FilledButton.tonalIcon(
+        onPressed: _boardId == null ? null : () async {
+          try {
+            final result = await _api.generateAssessment(_boardId!, type: type, topic: _topicCtl.text.trim(), level: _level, exam: _exam, nodeContent: _nodes['exercises']?.content);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$label generated'), backgroundColor: const Color(0xFF059669)));
+              _showAssessmentResult(label, result['content'] as Map<String, dynamic>? ?? {});
+            }
+          } catch (e) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+          }
+        },
+        icon: Icon(icon, size: 16),
+        label: Text(label, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 13, fontWeight: FontWeight.w600)),
+        style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF3F4F6), foregroundColor: const Color(0xFF1F2937), padding: const EdgeInsets.symmetric(vertical: 12)),
+      ),
+    );
+  }
+
+  void _showAssessmentResult(String label, Map<String, dynamic> content) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.3,
+        expand: false,
+        builder: (ctx, sc) => Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 16, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              Expanded(child: ListView(children: _buildContentCards(content, 'assessment'))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---- Step 8: Review ----
+  Widget _wizardReview() {
+    final genCount = _nodes.values.where((n) => n.content != null && n.type != 'input' && n.type != 'source').length;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text('Review & Save', style: TextStyle(fontFamily: 'Helvetica', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1F2937))),
+        const SizedBox(height: 16),
+        _reviewStat('Nodes generated', '$genCount'),
+        _reviewStat('Sources', '${_sources.length}'),
+        _reviewStat('Topic', _topicCtl.text.isEmpty ? '(not set)' : _topicCtl.text),
+        _reviewStat('Exam', _exam),
+        _reviewStat('Level', _level),
+        _reviewStat('Difficulty', _difficulty),
+        const SizedBox(height: 24),
+        FilledButton.icon(
+          onPressed: _isReviewing ? null : _runCriticReview,
+          icon: _isReviewing ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white)) : const Icon(Icons.shield_outlined, size: 18),
+          label: const Text('Run AI Critic', style: TextStyle(fontFamily: 'Helvetica', fontSize: 13, fontWeight: FontWeight.w700)),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1E40AF), padding: const EdgeInsets.symmetric(vertical: 14)),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _isSaving ? null : () => _explicitSave(label: 'final save'),
+          icon: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white)) : const Icon(Icons.save, size: 18),
+          label: const Text('Save Lesson', style: TextStyle(fontFamily: 'Helvetica', fontSize: 13, fontWeight: FontWeight.w700)),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF072c1f), padding: const EdgeInsets.symmetric(vertical: 14)),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(
+          onPressed: _isSaving ? null : _saveToSyllabus,
+          icon: const Icon(Icons.school, size: 16),
+          label: const Text('Save to Syllabus', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFECFDF5), foregroundColor: const Color(0xFF072c1f), padding: const EdgeInsets.symmetric(vertical: 12)),
+        ),
+      ],
+    );
+  }
+
+  Widget _reviewStat(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Text(label, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 11, color: Color(0xFF6B7280))),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1F2937))),
+        ],
+      ),
+    );
+  }
+
+  Widget _mobileDropdown(String label, String value, Map<String, String> items, void Function(String) onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(border: Border.all(color: const Color(0xFFD1D5DB)), borderRadius: BorderRadius.circular(4)),
+      child: DropdownButton<String>(
+        value: value,
+        underline: const SizedBox(),
+        isExpanded: true,
+        isDense: true,
+        items: items.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 12, color: Color(0xFF1F2937))))).toList(),
+        onChanged: (v) => onChanged(v ?? value),
       ),
     );
   }
@@ -2977,12 +3418,11 @@ class _GridBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Inside InteractiveViewer — paint a large static grid that gets
-    // transformed along with the canvas content. Size covers a wide area.
-    return SizedBox(
-      width: 10000,
-      height: 10000,
-      child: CustomPaint(painter: const _GridPainter()),
+    // Fixed-size grid that InteractiveViewer transforms along with nodes
+    return const SizedBox(
+      width: 4000,
+      height: 3000,
+      child: CustomPaint(painter: _GridPainter()),
     );
   }
 }
