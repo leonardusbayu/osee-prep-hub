@@ -196,7 +196,17 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
         const SizedBox(height: 24),
 
         // ---------- My Classes ----------
-        const _SectionLabel(label: 'MY CLASSES'),
+        Row(
+          children: [
+            const _SectionLabel(label: 'MY CLASSES'),
+            const Spacer(),
+            if (classrooms.isNotEmpty)
+              TextButton(
+                onPressed: () => context.push('/student/syllabus'),
+                child: const Text('VIEW SYLLABUS', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.accent)),
+              ),
+          ],
+        ),
         const SizedBox(height: 10),
         if (classrooms.isEmpty)
           _EmptyState(message: 'No classes yet. Enter a join code above, or ask your teacher for their referral link.')
@@ -208,6 +218,7 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
                   name: (c as Map<String, dynamic>)['name'] as String? ?? '—',
                   teacherName: c['teacher_name'] as String? ?? '—',
                   targetExam: c['target_exam'] as String?,
+                  onTap: () => context.push('/student/syllabus'),
                 ),
             ],
           ),
@@ -319,47 +330,56 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _ClassroomRow extends StatelessWidget {
-  const _ClassroomRow({required this.name, required this.teacherName, required this.targetExam});
+  const _ClassroomRow({required this.name, required this.teacherName, required this.targetExam, this.onTap});
   final String name;
   final String teacherName;
   final String? targetExam;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          left: BorderSide(color: OseeTheme.gold, width: 3),
-          bottom: BorderSide(color: OseeTheme.cloud, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.class_outlined, size: 18, color: OseeTheme.gold),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontFamily: 'Georgia', fontSize: 15, fontWeight: FontWeight.w700, color: OseeTheme.ink)),
-                const SizedBox(height: 2),
-                Text('Teacher: $teacherName', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 10, color: OseeTheme.stone)),
-              ],
-            ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(2),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            left: BorderSide(color: OseeTheme.gold, width: 3),
+            bottom: BorderSide(color: OseeTheme.cloud, width: 1),
           ),
-          if (targetExam != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(border: Border.all(color: OseeTheme.cloud)),
-              child: Text(
-                targetExam!.replaceAll('_', ' ').toUpperCase(),
-                style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1, color: OseeTheme.gold),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.class_outlined, size: 18, color: OseeTheme.gold),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: const TextStyle(fontFamily: 'Georgia', fontSize: 15, fontWeight: FontWeight.w700, color: OseeTheme.ink)),
+                  const SizedBox(height: 2),
+                  Text('Teacher: $teacherName', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 10, color: OseeTheme.stone)),
+                ],
               ),
             ),
-        ],
+            if (targetExam != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(border: Border.all(color: OseeTheme.cloud)),
+                child: Text(
+                  targetExam!.replaceAll('_', ' ').toUpperCase(),
+                  style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1, color: OseeTheme.gold),
+                ),
+              ),
+            if (onTap != null) ...[
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, size: 16, color: OseeTheme.stone),
+            ],
+          ],
+        ),
       ),
     );
   }
