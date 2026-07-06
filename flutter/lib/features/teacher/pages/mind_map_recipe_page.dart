@@ -55,6 +55,10 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
 
   bool _isSaving = false;
 
+  // Sources — ingested content (YouTube, URL, text) used as AI knowledge
+  final List<_SourceData> _sources = [];
+  int _sourceCounter = 0;
+
   @override
   void initState() {
     super.initState();
@@ -84,9 +88,13 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
     _nodes['writing_agent'] = _NodeData(type: 'agent', title: 'WRITING AGENT', color: const Color(0xFF5BA674), agentType: 'writing');
   }
 
-  // Edges: input → each output, each output → all agents
+  // Edges: sources → input, input → each output, each output → all agents
   List<_Edge> get _edges {
     final e = <_Edge>[];
+    // Sources feed into input
+    for (var i = 0; i < _sources.length; i++) {
+      e.add(_Edge(from: 'source_$i', to: 'input', faded: true));
+    }
     final outputs = ['theory', 'examples', 'exercises', 'vocabulary', 'practice'];
     for (final o in outputs) {
       e.add(_Edge(from: 'input', to: o));
@@ -100,7 +108,67 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
     return e;
   }
 
+  // ---- Source ingestion ----
+
+  void _addSourceNode() {
+    final id = 'source_$_sourceCounter';
+    _sourceCounter++;
+    // Position source nodes to the left of the input, stacked
+    final y = 200.0 + (_sources.length * 130);
+    _nodePositions[id] = Offset(-380, y);
+
+    final source = _SourceData(type: 'url');
+    _sources.add(source);
+    _nodes[id] = _NodeData(type: 'source', title: 'SOURCE ${_sources.length}', color: const Color(0xFF6B8E7F));
+    setState(() {
+      _selectedNode = id;
+    });
+  }
+
+  Future<void> _ingestSource(String nodeId, _SourceData source) async {
+    setState(() => source.isIngesting = true);
+    try {
+      final dio = ApiClient.create();
+      final r = await dio.post('/ai/ingest-source', data: {
+        'type': source.type,
+        if (source.type == 'text') 'content': source.urlOrQuery,
+        if (source.type != 'text') 'url': source.urlOrQuery,
+      });
+      final data = r.data as Map<String, dynamic>;
+      setState(() {
+        source.title = data['title'] as String?;
+        source.text = data['text'] as String?;
+        source.isIngesting = false;
+      });
+    } catch (e) {
+      setState(() {
+        source.text = null;
+        source.error = 'Failed to ingest: $e';
+        source.isIngesting = false;
+      });
+    }
+  }
+
+  void _removeSource(String nodeId) {
+    final index = _sources.isEmpty ? 0 : int.tryParse(nodeId.replaceAll('source_', '')) ?? 0;
+    setState(() {
+      if (index < _sources.length) _sources.removeAt(index);
+      _nodes.remove(nodeId);
+      _nodePositions.remove(nodeId);
+      _selectedNode = null;
+    });
+  }
+
   // ---- Node generation ----
+
+  /// Collect all ingested sources as JSON for the API.
+  List<Map<String, String>> get _sourcesAsJson {
+    return _sources.where((s) => s.text != null && s.text!.isNotEmpty).map((s) => {
+      'type': s.type,
+      'title': s.title ?? s.urlOrQuery,
+      'text': s.text!,
+    }).toList();
+  }
 
   Future<void> _generateNode(String nodeId) async {
     if (_topicCtl.text.trim().isEmpty || _notesCtl.text.trim().isEmpty) {
@@ -132,6 +200,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
         'level': _level,
         'item_type': _itemType,
         if (nodeContext != null) 'context': nodeContext,
+        if (_sourcesAsJson.isNotEmpty) 'sources': _sourcesAsJson,
       });
       setState(() {
         node.content = r.data['content'] as Map<String, dynamic>?;
@@ -172,6 +241,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
         'exam': _exam,
         'level': _level,
         'history': node.chatHistory.where((h) => h['role'] != 'user' || h['content'] != message).toList(),
+        if (_sourcesAsJson.isNotEmpty) 'sources': _sourcesAsJson,
       });
       setState(() {
         node.chatHistory.add({'role': 'assistant', 'content': (r.data['reply'] as String?) ?? ''});
@@ -308,6 +378,11 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
         ],
       ),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.add_link, color: Colors.white70),
+          tooltip: 'Add source (URL/YouTube/Text)',
+          onPressed: _addSourceNode,
+        ),
         IconButton(
           icon: const Icon(Icons.zoom_in, color: Colors.white70),
           onPressed: () => setState(() => _zoom = (_zoom + 0.1).clamp(0.3, 2.0)),
@@ -465,8 +540,22 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
             const SizedBox(height: 4),
             Text('${_notesCtl.text.length} chars of notes', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, color: Colors.white30)),
           ],
+          if (_sources.any((s) => s.text != null)) ...[
+            const SizedBox(height: 4),
+            Text('${_sources.where((s) => s.text != null).length} sources loaded', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, color: const Color(0xFF6B8E7F))),
+          ],
         ],
       );
+    }
+
+    if (node.type == 'source') {
+      final idx = int.tryParse(id.replaceAll('source_', '')) ?? 0;
+      final source = idx < _sources.length ? _sources[idx] : null;
+      if (source == null) return const SizedBox.shrink();
+      if (source.isIngesting) return const Text('Fetching…', style: TextStyle(fontFamily: 'Georgia', fontSize: 10, color: Colors.white30, fontStyle: FontStyle.italic));
+      if (source.text != null) return Text('${source.title ?? 'Source'} · ${source.text!.length} chars', style: const TextStyle(fontFamily: 'Georgia', fontSize: 9, color: Colors.white70), maxLines: 2, overflow: TextOverflow.ellipsis);
+      if (source.error != null) return Text(source.error!, style: const TextStyle(fontFamily: 'Georgia', fontSize: 9, color: Colors.redAccent), maxLines: 2, overflow: TextOverflow.ellipsis);
+      return Text(source.type == 'text' ? 'Tap to paste text' : 'Tap to add ${source.type}', style: TextStyle(fontFamily: 'Georgia', fontSize: 10, color: Colors.white30, fontStyle: FontStyle.italic));
     }
 
     if (node.type == 'agent') {
@@ -558,8 +647,118 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
 
   Widget _buildPanelBody(String id, _NodeData node) {
     if (id == 'input') return _buildInputPanel();
+    if (node.type == 'source') return _buildSourcePanel(id, node);
     if (node.type == 'agent') return _buildAgentPanel(id, node);
     return _buildOutputPanel(id, node);
+  }
+
+  Widget _buildSourcePanel(String id, _NodeData node) {
+    final sourceIndex = int.tryParse(id.replaceAll('source_', '')) ?? 0;
+    final source = sourceIndex < _sources.length ? _sources[sourceIndex] : _SourceData(type: 'url');
+    final urlCtl = TextEditingController(text: source.urlOrQuery);
+
+    return StatefulBuilder(
+      builder: (ctx, setLocal) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const Text('SOURCE TYPE', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white54)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _sourceTypeChip('YouTube', 'youtube', source, setLocal),
+                const SizedBox(width: 4),
+                _sourceTypeChip('URL', 'url', source, setLocal),
+                const SizedBox(width: 4),
+                _sourceTypeChip('Text', 'text', source, setLocal),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (source.type == 'text') ...[
+              const Text('PASTE TEXT', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white54)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: urlCtl,
+                maxLines: 8,
+                decoration: const InputDecoration(hintText: 'Paste any text — transcript, article, notes…', border: OutlineInputBorder(), hintStyle: TextStyle(color: Colors.white24)),
+                style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Colors.white, height: 1.5),
+                onChanged: (v) => source.urlOrQuery = v,
+              ),
+            ] else ...[
+              const Text('URL', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white54)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: urlCtl,
+                decoration: InputDecoration(
+                  hintText: source.type == 'youtube' ? 'https://youtube.com/watch?v=…' : 'https://example.com/article',
+                  border: const OutlineInputBorder(),
+                  hintStyle: const TextStyle(color: Colors.white24),
+                ),
+                style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Colors.white),
+                onChanged: (v) => source.urlOrQuery = v,
+              ),
+            ],
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: source.isIngesting ? null : () => _ingestSource(id, source),
+                icon: source.isIngesting
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white))
+                    : const Icon(Icons.download_for_offline, size: 14),
+                label: Text(source.isIngesting ? 'FETCHING…' : 'FETCH CONTENT', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF6B8E7F), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (source.error != null) ...[
+              Text(source.error!, style: const TextStyle(color: Colors.redAccent, fontFamily: 'Georgia', fontSize: 11)),
+              const SizedBox(height: 8),
+            ],
+            if (source.text != null) ...[
+              const Text('EXTRACTED CONTENT', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white54)),
+              const SizedBox(height: 6),
+              if (source.title != null) ...[
+                Text(source.title!, style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                const SizedBox(height: 6),
+              ],
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFF1F1F2E), borderRadius: BorderRadius.circular(4)),
+                child: Text(
+                  source.text!,
+                  style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, color: Colors.white60, height: 1.4),
+                  maxLines: 12,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text('${source.text!.length} chars will be used as AI knowledge', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, color: Colors.white30)),
+            ] else ...[
+              const Text('Fetch content from this source. The AI will use it as knowledge when generating materials.', style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 11, color: Colors.white38, height: 1.4)),
+            ],
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () => _removeSource(id),
+              icon: const Icon(Icons.delete_outline, size: 14, color: Colors.redAccent),
+              label: const Text('REMOVE SOURCE', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.redAccent)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _sourceTypeChip(String label, String type, _SourceData source, StateSetter setLocal) {
+    final selected = source.type == type;
+    return ChoiceChip(
+      label: Text(label, style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, color: selected ? Colors.white : Colors.white54)),
+      selected: selected,
+      selectedColor: const Color(0xFF6B8E7F),
+      backgroundColor: const Color(0xFF1F1F2E),
+      side: BorderSide(color: selected ? const Color(0xFF6B8E7F) : Colors.white12),
+      onSelected: (_) => setLocal(() => source.type = type),
+    );
   }
 
   Widget _buildInputPanel() {
@@ -842,7 +1041,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
 // ============================================================
 
 class _NodeData {
-  final String type; // input | theory | examples | exercises | vocabulary | practice | agent
+  final String type; // input | theory | examples | exercises | vocabulary | practice | agent | source
   final String title;
   final Color color;
   final String? agentType; // for agent nodes
@@ -860,6 +1059,25 @@ class _NodeData {
     this.isGenerating = false,
     this.error,
     this.chatHistory = const [],
+  });
+}
+
+/// Source data — ingested content from YouTube/URL/text used as AI knowledge.
+class _SourceData {
+  String type; // 'youtube' | 'url' | 'text'
+  String urlOrQuery;
+  String? title;
+  String? text;
+  String? error;
+  bool isIngesting;
+
+  _SourceData({
+    this.type = 'url',
+    this.urlOrQuery = '',
+    this.title,
+    this.text,
+    this.error,
+    this.isIngesting = false,
   });
 }
 

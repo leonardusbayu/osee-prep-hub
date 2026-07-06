@@ -4,6 +4,8 @@ import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { searchDocuments } from '../services/rag-search';
 import { generateMaterial, generateMindMapRecipe, generateNode, agentChat } from '../services/ai-generation';
 import type { NodeType, AgentType } from '../services/ai-generation';
+import { ingestSource, assembleContext } from '../services/content-ingestion';
+import type { IngestSourceInput, SourceType } from '../services/content-ingestion';
 import { checkQuota, getQuotaStatus } from '../services/quota';
 import {
   createGradingEntry,
@@ -224,12 +226,36 @@ aiRoutes.post('/mind-map-recipe', async (c) => {
   }
 });
 
+/** POST /api/ai/ingest-source — extract text from YouTube/URL/PDF/text source
+ *  Body: { type: 'youtube'|'url'|'pdf'|'text', url?, content?, filename? }
+ *  Returns: { type, title, text, source_url, metadata } */
+aiRoutes.post('/ingest-source', async (c) => {
+  const user = getAuthedUser(c);
+  let body: IngestSourceInput;
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  const validTypes: SourceType[] = ['youtube', 'url', 'pdf', 'text'];
+  if (!body.type || !validTypes.includes(body.type)) {
+    return c.json({ error: { code: 'INVALID_TYPE', message: `type must be one of: ${validTypes.join(', ')}` } }, 400);
+  }
+  try {
+    const result = await ingestSource(c.env, body);
+    console.log(`ingest-source user=${user.id} type=${body.type} title=${result.title} chars=${result.text.length}`);
+    return c.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Ingestion failed';
+    return c.json({ error: { code: 'INGEST_FAILED', message } }, 400);
+  }
+});
+
 /** POST /api/ai/mind-map-node — generate a single output node (remalt-style multi-node)
- *  Body: { type: 'theory'|'exercises'|'vocabulary'|'practice'|'examples', topic, notes, exam, level, item_type, context? }
+ *  Body: { type: 'theory'|'exercises'|'vocabulary'|'practice'|'examples', topic, notes, exam, level, item_type, context?, sources? }
+ *  sources: array of { type, title, text } from previously ingested content
  *  Returns the node's content as JSON. */
 aiRoutes.post('/mind-map-node', async (c) => {
   const user = getAuthedUser(c);
-  let body: { type?: string; topic?: string; notes?: string; exam?: string; level?: string; item_type?: string; context?: string };
+  let body: { type?: string; topic?: string; notes?: string; exam?: string; level?: string; item_type?: string; context?: string; sources?: Array<{ type: string; title: string; text: string }> };
   try { body = await c.req.json(); } catch {
     return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
   }
@@ -246,15 +272,18 @@ aiRoutes.post('/mind-map-node', async (c) => {
     }
   }
   try {
+    // Assemble context from explicit context + ingested sources
+    const sourceContext = body.sources ? assembleContext(body.sources.map((s) => ({ type: s.type as SourceType, title: s.title, text: s.text, metadata: {} }))) : '';
+    const fullContext = [body.context ?? '', sourceContext].filter(Boolean).join('\n\n');
     const content = await generateNode(c.env, body.type as NodeType, {
       topic: body.topic,
       notes: body.notes,
       exam: body.exam,
       level: body.level,
       item_type: body.item_type,
-      context: body.context,
+      context: fullContext || undefined,
     });
-    console.log(`mind-map-node user=${user.id} type=${body.type} topic=${body.topic}`);
+    console.log(`mind-map-node user=${user.id} type=${body.type} topic=${body.topic} sources=${body.sources?.length ?? 0}`);
     return c.json({ type: body.type, content });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Node generation failed';
@@ -267,7 +296,7 @@ aiRoutes.post('/mind-map-node', async (c) => {
  *  Returns { reply: string } */
 aiRoutes.post('/agent-chat', async (c) => {
   const user = getAuthedUser(c);
-  let body: { agent?: string; message?: string; context?: string; topic?: string; exam?: string; level?: string; history?: Array<{ role: string; content: string }> };
+  let body: { agent?: string; message?: string; context?: string; topic?: string; exam?: string; level?: string; history?: Array<{ role: string; content: string }>; sources?: Array<{ type: string; title: string; text: string }> };
   try { body = await c.req.json(); } catch {
     return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
   }
@@ -284,10 +313,12 @@ aiRoutes.post('/agent-chat', async (c) => {
     }
   }
   try {
+    const sourceContext = body.sources ? assembleContext(body.sources.map((s) => ({ type: s.type as SourceType, title: s.title, text: s.text, metadata: {} }))) : '';
+    const fullContext = [body.context ?? '', sourceContext].filter(Boolean).join('\n\n');
     const result = await agentChat(c.env, {
       agent: body.agent as AgentType,
       message: body.message,
-      context: body.context ?? '',
+      context: fullContext,
       topic: body.topic ?? '',
       exam: body.exam,
       level: body.level,
