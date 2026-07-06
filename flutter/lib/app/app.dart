@@ -15,7 +15,7 @@ class OseeApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'OSEE Prep Hub',
       theme: OseeTheme.light(),
-      darkTheme: OseeTheme.light(),
+      darkTheme: OseeTheme.dark(),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class OseeTheme {
   OseeTheme._();
 
-  // Editorial color palette
+  // Editorial color palette (light)
   static const Color ink = Color(0xFF1A1A2E);       // deep navy-black
   static const Color paper = Color(0xFFF7F5F0);      // warm off-white
   static const Color accent = Color(0xFFE63946);     // magazine red
@@ -13,6 +13,12 @@ class OseeTheme {
   static const Color sage = Color(0xFF6B8E7F);       // sage green
   static const Color cloud = Color(0xFFE8E6E1);      // light grey
   static const Color stone = Color(0xFF9B9B9B);      // medium grey
+
+  // Dark editorial palette (evening edition)
+  static const Color inkDark = Color(0xFF0E0E1A);     // near-black
+  static const Color paperDark = Color(0xFF1F1F2E);   // dark navy paper
+  static const Color cloudDark = Color(0xFF2E2E40);  // elevated surface
+  static const Color stoneDark = Color(0xFF8A8AA0);   // muted text on dark
 
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
@@ -250,6 +256,84 @@ class OseeTheme {
         thickness: 1,
         space: 1,
       ),
+    );
+  }
+
+  /// Evening edition — dark mode for low-light reading.
+  static ThemeData dark() {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: accent,
+      brightness: Brightness.dark,
+      primary: accent,
+      secondary: gold,
+      surface: paperDark,
+      onSurface: paper,
+      error: accent,
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: inkDark,
+      fontFamily: 'Georgia',
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(fontFamily: 'Georgia', fontSize: 56, fontWeight: FontWeight.w700, color: paper, height: 1.1, letterSpacing: -1.5),
+        displayMedium: TextStyle(fontFamily: 'Georgia', fontSize: 40, fontWeight: FontWeight.w700, color: paper, height: 1.15, letterSpacing: -0.8),
+        displaySmall: TextStyle(fontFamily: 'Georgia', fontSize: 28, fontWeight: FontWeight.w600, color: paper, height: 1.2),
+        headlineLarge: TextStyle(fontFamily: 'Georgia', fontSize: 24, fontWeight: FontWeight.w600, color: paper, height: 1.3),
+        headlineMedium: TextStyle(fontFamily: 'Georgia', fontSize: 20, fontWeight: FontWeight.w600, color: paper),
+        headlineSmall: TextStyle(fontFamily: 'Georgia', fontSize: 18, fontWeight: FontWeight.w500, color: paper),
+        titleLarge: TextStyle(fontFamily: 'Georgia', fontSize: 16, fontWeight: FontWeight.w600, color: paper),
+        titleMedium: TextStyle(fontFamily: 'Helvetica', fontSize: 14, fontWeight: FontWeight.w600, color: paper, letterSpacing: 0.5),
+        titleSmall: TextStyle(fontFamily: 'Helvetica', fontSize: 12, fontWeight: FontWeight.w700, color: stoneDark, letterSpacing: 1.5),
+        bodyLarge: TextStyle(fontFamily: 'Georgia', fontSize: 16, fontWeight: FontWeight.w400, color: paper, height: 1.6),
+        bodyMedium: TextStyle(fontFamily: 'Georgia', fontSize: 14, fontWeight: FontWeight.w400, color: paper, height: 1.5),
+        bodySmall: TextStyle(fontFamily: 'Helvetica', fontSize: 12, fontWeight: FontWeight.w400, color: stoneDark, height: 1.4),
+        labelLarge: TextStyle(fontFamily: 'Helvetica', fontSize: 14, fontWeight: FontWeight.w700, color: paper, letterSpacing: 1),
+        labelSmall: TextStyle(fontFamily: 'Helvetica', fontSize: 10, fontWeight: FontWeight.w700, color: stoneDark, letterSpacing: 2),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: inkDark,
+        foregroundColor: paper,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(fontFamily: 'Georgia', fontSize: 22, fontWeight: FontWeight.w700, color: paper),
+        iconTheme: IconThemeData(color: paper),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: cloudDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+        margin: EdgeInsets.zero,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: paper,
+          foregroundColor: inkDark,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+          textStyle: const TextStyle(fontFamily: 'Helvetica', fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 1),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: accent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+          textStyle: const TextStyle(fontFamily: 'Helvetica', fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 1),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: UnderlineInputBorder(borderSide: BorderSide(color: cloudDark, width: 1)),
+        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: cloudDark, width: 1)),
+        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: paper, width: 2)),
+        errorBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent, width: 1)),
+        labelStyle: const TextStyle(fontFamily: 'Helvetica', fontSize: 12, fontWeight: FontWeight.w600, color: stoneDark, letterSpacing: 1),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        filled: false,
+      ),
+      dividerTheme: const DividerThemeData(color: cloudDark, thickness: 1, space: 1),
     );
   }
 }
