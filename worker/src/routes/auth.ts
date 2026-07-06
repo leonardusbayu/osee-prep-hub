@@ -4,6 +4,7 @@ import { signJwt, verifyJwt, isValidRole } from '../services/jwt';
 import { hashPassword, verifyPassword } from '../services/password';
 import { buildAuthCookie, buildClearAuthCookie, COOKIE_NAME } from '../services/cookie';
 import { getSupabase } from '../services/supabase';
+import { autoEnrollReferredStudent } from '../services/classroom';
 
 export const authRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -148,6 +149,17 @@ authRoutes.post('/register', async (c) => {
     });
   }
 
+  // If student signed up with a referral code, auto-enroll them in the teacher's classroom
+  let autoEnrolled: { classroom_id: string; classroom_name: string; created_default: boolean } | null = null;
+  if (referredBy && role === 'student' && referral_code) {
+    try {
+      autoEnrolled = await autoEnrollReferredStudent(c.env, referredBy, newUser.id, referral_code.toUpperCase());
+    } catch (err) {
+      // Non-fatal — student can still join a classroom later via join code
+      console.error('Auto-enroll failed (non-fatal):', err);
+    }
+  }
+
   // Issue JWT
   const token = await signJwt(c.env, {
     sub: newUser.id,
@@ -172,7 +184,11 @@ authRoutes.post('/register', async (c) => {
 
   // Set cookie + return
   c.header('Set-Cookie', buildAuthCookie(token));
-  return c.json({ jwt: token, user: userResponse }, 201);
+  const response: Record<string, unknown> = { jwt: token, user: userResponse };
+  if (autoEnrolled) {
+    response.auto_enrolled = autoEnrolled;
+  }
+  return c.json(response, 201);
 });
 
 // ---------- Login ----------

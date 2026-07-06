@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -50,6 +51,82 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
         _error = 'Failed to load dashboard';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _showCreateClassroomDialog(BuildContext context) async {
+    final nameCtl = TextEditingController();
+    final descCtl = TextEditingController();
+    String? targetExam;
+    final result = await showDialog<Map<String, dynamic>?>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          backgroundColor: OseeTheme.paper,
+          title: const Text('New Classroom', style: TextStyle(fontFamily: 'Georgia', fontWeight: FontWeight.w700)),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtl,
+                  decoration: const InputDecoration(labelText: 'Class name', hintText: 'e.g. TOEFL iBT — Semester 1'),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descCtl,
+                  decoration: const InputDecoration(labelText: 'Description (optional)'),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: targetExam,
+                  decoration: const InputDecoration(labelText: 'Target exam'),
+                  items: const [
+                    DropdownMenuItem(value: 'GENERAL', child: Text('General English')),
+                    DropdownMenuItem(value: 'TOEFL_IBT', child: Text('TOEFL iBT')),
+                    DropdownMenuItem(value: 'TOEFL_ITP', child: Text('TOEFL ITP')),
+                    DropdownMenuItem(value: 'IELTS', child: Text('IELTS')),
+                    DropdownMenuItem(value: 'TOEIC', child: Text('TOEIC')),
+                  ],
+                  onChanged: (v) => setState(() => targetExam = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx, {
+                  'name': nameCtl.text.trim(),
+                  'description': descCtl.text.trim(),
+                  'target_exam': targetExam,
+                });
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null || (result['name'] as String).isEmpty) return;
+    try {
+      final dio = ApiClient.create();
+      await dio.post('/teacher/classrooms', data: result);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Classroom created — share the join code with students')),
+      );
+      _loadDashboard();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Create failed: $e')),
+      );
     }
   }
 
@@ -174,11 +251,24 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                 onPressed: () => context.push('/teacher/syllabi'),
                 child: const Text('MANAGE SYLLABI', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
               ),
+            const SizedBox(width: 4),
+            TextButton.icon(
+              onPressed: () => _showCreateClassroomDialog(context),
+              icon: const Icon(Icons.add, size: 14, color: OseeTheme.accent),
+              label: const Text('NEW CLASSROOM', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.accent)),
+            ),
           ],
         ),
         const SizedBox(height: 10),
         if (classrooms.isEmpty)
-          _EmptyState(message: 'No classrooms yet. Students joining with your referral code will appear here.')
+          _EmptyState(
+            message: 'No classrooms yet. Tap NEW CLASSROOM to create one, or share your referral link — your first referred student gets auto-enrolled in a default class.',
+            action: TextButton.icon(
+              onPressed: () => _showCreateClassroomDialog(context),
+              icon: const Icon(Icons.add, size: 14, color: OseeTheme.accent),
+              label: const Text('CREATE FIRST CLASSROOM', style: TextStyle(fontFamily: 'Helvetica', fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.accent)),
+            ),
+          )
         else
           SizedBox(
             height: 150,
@@ -194,6 +284,12 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   joinCode: c['join_code'] as String? ?? '',
                   studentCount: c['student_count'] as int? ?? 0,
                   syllabusCount: c['syllabus_count'] as int? ?? 0,
+                  onCopyCode: () {
+                    Clipboard.setData(ClipboardData(text: c['join_code'] as String? ?? ''));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Join code copied: ${c['join_code']}')),
+                    );
+                  },
                 );
               },
             ),
@@ -434,6 +530,7 @@ class _ClassroomCard extends StatelessWidget {
     required this.joinCode,
     required this.studentCount,
     required this.syllabusCount,
+    this.onCopyCode,
   });
 
   final String name;
@@ -441,6 +538,7 @@ class _ClassroomCard extends StatelessWidget {
   final String joinCode;
   final int studentCount;
   final int syllabusCount;
+  final VoidCallback? onCopyCode;
 
   @override
   Widget build(BuildContext context) {
@@ -494,12 +592,23 @@ class _ClassroomCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(border: Border.all(color: OseeTheme.cloud)),
-            child: Text(
-              'JOIN: $joinCode',
-              style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1, color: OseeTheme.ink),
+          InkWell(
+            onTap: onCopyCode,
+            borderRadius: BorderRadius.circular(2),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(border: Border.all(color: OseeTheme.cloud)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'JOIN: $joinCode',
+                    style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1, color: OseeTheme.ink),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.copy, size: 10, color: OseeTheme.accent),
+                ],
+              ),
             ),
           ),
         ],
@@ -710,8 +819,9 @@ class _ActivityRow extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.message});
+  const _EmptyState({required this.message, this.action});
   final String message;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -721,10 +831,19 @@ class _EmptyState extends StatelessWidget {
         color: Colors.white,
         border: Border.all(color: OseeTheme.cloud),
       ),
-      child: Text(
-        message,
-        style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 13, color: OseeTheme.stone, height: 1.5),
-        textAlign: TextAlign.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            message,
+            style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 13, color: OseeTheme.stone, height: 1.5),
+            textAlign: TextAlign.center,
+          ),
+          if (action != null) ...[
+            const SizedBox(height: 12),
+            action!,
+          ],
+        ],
       ),
     );
   }
