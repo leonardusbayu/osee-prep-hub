@@ -99,13 +99,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           // Right — form
           Expanded(
             flex: 3,
-            child: Container(
-              padding: const EdgeInsets.all(64),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisAlignment: MainAxisAlignment.center,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(48),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text('Sign In', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 32)),
                     const SizedBox(height: 8),
@@ -150,6 +152,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ],
                 ),
+              ),
               ),
             ),
           ),

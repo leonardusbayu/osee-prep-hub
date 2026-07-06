@@ -143,11 +143,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           // Right — form (NO Form widget, NO validators — just direct submission)
           Expanded(
             flex: 3,
-            child: Container(
-              padding: const EdgeInsets.all(64),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisAlignment: MainAxisAlignment.center,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(48),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text('Create Account', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 32)),
                   const SizedBox(height: 8),
@@ -233,6 +235,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                   ),
                 ],
+              ),
               ),
             ),
           ),

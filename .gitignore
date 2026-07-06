@@ -50,6 +50,13 @@ yarn-error.log*
 # Sisyphus evidence (QA artifacts — not source)
 .sisyphus/evidence/
 .sisyphus/drafts/
+.sisyphus/run-continuation/
+
+# Playwright MCP artifacts (local-only screenshots/logs)
+.playwright-mcp/
+
+# Worker temp build dir
+worker/.temp/
 
 # Temp
 tmp/

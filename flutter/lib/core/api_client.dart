@@ -8,6 +8,12 @@ class ApiClient {
 
   static const String _defaultBaseUrl = 'https://osee-prep-hub-worker.edubot-leonardus.workers.dev/api';
 
+  /// Currently active JWT, set by AuthNotifier on login/register and cleared on logout.
+  /// Read by [_AuthInterceptor] on every request so cookies (which are scoped to
+  /// the production `.osee.co.id` domain) don't have to do the work across the
+  /// `pages.dev` <-> `workers.dev` boundary.
+  static String? currentToken;
+
   static Dio create({String? baseUrl, String? authToken}) {
     final dio = Dio(BaseOptions(
       baseUrl: baseUrl ?? _defaultBaseUrl,
@@ -24,10 +30,24 @@ class ApiClient {
       dio.httpClientAdapter = BrowserHttpClientAdapter(withCredentials: true);
     }
 
+    // Attach the latest JWT on every request, even if it changed after `create`.
+    dio.interceptors.add(_AuthInterceptor());
+
     if (kDebugMode) {
       dio.interceptors.add(LogInterceptor(responseBody: true, error: true));
     }
 
     return dio;
+  }
+}
+
+class _AuthInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final token = ApiClient.currentToken;
+    if (token != null && token.isNotEmpty) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
+    handler.next(options);
   }
 }

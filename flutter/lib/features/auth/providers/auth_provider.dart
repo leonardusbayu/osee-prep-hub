@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/api_client.dart';
 import '../models/user.dart';
 
 const String _apiUrl = 'https://osee-prep-hub-worker.edubot-leonardus.workers.dev/api';
@@ -29,6 +30,15 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(const AuthState());
+
+  @override
+  set state(AuthState value) {
+    // Mirror token into ApiClient so the auth interceptor picks it up on every
+    // subsequent Dio request — required for cross-domain auth where the
+    // HttpOnly SSO cookie is scoped to a parent domain the browser can't see.
+    ApiClient.currentToken = value.token;
+    super.state = value;
+  }
 
   Future<bool> register({
     required String email,

@@ -138,6 +138,11 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
             spacing: 8,
             children: [
               ActionChip(
+                label: const Text('Syllabi'),
+                avatar: const Icon(Icons.view_kanban_outlined),
+                onPressed: () => context.push('/teacher/syllabi'),
+              ),
+              ActionChip(
                 label: const Text('Classrooms'),
                 avatar: const Icon(Icons.class_outlined),
                 onPressed: () => context.push('/teacher/classrooms'),

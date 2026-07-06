@@ -1,0 +1,79 @@
+import 'syllabus.dart';
+
+/// In-memory catalog of materials teachers can drag into a syllabus.
+///
+/// In production this would come from the worker (`/api/teacher/catalog`),
+/// but for v1 we ship a curated static set so the builder works
+/// immediately and offline-friendly. The shape matches [CatalogEntry].
+const List<CatalogEntry> kMaterialCatalog = [
+  // ----- iBT -----
+  CatalogEntry(sourceType: 'platform_ibt', materialId: 'ibt-reading-basics', title: 'iBT Reading — Basics',
+      description: 'Reading passages & questions, foundation level', itemType: 'reading', section: 'reading', difficulty: 'B1', estimatedMinutes: 30),
+  CatalogEntry(sourceType: 'platform_ibt', materialId: 'ibt-reading-advanced', title: 'iBT Reading — Advanced',
+      description: 'Inference & rhetoric-focused passages', itemType: 'reading', section: 'reading', difficulty: 'C1', estimatedMinutes: 45),
+  CatalogEntry(sourceType: 'platform_ibt', materialId: 'ibt-listening-conversations', title: 'iBT Listening — Conversations',
+      description: 'Campus-dialogue listening sets', itemType: 'listening', section: 'listening', difficulty: 'B2', estimatedMinutes: 25),
+  CatalogEntry(sourceType: 'platform_ibt', materialId: 'ibt-listening-lectures', title: 'iBT Listening — Lectures',
+      description: 'Mini-lecture listening practice', itemType: 'listening', section: 'listening', difficulty: 'C1', estimatedMinutes: 40),
+  CatalogEntry(sourceType: 'platform_ibt', materialId: 'ibt-speaking-independent', title: 'iBT Speaking — Independent',
+      description: 'Two independent-task prompts', itemType: 'speaking', section: 'speaking', difficulty: 'B2', estimatedMinutes: 30),
+  CatalogEntry(sourceType: 'platform_ibt', materialId: 'ibt-speaking-integrated', title: 'iBT Speaking — Integrated',
+      description: 'Read + Listen + Speak integrated tasks', itemType: 'speaking', section: 'speaking', difficulty: 'C1', estimatedMinutes: 35),
+  CatalogEntry(sourceType: 'platform_ibt', materialId: 'ibt-writing-integrated', title: 'iBT Writing — Integrated',
+      description: 'Read + Listen + Write integrated essay', itemType: 'writing', section: 'writing', difficulty: 'C1', estimatedMinutes: 30),
+  CatalogEntry(sourceType: 'platform_ibt', materialId: 'ibt-writing-independent', title: 'iBT Writing — Independent',
+      description: 'Opinion essay (30 minutes)', itemType: 'writing', section: 'writing', difficulty: 'B2', estimatedMinutes: 30),
+
+  // ----- ITP -----
+  CatalogEntry(sourceType: 'platform_itp', materialId: 'itp-mock-1', title: 'ITP Mock Test 1', description: 'Full ITP simulation, score report included',
+      itemType: 'mock_test', section: 'mock', difficulty: 'B2', estimatedMinutes: 110),
+  CatalogEntry(sourceType: 'platform_itp', materialId: 'itp-mock-2', title: 'ITP Mock Test 2', description: 'Section-targeted review set',
+      itemType: 'mock_test', section: 'mock', difficulty: 'B2', estimatedMinutes: 110),
+  CatalogEntry(sourceType: 'platform_itp', materialId: 'itp-grammar-clause', title: 'ITP Grammar — Clauses',
+      description: 'Noun / adjective / adverb clause drills', itemType: 'grammar', section: 'structure', difficulty: 'B1', estimatedMinutes: 25),
+
+  // ----- IELTS -----
+  CatalogEntry(sourceType: 'platform_ielts', materialId: 'ielts-academic-reading', title: 'IELTS Academic Reading',
+      description: 'Three-passage academic reading', itemType: 'reading', section: 'reading', difficulty: 'B2', estimatedMinutes: 60),
+  CatalogEntry(sourceType: 'platform_ielts', materialId: 'ielts-writing-task1', title: 'IELTS Writing Task 1',
+      description: 'Graph / chart description', itemType: 'writing', section: 'writing', difficulty: 'B2', estimatedMinutes: 20),
+  CatalogEntry(sourceType: 'platform_ielts', materialId: 'ielts-writing-task2', title: 'IELTS Writing Task 2',
+      description: 'Opinion essay, 250 words', itemType: 'writing', section: 'writing', difficulty: 'C1', estimatedMinutes: 40),
+  CatalogEntry(sourceType: 'platform_ielts', materialId: 'ielts-speaking-cue-card', title: 'IELTS Speaking — Cue Card',
+      description: 'Long-turn practice with prompts', itemType: 'speaking', section: 'speaking', difficulty: 'B2', estimatedMinutes: 25),
+  CatalogEntry(sourceType: 'platform_ielts', materialId: 'ielts-vocab-academic', title: 'Academic Vocabulary List',
+      description: 'High-frequency academic word list', itemType: 'vocabulary', section: 'vocabulary', difficulty: 'B2', estimatedMinutes: 30),
+
+  // ----- TOEIC -----
+  CatalogEntry(sourceType: 'platform_toeic', materialId: 'toeic-listening-parts', title: 'TOEIC Listening — All Parts',
+      description: 'Parts 1-4 listening drill', itemType: 'listening', section: 'listening', difficulty: 'B1', estimatedMinutes: 45),
+  CatalogEntry(sourceType: 'platform_toeic', materialId: 'toeic-reading-parts', title: 'TOEIC Reading — All Parts',
+      description: 'Parts 5-7 reading drill', itemType: 'reading', section: 'reading', difficulty: 'B2', estimatedMinutes: 75),
+  CatalogEntry(sourceType: 'platform_toeic', materialId: 'toeic-mock-full', title: 'TOEIC Full Mock Test', description: 'Two-hour full mock',
+      itemType: 'mock_test', section: 'mock', difficulty: 'B2', estimatedMinutes: 120),
+
+  // ----- EduBot -----
+  CatalogEntry(sourceType: 'edubot', materialId: 'edubot-pronunciation', title: 'Pronunciation Coaching',
+      description: 'AI-driven pronunciation feedback', itemType: 'speaking', section: 'speaking', difficulty: 'B1', estimatedMinutes: 15),
+  CatalogEntry(sourceType: 'edubot', materialId: 'edubot-conversation', title: 'Conversation Practice',
+      description: 'Topic-based AI chat', itemType: 'speaking', section: 'speaking', difficulty: 'B2', estimatedMinutes: 20),
+  CatalogEntry(sourceType: 'edubot', materialId: 'edubot-vocab-drill', title: 'Vocabulary Drilling', description: 'Spaced-repetition bot session',
+      itemType: 'vocabulary', section: 'vocabulary', difficulty: 'A2', estimatedMinutes: 15),
+
+  // ----- AI generated -----
+  CatalogEntry(sourceType: 'ai_generated', materialId: 'ai-grammar-fixes', title: 'AI — Grammar from Your Essays',
+      description: 'Personalized grammar review', itemType: 'grammar', section: 'review', difficulty: 'B2', estimatedMinutes: 15),
+  CatalogEntry(sourceType: 'ai_generated', materialId: 'ai-weakness-report', title: 'AI — Weakness Report', description: 'Diagnostic of common errors',
+      itemType: 'diagnostic', section: 'review', difficulty: 'B2', estimatedMinutes: 10),
+
+  // ----- Custom -----
+  CatalogEntry(sourceType: 'teacher_custom', materialId: 'custom-material', title: '+ Add Custom Material',
+      description: 'Upload your own PDF / link / text', itemType: 'assignment', section: 'custom', difficulty: null, estimatedMinutes: 30),
+];
+
+CatalogEntry? findCatalogEntry(String sourceType, String materialId) {
+  for (final e in kMaterialCatalog) {
+    if (e.sourceType == sourceType && e.materialId == materialId) return e;
+  }
+  return null;
+}

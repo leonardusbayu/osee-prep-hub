@@ -18,6 +18,7 @@ import {
   batchSaveSyllabusItems,
   addSyllabusItem,
 } from '../services/syllabus';
+import { getPricingForRole } from '../services/pricing';
 
 export const teacherRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -216,5 +217,16 @@ teacherRoutes.post('/syllabi/:id/items', async (c) => {
     return c.json(item, 201);
   } catch (err) {
     return c.json({ error: { code: 'ADD_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** GET /api/teacher/pricing — pricing for the calling teacher's role */
+teacherRoutes.get('/pricing', async (c) => {
+  const user = getAuthedUser(c);
+  try {
+    const pricing = await getPricingForRole(c.env, user.role);
+    return c.json({ pricing });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
   }
 });

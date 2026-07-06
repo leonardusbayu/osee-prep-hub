@@ -43,7 +43,7 @@ class _OrderPageState extends ConsumerState<OrderPage>
     });
     try {
       final dio = ApiClient.create();
-      final response = await dio.get('/pricing');
+      final response = await dio.get('/teacher/pricing');
       setState(() {
         _pricing = response.data as Map<String, dynamic>?;
         _isLoading = false;

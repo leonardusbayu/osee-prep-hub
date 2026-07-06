@@ -12,6 +12,8 @@ import '../features/teacher/pages/teacher_dashboard_page.dart';
 import '../features/teacher/pages/order_page.dart';
 import '../features/teacher/pages/ai_grader_page.dart';
 import '../features/teacher/pages/material_generator_page.dart';
+import '../features/syllabus/pages/syllabus_list_page.dart';
+import '../features/syllabus/pages/syllabus_builder_page.dart';
 import '../features/partner/pages/partner_dashboard_page.dart';
 import '../features/ambassador/pages/ambassador_dashboard_page.dart';
 
@@ -26,7 +28,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/login',
     redirect: (context, state) {
       final auth = ref.read(authProvider);
-      final path = state.path ?? '';
+      // In go_router v14 hash-mode, `state.path` is empty for hash routes.
+      // Use `state.uri.path` which is the reliable cross-mode source of truth.
+      final path = state.uri.path.isEmpty ? (state.path ?? '/') : state.uri.path;
       final isAuthRoute = path == '/login' || path == '/register' || path.startsWith('/r/');
 
       // Unauthenticated → /login (except auth routes)
@@ -61,6 +65,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/teacher/orders', builder: (c, s) => const OrderPage()),
       GoRoute(path: '/teacher/ai-grader', builder: (c, s) => const AiGraderPage()),
       GoRoute(path: '/teacher/generator', builder: (c, s) => const MaterialGeneratorPage()),
+      GoRoute(path: '/teacher/syllabi', builder: (c, s) => const SyllabusListPage()),
+      GoRoute(
+        path: '/teacher/syllabi/:id',
+        builder: (c, s) => SyllabusBuilderPage(syllabusId: s.pathParameters['id']!),
+      ),
       GoRoute(path: '/student', builder: (c, s) => const StudentDashboardPage()),
       GoRoute(path: '/partner', builder: (c, s) => const PartnerDashboardPage()),
       GoRoute(path: '/ambassador', builder: (c, s) => const AmbassadorDashboardPage()),
