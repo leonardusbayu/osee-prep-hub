@@ -41,10 +41,20 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
   // Node positions (in canvas space, before transform)
   final Map<String, Offset> _nodePositions = {};
 
+  // Node sizes (resizable)
+  final Map<String, Size> _nodeSizes = {};
+
   // Node data
   final Map<String, _NodeData> _nodes = {};
   String? _selectedNode;
   String? _draggingNode;
+  bool _isDraggingNode = false; // for visual feedback
+  String? _resizingNode;
+
+  // Multi-select
+  final Set<String> _selectedNodes = {};
+  Offset? _selectionStart;
+  Rect? _selectionRect;
 
   // Input fields
   final _topicCtl = TextEditingController();
@@ -58,6 +68,10 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
   // Sources — ingested content (YouTube, URL, text) used as AI knowledge
   final List<_SourceData> _sources = [];
   int _sourceCounter = 0;
+
+  // Text note nodes — free-form sticky notes on the canvas
+  final Map<String, String> _textNotes = {};
+  int _textNoteCounter = 0;
 
   @override
   void initState() {
@@ -86,6 +100,14 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
     _nodes['reading_agent'] = _NodeData(type: 'agent', title: 'READING AGENT', color: const Color(0xFF4F8DE0), agentType: 'reading');
     _nodes['speaking_agent'] = _NodeData(type: 'agent', title: 'SPEAKING AGENT', color: const Color(0xFFE5913D), agentType: 'speaking');
     _nodes['writing_agent'] = _NodeData(type: 'agent', title: 'WRITING AGENT', color: const Color(0xFF5BA674), agentType: 'writing');
+
+    // Default node sizes
+    for (final id in ['input', 'theory', 'examples', 'exercises', 'vocabulary', 'practice']) {
+      _nodeSizes[id] = const Size(180, 100);
+    }
+    for (final id in ['reading_agent', 'speaking_agent', 'writing_agent']) {
+      _nodeSizes[id] = const Size(180, 80);
+    }
   }
 
   // Edges: sources → input, input → each output, each output → all agents
@@ -120,6 +142,20 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
     final source = _SourceData(type: 'url');
     _sources.add(source);
     _nodes[id] = _NodeData(type: 'source', title: 'SOURCE ${_sources.length}', color: const Color(0xFF6B8E7F));
+    _nodeSizes[id] = const Size(180, 90);
+    setState(() {
+      _selectedNode = id;
+    });
+  }
+
+  void _addTextNoteNode() {
+    final id = 'note_$_textNoteCounter';
+    _textNoteCounter++;
+    // Position near the center, offset by count
+    _nodePositions[id] = Offset(200 + (_textNoteCounter * 30), 1050 + (_textNoteCounter * 20));
+    _textNotes[id] = '';
+    _nodes[id] = _NodeData(type: 'note', title: 'NOTE', color: const Color(0xFFE0B04F));
+    _nodeSizes[id] = const Size(200, 120);
     setState(() {
       _selectedNode = id;
     });
@@ -312,6 +348,37 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
   Offset _canvasToScreen(Offset p) => (p * _zoom) + _pan;
   Offset _screenToCanvas(Offset p) => (p - _pan) / _zoom;
 
+  // ---- Fit to screen ----
+
+  void _fitToScreen() {
+    if (_nodePositions.isEmpty) return;
+    var minX = double.infinity;
+    var minY = double.infinity;
+    var maxX = double.negativeInfinity;
+    var maxY = double.negativeInfinity;
+    for (final entry in _nodePositions.entries) {
+      final size = _nodeSizes[entry.key] ?? const Size(180, 100);
+      final pos = entry.value;
+      minX = math.min(minX, pos.dx);
+      minY = math.min(minY, pos.dy);
+      maxX = math.max(maxX, pos.dx + size.width);
+      maxY = math.max(maxY, pos.dy + size.height);
+    }
+    final contentWidth = maxX - minX;
+    final contentHeight = maxY - minY;
+    final screenW = MediaQuery.of(context).size.width;
+    final screenH = MediaQuery.of(context).size.height - 120; // minus app bar
+    if (contentWidth <= 0 || contentHeight <= 0) return;
+    final zoomX = (screenW - 80) / contentWidth;
+    final zoomY = (screenH - 80) / contentHeight;
+    _zoom = math.min(zoomX, zoomY).clamp(0.3, 2.0);
+    _pan = Offset(
+      (screenW - contentWidth * _zoom) / 2 - minX * _zoom,
+      (screenH - contentHeight * _zoom) / 2 - minY * _zoom + 20,
+    );
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -319,20 +386,67 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
       appBar: _buildAppBar(),
       body: Stack(
         children: [
-          // Canvas
+          // Grid background + canvas
           GestureDetector(
+            onTap: () => setState(() {
+              _selectedNode = null;
+              _selectedNodes.clear();
+              _selectionRect = null;
+            }),
             onPanStart: (d) {
-              if (_draggingNode == null) _dragStart = d.globalPosition;
+              if (_draggingNode == null && _resizingNode == null) {
+                _dragStart = d.globalPosition;
+                // Start selection box
+                setState(() {
+                  _selectionStart = _screenToCanvas(d.globalPosition);
+                  _selectionRect = null;
+                });
+              }
             },
             onPanUpdate: (d) {
               if (_draggingNode != null) {
-                // Move the node
+                // Move single node (or group if multi-selected)
                 setState(() {
-                  final newScreen = d.globalPosition;
-                  final canvasPos = _screenToCanvas(newScreen);
-                  _nodePositions[_draggingNode!] = canvasPos;
+                  final canvasPos = _screenToCanvas(d.globalPosition);
+                  if (_selectedNodes.contains(_draggingNode) && _selectedNodes.length > 1) {
+                    // Move all selected nodes by delta
+                    final delta = canvasPos - (_nodePositions[_draggingNode!] ?? canvasPos);
+                    for (final id in _selectedNodes) {
+                      _nodePositions[id] = (_nodePositions[id] ?? canvasPos) + delta;
+                    }
+                  } else {
+                    _nodePositions[_draggingNode!] = canvasPos;
+                  }
+                  _isDraggingNode = true;
+                });
+              } else if (_resizingNode != null) {
+                // Resize node
+                setState(() {
+                  final canvasPos = _screenToCanvas(d.globalPosition);
+                  final nodePos = _nodePositions[_resizingNode!]!;
+                  final newSize = Size(
+                    (canvasPos.dx - nodePos.dx).clamp(120, 600),
+                    (canvasPos.dy - nodePos.dy).clamp(60, 500),
+                  );
+                  _nodeSizes[_resizingNode!] = newSize;
+                });
+              } else if (_selectionStart != null) {
+                // Update selection box
+                setState(() {
+                  final current = _screenToCanvas(d.globalPosition);
+                  _selectionRect = Rect.fromPoints(_selectionStart!, current);
+                  // Select nodes inside the rect
+                  _selectedNodes.clear();
+                  for (final entry in _nodePositions.entries) {
+                    final size = _nodeSizes[entry.key] ?? const Size(180, 100);
+                    final nodeRect = Rect.fromLTWH(entry.value.dx, entry.value.dy, size.width, size.height);
+                    if (_selectionRect!.overlaps(nodeRect)) {
+                      _selectedNodes.add(entry.key);
+                    }
+                  }
                 });
               } else if (_dragStart != null) {
+                // Pan the canvas
                 setState(() {
                   _pan = _pan + d.delta;
                 });
@@ -341,20 +455,73 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
             onPanEnd: (_) {
               _dragStart = null;
               _draggingNode = null;
+              _resizingNode = null;
+              _selectionStart = null;
+              _selectionRect = null;
+              setState(() => _isDraggingNode = false);
             },
             child: Stack(
               children: [
+                // Grid background
+                _GridBackground(pan: _pan, zoom: _zoom),
+
+                // Selection rectangle
+                if (_selectionRect != null)
+                  Positioned(
+                    left: _canvasToScreen(_selectionRect!.topLeft).dx,
+                    top: _canvasToScreen(_selectionRect!.topLeft).dy,
+                    width: _selectionRect!.width * _zoom,
+                    height: _selectionRect!.height * _zoom,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        border: Border.all(color: Colors.blue.withOpacity(0.5), width: 1),
+                      ),
+                    ),
+                  ),
+
                 // Edges
                 ..._buildEdges(),
+
                 // Nodes
                 ..._nodes.entries.map((e) => _buildNode(e.key, e.value)),
+
+                // Multi-select highlight
+                ..._selectedNodes.map((id) {
+                  final pos = _nodePositions[id];
+                  final size = _nodeSizes[id] ?? const Size(180, 100);
+                  if (pos == null) return const SizedBox.shrink();
+                  final screenPos = _canvasToScreen(pos);
+                  return Positioned(
+                    left: screenPos.dx - 4,
+                    top: screenPos.dy - 4,
+                    width: size.width * _zoom + 8,
+                    height: size.height * _zoom + 8,
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.blue, width: 2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
           ),
+
+          // Floating toolbar (bottom-center) — add node types
+          _buildFloatingToolbar(),
+
           // Side panel for selected node
           if (_selectedNode != null) _buildSidePanel(),
-          // Controls
+
+          // Controls overlay (bottom-left)
           _buildControls(),
+
+          // Zoom controls (bottom-right)
+          _buildZoomControls(),
         ],
       ),
     );
@@ -378,24 +545,6 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
         ],
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.add_link, color: Colors.white70),
-          tooltip: 'Add source (URL/YouTube/Text)',
-          onPressed: _addSourceNode,
-        ),
-        IconButton(
-          icon: const Icon(Icons.zoom_in, color: Colors.white70),
-          onPressed: () => setState(() => _zoom = (_zoom + 0.1).clamp(0.3, 2.0)),
-        ),
-        IconButton(
-          icon: const Icon(Icons.zoom_out, color: Colors.white70),
-          onPressed: () => setState(() => _zoom = (_zoom - 0.1).clamp(0.3, 2.0)),
-        ),
-        IconButton(
-          icon: const Icon(Icons.center_focus_strong, color: Colors.white70),
-          onPressed: () => setState(() { _zoom = 1.0; _pan = Offset.zero; }),
-          tooltip: 'Reset view',
-        ),
         const SizedBox(width: 8),
         FilledButton.icon(
           onPressed: _isSaving ? null : _saveToSyllabus,
@@ -440,6 +589,9 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
     final screenPos = _canvasToScreen(pos);
     final isSelected = _selectedNode == id;
     final hasContent = node.content != null;
+    final size = _nodeSizes[id] ?? const Size(180, 100);
+    final isDragging = _isDraggingNode && _draggingNode == id;
+    final isMultiSelected = _selectedNodes.contains(id);
 
     return Positioned(
       left: screenPos.dx,
@@ -447,58 +599,95 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
       child: Transform.scale(
         scale: _zoom,
         child: SizedBox(
-          width: 180,
-          child: GestureDetector(
-            onPanStart: (_) => setState(() => _draggingNode = id),
-            onTap: () => setState(() => _selectedNode = isSelected ? null : id),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E2E40),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isSelected ? node.color : (hasContent ? node.color.withOpacity(0.4) : Colors.white12),
-                  width: isSelected ? 2 : 1,
-                ),
-                boxShadow: isSelected
-                    ? [BoxShadow(color: node.color.withOpacity(0.3), blurRadius: 12, spreadRadius: 2)]
-                    : [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 4)],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header (drag handle)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: node.color,
-                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(5), topRight: Radius.circular(5)),
+          width: size.width,
+          height: size.height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Main node card
+              GestureDetector(
+                onPanStart: (_) => setState(() => _draggingNode = id),
+                onTap: () => setState(() => _selectedNode = isSelected ? null : id),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  transform: isDragging ? (Matrix4.identity()..scale(1.05)) : Matrix4.identity(),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E2E40),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isSelected
+                          ? node.color
+                          : isMultiSelected
+                              ? Colors.blue
+                              : (hasContent ? node.color.withOpacity(0.4) : Colors.white12),
+                      width: isSelected || isMultiSelected ? 2 : 1,
                     ),
-                    child: Row(
-                      children: [
-                        Icon(_nodeIcon(id), size: 12, color: Colors.white),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            node.title,
-                            style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white),
-                          ),
+                    boxShadow: isDragging
+                        ? [BoxShadow(color: node.color.withOpacity(0.5), blurRadius: 20, spreadRadius: 4, offset: const Offset(0, 8))]
+                        : isSelected
+                            ? [BoxShadow(color: node.color.withOpacity(0.3), blurRadius: 12, spreadRadius: 2)]
+                            : [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 4)],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header (drag handle)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: node.color,
+                          borderRadius: const BorderRadius.only(topLeft: Radius.circular(5), topRight: Radius.circular(5)),
                         ),
-                        if (node.isGenerating)
-                          const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 1, color: Colors.white))
-                        else if (hasContent)
-                          const Icon(Icons.check_circle, size: 10, color: Colors.white70),
-                      ],
+                        child: Row(
+                          children: [
+                            Icon(_nodeIcon(id), size: 12, color: Colors.white),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                node.title,
+                                style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white),
+                              ),
+                            ),
+                            if (node.isGenerating)
+                              const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 1, color: Colors.white))
+                            else if (hasContent)
+                              const Icon(Icons.check_circle, size: 10, color: Colors.white70),
+                          ],
+                        ),
+                      ),
+                      // Body
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: _buildNodeBody(id, node),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Resize handle (bottom-right corner)
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: GestureDetector(
+                  onPanStart: (_) => setState(() => _resizingNode = id),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.resizeDownRight,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: const BorderRadius.only(bottomRight: Radius.circular(6)),
+                      ),
+                      child: const Icon(Icons.open_in_full, size: 10, color: Colors.white54),
                     ),
                   ),
-                  // Body
-                  Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: _buildNodeBody(id, node),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -1028,11 +1217,167 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(color: const Color(0xCC000000), borderRadius: BorderRadius.circular(4)),
         child: Text(
-          'Drag nodes to move · Drag empty space to pan · Tap a node to open its panel',
+          'Drag nodes to move · Drag empty space to pan · Drag to select · Tap a node to open its panel · Drag corner to resize',
           style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, color: Colors.white38, letterSpacing: 0.5),
         ),
       ),
     );
+  }
+
+  // ---- Zoom controls (bottom-right) ----
+
+  Widget _buildZoomControls() {
+    return Positioned(
+      bottom: 12,
+      right: 12,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xCC000000),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.zoom_out, size: 18, color: Colors.white70),
+              onPressed: () => setState(() => _zoom = (_zoom - 0.1).clamp(0.2, 3.0)),
+              tooltip: 'Zoom out',
+              iconSize: 18,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+            Text(
+              '${(_zoom * 100).round()}%',
+              style: const TextStyle(fontFamily: 'Helvetica', fontSize: 10, color: Colors.white54),
+            ),
+            IconButton(
+              icon: const Icon(Icons.zoom_in, size: 18, color: Colors.white70),
+              onPressed: () => setState(() => _zoom = (_zoom + 0.1).clamp(0.2, 3.0)),
+              tooltip: 'Zoom in',
+              iconSize: 18,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+            Container(width: 1, height: 20, color: Colors.white12),
+            IconButton(
+              icon: const Icon(Icons.center_focus_strong, size: 18, color: Colors.white70),
+              onPressed: _fitToScreen,
+              tooltip: 'Fit to screen',
+              iconSize: 18,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---- Floating toolbar (bottom-center) ----
+
+  Widget _buildFloatingToolbar() {
+    return Positioned(
+      bottom: 12,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xE61F1F2E),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white12, width: 1),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 12, spreadRadius: 2)],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ToolbarButton(
+                icon: Icons.add_link,
+                label: 'Source',
+                color: const Color(0xFF6B8E7F),
+                onTap: _addSourceNode,
+              ),
+              _ToolbarButton(
+                icon: Icons.sticky_note_2_outlined,
+                label: 'Note',
+                color: const Color(0xFFE0B04F),
+                onTap: _addTextNoteNode,
+              ),
+              Container(width: 1, height: 24, color: Colors.white12),
+              _ToolbarButton(
+                icon: Icons.menu_book,
+                label: 'Theory',
+                color: const Color(0xFF4F8DE0),
+                onTap: () => _addOutputNode('theory', 'THEORY', const Color(0xFF4F8DE0)),
+              ),
+              _ToolbarButton(
+                icon: Icons.lightbulb_outline,
+                label: 'Examples',
+                color: OseeTheme.sage,
+                onTap: () => _addOutputNode('examples', 'EXAMPLES', OseeTheme.sage),
+              ),
+              _ToolbarButton(
+                icon: Icons.quiz_outlined,
+                label: 'Exercises',
+                color: OseeTheme.accent,
+                onTap: () => _addOutputNode('exercises', 'EXERCISES', OseeTheme.accent),
+              ),
+              _ToolbarButton(
+                icon: Icons.translate,
+                label: 'Vocab',
+                color: OseeTheme.gold,
+                onTap: () => _addOutputNode('vocabulary', 'VOCABULARY', OseeTheme.gold),
+              ),
+              _ToolbarButton(
+                icon: Icons.mic,
+                label: 'Speaking Agent',
+                color: const Color(0xFFE5913D),
+                onTap: () => _addAgentNode('speaking'),
+              ),
+              _ToolbarButton(
+                icon: Icons.edit,
+                label: 'Writing Agent',
+                color: const Color(0xFF5BA674),
+                onTap: () => _addAgentNode('writing'),
+              ),
+              _ToolbarButton(
+                icon: Icons.chrome_reader_mode,
+                label: 'Reading Agent',
+                color: const Color(0xFF4F8DE0),
+                onTap: () => _addAgentNode('reading'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _addOutputNode(String type, String title, Color color) {
+    final id = '${type}_${DateTime.now().microsecondsSinceEpoch}';
+    _nodePositions[id] = Offset(
+      440 + (_nodes.length * 20 % 200),
+      40 + (_nodes.length * 50 % 800),
+    );
+    _nodes[id] = _NodeData(type: type, title: title, color: color);
+    _nodeSizes[id] = const Size(180, 100);
+    setState(() => _selectedNode = id);
+  }
+
+  void _addAgentNode(String agentType) {
+    final id = '${agentType}_agent_${DateTime.now().microsecondsSinceEpoch}';
+    _nodePositions[id] = Offset(880, 120 + (_nodes.length * 30 % 600));
+    final colorMap = {
+      'reading': const Color(0xFF4F8DE0),
+      'speaking': const Color(0xFFE5913D),
+      'writing': const Color(0xFF5BA674),
+    };
+    _nodes[id] = _NodeData(
+      type: 'agent',
+      title: '${agentType.toUpperCase()} AGENT',
+      color: colorMap[agentType] ?? Colors.blue,
+      agentType: agentType,
+    );
+    _nodeSizes[id] = const Size(180, 80);
+    setState(() => _selectedNode = id);
   }
 }
 
@@ -1118,4 +1463,104 @@ class _EdgePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _EdgePainter old) => from != old.from || to != old.to || color != old.color;
+}
+
+// ============================================================
+// Grid background — dot grid pattern like remalt/Miro
+// ============================================================
+
+class _GridBackground extends StatelessWidget {
+  const _GridBackground({required this.pan, required this.zoom});
+  final Offset pan;
+  final double zoom;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.infinite,
+      painter: _GridPainter(pan: pan, zoom: zoom),
+    );
+  }
+}
+
+class _GridPainter extends CustomPainter {
+  const _GridPainter({required this.pan, required this.zoom});
+  final Offset pan;
+  final double zoom;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const spacing = 40.0;
+    final effectiveSpacing = spacing * zoom;
+    final offsetX = pan.dx % effectiveSpacing;
+    final offsetY = pan.dy % effectiveSpacing;
+
+    // Dot grid
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.04)
+      ..style = PaintingStyle.fill;
+
+    for (var x = offsetX; x < size.width; x += effectiveSpacing) {
+      for (var y = offsetY; y < size.height; y += effectiveSpacing) {
+        canvas.drawCircle(Offset(x, y), 1.2, paint);
+      }
+    }
+
+    // Larger dot every 5 cells (for visual rhythm)
+    final bigPaint = Paint()
+      ..color = Colors.white.withOpacity(0.07)
+      ..style = PaintingStyle.fill;
+    final bigSpacing = effectiveSpacing * 5;
+    final bigOffsetX = pan.dx % bigSpacing;
+    final bigOffsetY = pan.dy % bigSpacing;
+    for (var x = bigOffsetX; x < size.width; x += bigSpacing) {
+      for (var y = bigOffsetY; y < size.height; y += bigSpacing) {
+        canvas.drawCircle(Offset(x, y), 2, bigPaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridPainter old) => pan != old.pan || zoom != old.zoom;
+}
+
+// ============================================================
+// Toolbar button — floating add-node button
+// ============================================================
+
+class _ToolbarButton extends StatelessWidget {
+  const _ToolbarButton({required this.icon, required this.label, required this.color, required this.onTap});
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: color.withOpacity(0.3), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, color: color, letterSpacing: 0.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
