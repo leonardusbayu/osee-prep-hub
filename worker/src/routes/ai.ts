@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { searchDocuments } from '../services/rag-search';
-import { generateMaterial, generateMindMapRecipe } from '../services/ai-generation';
+import { generateMaterial, generateMindMapRecipe, generateNode, agentChat } from '../services/ai-generation';
+import type { NodeType, AgentType } from '../services/ai-generation';
 import { checkQuota, getQuotaStatus } from '../services/quota';
 import {
   createGradingEntry,
@@ -220,5 +221,82 @@ aiRoutes.post('/mind-map-recipe', async (c) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Recipe generation failed';
     return c.json({ error: { code: 'RECIPE_FAILED', message } }, 500);
+  }
+});
+
+/** POST /api/ai/mind-map-node — generate a single output node (remalt-style multi-node)
+ *  Body: { type: 'theory'|'exercises'|'vocabulary'|'practice'|'examples', topic, notes, exam, level, item_type, context? }
+ *  Returns the node's content as JSON. */
+aiRoutes.post('/mind-map-node', async (c) => {
+  const user = getAuthedUser(c);
+  let body: { type?: string; topic?: string; notes?: string; exam?: string; level?: string; item_type?: string; context?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  const validTypes: NodeType[] = ['theory', 'exercises', 'vocabulary', 'practice', 'examples'];
+  if (!body.type || !validTypes.includes(body.type as NodeType)) {
+    return c.json({ error: { code: 'INVALID_TYPE', message: `type must be one of: ${validTypes.join(', ')}` } }, 400);
+  }
+  if (!body.topic?.trim() || !body.notes?.trim()) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'topic and notes required' } }, 400);
+  }
+  try { await checkQuota(c.env, user.id, user.role, 'generation'); } catch (err) {
+    if ((err as Error & { code?: string }).code === 'QUOTA_EXCEEDED') {
+      return c.json({ error: { code: 'QUOTA_EXCEEDED', message: (err as Error).message } }, 429);
+    }
+  }
+  try {
+    const content = await generateNode(c.env, body.type as NodeType, {
+      topic: body.topic,
+      notes: body.notes,
+      exam: body.exam,
+      level: body.level,
+      item_type: body.item_type,
+      context: body.context,
+    });
+    console.log(`mind-map-node user=${user.id} type=${body.type} topic=${body.topic}`);
+    return c.json({ type: body.type, content });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Node generation failed';
+    return c.json({ error: { code: 'NODE_FAILED', message } }, 500);
+  }
+});
+
+/** POST /api/ai/agent-chat — specialist agent refines material via conversation
+ *  Body: { agent: 'reading'|'speaking'|'writing'|'general', message, context, topic, exam?, level?, history? }
+ *  Returns { reply: string } */
+aiRoutes.post('/agent-chat', async (c) => {
+  const user = getAuthedUser(c);
+  let body: { agent?: string; message?: string; context?: string; topic?: string; exam?: string; level?: string; history?: Array<{ role: string; content: string }> };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  const validAgents: AgentType[] = ['reading', 'speaking', 'writing', 'general'];
+  if (!body.agent || !validAgents.includes(body.agent as AgentType)) {
+    return c.json({ error: { code: 'INVALID_AGENT', message: `agent must be one of: ${validAgents.join(', ')}` } }, 400);
+  }
+  if (!body.message?.trim()) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'message required' } }, 400);
+  }
+  try { await checkQuota(c.env, user.id, user.role, 'generation'); } catch (err) {
+    if ((err as Error & { code?: string }).code === 'QUOTA_EXCEEDED') {
+      return c.json({ error: { code: 'QUOTA_EXCEEDED', message: (err as Error).message } }, 429);
+    }
+  }
+  try {
+    const result = await agentChat(c.env, {
+      agent: body.agent as AgentType,
+      message: body.message,
+      context: body.context ?? '',
+      topic: body.topic ?? '',
+      exam: body.exam,
+      level: body.level,
+      history: (body.history ?? []) as Array<{ role: 'user' | 'assistant'; content: string }>,
+    });
+    console.log(`agent-chat user=${user.id} agent=${body.agent}`);
+    return c.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Agent chat failed';
+    return c.json({ error: { code: 'CHAT_FAILED', message } }, 500);
   }
 });

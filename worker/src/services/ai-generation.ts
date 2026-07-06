@@ -265,3 +265,162 @@ Include 5-8 exercises mixing the types. Make the theory practical, not academic.
   };
   return recipe;
 }
+
+// ============================================================
+// Per-node AI generation (remalt-style multi-node pipeline)
+// Each output type is generated independently so the teacher can
+// regenerate or refine one node without re-running the whole recipe.
+// ============================================================
+
+export type NodeType = 'theory' | 'exercises' | 'vocabulary' | 'practice' | 'examples';
+
+export interface NodeGenInput {
+  topic: string;
+  notes: string;
+  exam?: string;
+  level?: string;
+  item_type?: string;
+  context?: string; // output from other nodes, passed as context
+}
+
+/** Generate a single output node. Returns the node's content as JSON. */
+export async function generateNode(
+  env: Env,
+  type: NodeType,
+  input: NodeGenInput
+): Promise<Record<string, unknown>> {
+  if (!input.topic?.trim()) throw new Error('Topic required');
+  const exam = input.exam ?? 'GENERAL';
+  const level = input.level ?? 'B1';
+  const itemType = input.item_type ?? 'grammar';
+
+  const prompts: Record<NodeType, string> = {
+    theory: `Generate a theory explanation for ${itemType} on "${input.topic}" at ${level} level for ${exam}.
+Teacher's notes: ${input.notes}
+${input.context ? `Context from other nodes: ${input.context}` : ''}
+Return JSON: {"title": "...", "summary": "...", "theory": "<3-5 paragraphs markdown explanation>", "key_points": ["...", "..."]}`,
+    examples: `Generate worked examples for ${itemType} on "${input.topic}" at ${level} level.
+Teacher's notes: ${input.notes}
+${input.context ? `Theory context: ${input.context.slice(0, 800)}` : ''}
+Return JSON: {"examples": [{"input": "...", "output": "...", "explanation": "..."}]}`,
+    exercises: `Generate practice exercises for ${itemType} on "${input.topic}" at ${level} level for ${exam}.
+Teacher's notes: ${input.notes}
+${input.context ? `Theory context: ${input.context.slice(0, 800)}` : ''}
+Return JSON: {"exercises": [{"type": "multiple_choice|fill_blank|rewrite|short_answer", "question": "...", "options": ["A","B","C","D"], "answer": "...", "explanation": "..."}]}
+Include 6-8 exercises mixing types. Use Indonesian-context scenarios where natural.`,
+    vocabulary: `Generate a vocabulary list for "${input.topic}" at ${level} level.
+Teacher's notes: ${input.notes}
+Return JSON: {"vocabulary": [{"word": "...", "definition": "...", "example": "..."}]}
+Include 5-8 key terms relevant to the topic.`,
+    practice: `Generate a free-form practice task for "${input.topic}" at ${level} level.
+Teacher's notes: ${input.notes}
+${input.context ? `Context: ${input.context.slice(0, 500)}` : ''}
+Return JSON: {"practice_prompt": "...", "practice_type": "writing|speaking|reading|research"}`,
+  };
+
+  const response = await fetch(OPENAI_CHAT_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: GENERATION_MODEL,
+      messages: [
+        { role: 'system', content: `You are an expert English teaching material creator for Indonesian students. CEFR ${level}. Return ONLY valid JSON. No prose. No markdown fences.` },
+        { role: 'user', content: prompts[type] },
+      ],
+      temperature: 0.7,
+      max_tokens: type === 'theory' ? 1800 : 1200,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
+  }
+
+  const json = (await response.json()) as { choices: Array<{ message: { content: string } }> };
+  if (!json.choices?.[0]) throw new Error('Invalid OpenAI response: no choices');
+
+  try {
+    return JSON.parse(json.choices[0].message.content);
+  } catch {
+    throw new Error('OpenAI did not return valid JSON');
+  }
+}
+
+// ============================================================
+// Specialist agent chat — refine a generated node via conversation.
+// Like remalt's platform-specific agents (LinkedIn, Instagram, YouTube),
+// we have skill-specific agents (reading, speaking, writing) that can
+// refine the generated material.
+// ============================================================
+
+export type AgentType = 'reading' | 'speaking' | 'writing' | 'general';
+
+export interface AgentChatInput {
+  agent: AgentType;
+  message: string;
+  context: string; // the current node content being refined
+  topic: string;
+  exam?: string;
+  level?: string;
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+}
+
+const AGENT_PERSONAS: Record<AgentType, string> = {
+  reading: `You are a reading comprehension specialist. You help teachers refine reading materials — passages, questions, inference drills. Focus on text difficulty, question quality, and CEFR alignment.`,
+  speaking: `You are a speaking practice specialist. You help teachers refine speaking prompts, pronunciation drills, and conversation activities. Focus on fluency, accuracy, and natural speech patterns.`,
+  writing: `You are a writing instruction specialist. You help teachers refine writing prompts, essay rubrics, and feedback frameworks. Focus on structure, coherence, and exam-specific writing criteria.`,
+  general: `You are an expert English teaching assistant. Help the teacher refine their material — suggest improvements, add examples, adjust difficulty, fix errors.`,
+};
+
+export async function agentChat(
+  env: Env,
+  input: AgentChatInput
+): Promise<{ reply: string; suggestions?: string[] }> {
+  if (!input.message?.trim()) throw new Error('Message required');
+
+  const systemPrompt = `${AGENT_PERSONAS[input.agent]}
+
+Topic: ${input.topic}
+CEFR level: ${input.level ?? 'B1'}
+Exam: ${input.exam ?? 'GENERAL'}
+
+Current material being refined:
+${input.context.slice(0, 1500)}
+
+Help the teacher improve this material. Be specific and practical. If they ask for changes, show the revised version. If they ask a question, answer concisely.`;
+
+  const messages: Array<{ role: string; content: string }> = [
+    { role: 'system', content: systemPrompt },
+    ...(input.history ?? []).map((h) => ({ role: h.role, content: h.content })),
+    { role: 'user', content: input.message },
+  ];
+
+  const response = await fetch(OPENAI_CHAT_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: GENERATION_MODEL,
+      messages,
+      temperature: 0.7,
+      max_tokens: 1000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
+  }
+
+  const json = (await response.json()) as { choices: Array<{ message: { content: string } }> };
+  if (!json.choices?.[0]) throw new Error('Invalid OpenAI response: no choices');
+
+  return { reply: json.choices[0].message.content };
+}
