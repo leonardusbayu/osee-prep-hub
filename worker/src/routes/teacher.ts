@@ -19,6 +19,7 @@ import {
   addSyllabusItem,
 } from '../services/syllabus';
 import { getPricingForRole } from '../services/pricing';
+import { buildTeacherDashboard } from '../services/teacher-dashboard';
 
 export const teacherRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -84,19 +85,18 @@ teacherRoutes.get('/classrooms/:id', async (c) => {
   }
 });
 
-// ---------- Dashboard endpoint (placeholder — full impl in Task 2.1) ----------
+// ---------- Dashboard endpoint (unified classes + students + reporting) ----------
 
-/** GET /api/teacher/dashboard — stats overview */
+/** GET /api/teacher/dashboard — unified stats: classrooms, students, commission, AI quota, activity */
 teacherRoutes.get('/dashboard', async (c) => {
   const user = getAuthedUser(c);
-  return c.json({
-    user: { id: user.id, name: user.display_name, role: user.role },
-    classrooms_count: 0,
-    total_students: 0,
-    commission_this_month: 0,
-    ai_quota_remaining: 0,
-    note: 'Full dashboard stats — Task 2.1 (Flutter UI)',
-  });
+  try {
+    const report = await buildTeacherDashboard(c.env, user.id);
+    return c.json(report);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Dashboard failed';
+    return c.json({ error: { code: 'DASHBOARD_FAILED', message } }, 500);
+  }
 });
 
 // ---------- Report endpoints (Task 8.1, 9.1) ----------
