@@ -6,6 +6,7 @@ import { generateMaterial, generateMindMapRecipe, generateNode, agentChat } from
 import type { NodeType, AgentType } from '../services/ai-generation';
 import { ingestSource, assembleContext } from '../services/content-ingestion';
 import type { IngestSourceInput, SourceType } from '../services/content-ingestion';
+import { batchIngest, searchKnowledge, assembleKnowledgeContext } from '../services/knowledge-cluster';
 import { checkQuota, getQuotaStatus } from '../services/quota';
 import {
   createGradingEntry,
@@ -249,13 +250,68 @@ aiRoutes.post('/ingest-source', async (c) => {
   }
 });
 
+/** POST /api/ai/batch-ingest — ingest multiple sources at once, auto-embed into RAG
+ *  Body: { sources: [{ type, url?, content?, filename? }], cluster_label? }
+ *  Returns: { ingested: [...], embedded_count, cluster_id?, errors: [...] } */
+aiRoutes.post('/batch-ingest', async (c) => {
+  const user = getAuthedUser(c);
+  let body: { sources?: IngestSourceInput[]; cluster_label?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.sources || !Array.isArray(body.sources) || body.sources.length === 0) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'sources array required' } }, 400);
+  }
+  if (body.sources.length > 50) {
+    return c.json({ error: { code: 'TOO_MANY', message: 'Max 50 sources per batch' } }, 400);
+  }
+  try {
+    const result = await batchIngest(c.env, {
+      sources: body.sources,
+      cluster_label: body.cluster_label,
+      teacher_id: user.id,
+    });
+    console.log(`batch-ingest user=${user.id} sources=${body.sources.length} ingested=${result.ingested.length} embedded=${result.embedded_count} errors=${result.errors.length}`);
+    return c.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Batch ingest failed';
+    return c.json({ error: { code: 'BATCH_FAILED', message } }, 500);
+  }
+});
+
+/** POST /api/ai/knowledge-search — RAG search across all teacher's ingested sources
+ *  Body: { query, cluster_id? }
+ *  Returns: { results: [{ chunk_text, source_title, source_type, similarity }] } */
+aiRoutes.post('/knowledge-search', async (c) => {
+  const user = getAuthedUser(c);
+  let body: { query?: string; cluster_id?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.query?.trim()) {
+    return c.json({ error: { code: 'INVALID_QUERY', message: 'query required' } }, 400);
+  }
+  try {
+    const results = await searchKnowledge(c.env, body.query, user.id, {
+      clusterId: body.cluster_id,
+      matchCount: 10,
+    });
+    console.log(`knowledge-search user=${user.id} query="${body.query.substring(0, 50)}" results=${results.length}`);
+    return c.json({ results, count: results.length });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Search failed';
+    return c.json({ error: { code: 'SEARCH_FAILED', message } }, 500);
+  }
+});
+
 /** POST /api/ai/mind-map-node — generate a single output node (remalt-style multi-node)
- *  Body: { type: 'theory'|'exercises'|'vocabulary'|'practice'|'examples', topic, notes, exam, level, item_type, context?, sources? }
- *  sources: array of { type, title, text } from previously ingested content
+ *  Body: { type: 'theory'|'exercises'|'vocabulary'|'practice'|'examples', topic, notes, exam, level, item_type, context?, sources?, use_rag? }
+ *  sources: array of { type, title, text } from previously ingested content (raw context)
+ *  use_rag: if true, searches the teacher's knowledge base via RAG for relevant chunks
  *  Returns the node's content as JSON. */
 aiRoutes.post('/mind-map-node', async (c) => {
   const user = getAuthedUser(c);
-  let body: { type?: string; topic?: string; notes?: string; exam?: string; level?: string; item_type?: string; context?: string; sources?: Array<{ type: string; title: string; text: string }> };
+  let body: { type?: string; topic?: string; notes?: string; exam?: string; level?: string; item_type?: string; context?: string; sources?: Array<{ type: string; title: string; text: string }>; use_rag?: boolean };
   try { body = await c.req.json(); } catch {
     return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
   }
@@ -272,9 +328,24 @@ aiRoutes.post('/mind-map-node', async (c) => {
     }
   }
   try {
-    // Assemble context from explicit context + ingested sources
+    // Assemble context from multiple sources:
+    // 1. RAG search across teacher's knowledge base (if use_rag is true)
+    let ragContext = '';
+    if (body.use_rag !== false) {
+      try {
+        const ragQuery = `${body.topic} ${body.notes} ${body.exam ?? ''} ${body.level ?? ''} ${body.item_type ?? ''}`;
+        const ragResults = await searchKnowledge(c.env, ragQuery, user.id, { matchCount: 8 });
+        ragContext = assembleKnowledgeContext(ragResults);
+      } catch (e) {
+        console.error('RAG search failed (non-fatal, falling back to raw sources):', e);
+      }
+    }
+    // 2. Raw source context (passed directly from the canvas)
     const sourceContext = body.sources ? assembleContext(body.sources.map((s) => ({ type: s.type as SourceType, title: s.title, text: s.text, metadata: {} }))) : '';
-    const fullContext = [body.context ?? '', sourceContext].filter(Boolean).join('\n\n');
+    // 3. Explicit context from upstream nodes
+    const explicitContext = body.context ?? '';
+    // Combine all context sources
+    const fullContext = [explicitContext, ragContext, sourceContext].filter(Boolean).join('\n\n---\n\n');
     const content = await generateNode(c.env, body.type as NodeType, {
       topic: body.topic,
       notes: body.notes,

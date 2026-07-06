@@ -237,6 +237,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
         'item_type': _itemType,
         if (nodeContext != null) 'context': nodeContext,
         if (_sourcesAsJson.isNotEmpty) 'sources': _sourcesAsJson,
+        'use_rag': true,
       });
       setState(() {
         node.content = r.data['content'] as Map<String, dynamic>?;
@@ -1290,6 +1291,12 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
             mainAxisSize: MainAxisSize.min,
             children: [
               _ToolbarButton(
+                icon: Icons.inventory_2_outlined,
+                label: 'Brain Dump',
+                color: OseeTheme.accent,
+                onTap: _showBrainDumpDialog,
+              ),
+              _ToolbarButton(
                 icon: Icons.add_link,
                 label: 'Source',
                 color: const Color(0xFF6B8E7F),
@@ -1378,6 +1385,155 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage>
     );
     _nodeSizes[id] = const Size(180, 80);
     setState(() => _selectedNode = id);
+  }
+
+  // ---- Brain dump — batch ingest multiple sources at once ----
+
+  Future<void> _showBrainDumpDialog() async {
+    final urlsCtl = TextEditingController();
+    final textCtl = TextEditingController();
+    final clusterCtl = TextEditingController();
+    bool isIngesting = false;
+    String? resultText;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          backgroundColor: const Color(0xFF252535),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Colors.white12)),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('BRAIN DUMP', style: TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 3, color: OseeTheme.accent)),
+              const SizedBox(height: 4),
+              const Text('Dump all your sources at once', style: TextStyle(fontFamily: 'Georgia', fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+              const SizedBox(height: 6),
+              Container(height: 1, color: OseeTheme.gold),
+            ],
+          ),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cluster label
+                TextField(
+                  controller: clusterCtl,
+                  decoration: const InputDecoration(
+                    labelText: 'Cluster label (optional)',
+                    labelStyle: TextStyle(color: Colors.white38, fontSize: 10),
+                    hintText: 'e.g. Textbook chapter 3, YouTube tutorials, Lesson notes…',
+                    hintStyle: TextStyle(color: Colors.white24, fontSize: 11),
+                    border: OutlineInputBorder(),
+                  ),
+                  style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: Colors.white),
+                ),
+                const SizedBox(height: 12),
+                // URLs — one per line
+                const Text('URLS / YOUTUBE LINKS (one per line)', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white38)),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: urlsCtl,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    hintText: 'https://en.wikipedia.org/wiki/Conditional_sentence\nhttps://youtube.com/watch?v=...\nhttps://example.com/article',
+                    hintStyle: TextStyle(color: Colors.white24, fontSize: 10, fontFamily: 'Georgia'),
+                    border: OutlineInputBorder(),
+                  ),
+                  style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Colors.white, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                // Pasted text
+                const Text('PASTED TEXT (any notes, transcripts, articles)', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white38)),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: textCtl,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    hintText: 'Paste any text content — transcripts, notes, textbook excerpts…',
+                    hintStyle: TextStyle(color: Colors.white24, fontSize: 10, fontFamily: 'Georgia'),
+                    border: OutlineInputBorder(),
+                  ),
+                  style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Colors.white, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                if (resultText != null)
+                  Text(resultText!, style: TextStyle(fontFamily: 'Georgia', fontSize: 11, color: isIngesting ? Colors.white54 : OseeTheme.sage, fontStyle: FontStyle.italic)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Colors.white38))),
+            FilledButton.icon(
+              onPressed: isIngesting ? null : () async {
+                final urls = urlsCtl.text.split('\n').where((l) => l.trim().isNotEmpty).map((l) => l.trim()).toList();
+                final textContent = textCtl.text.trim();
+                if (urls.isEmpty && textContent.isEmpty) return;
+
+                setLocal(() { isIngesting = true; resultText = 'Ingesting ${urls.length} URLs + text...'; });
+
+                final sources = <Map<String, dynamic>>[];
+                for (final url in urls) {
+                  if (url.contains('youtube.com') || url.contains('youtu.be')) {
+                    sources.add({'type': 'youtube', 'url': url});
+                  } else {
+                    sources.add({'type': 'url', 'url': url});
+                  }
+                }
+                if (textContent.isNotEmpty) {
+                  sources.add({'type': 'text', 'content': textContent});
+                }
+
+                try {
+                  final dio = ApiClient.create();
+                  final r = await dio.post('/ai/batch-ingest', data: {
+                    'sources': sources,
+                    if (clusterCtl.text.trim().isNotEmpty) 'cluster_label': clusterCtl.text.trim(),
+                  });
+                  final data = r.data as Map<String, dynamic>;
+                  final ingested = data['ingested'] as List? ?? [];
+                  final embedded = data['embedded_count'] as int? ?? 0;
+                  final errors = data['errors'] as List? ?? [];
+
+                  // Add source nodes to canvas for each ingested source
+                  for (var i = 0; i < ingested.length; i++) {
+                    final src = ingested[i] as Map<String, dynamic>;
+                    final id = 'source_$_sourceCounter';
+                    _sourceCounter++;
+                    _nodePositions[id] = Offset(-380, 200.0 + (_sources.length * 130));
+                    final source = _SourceData(type: src['type'] as String? ?? 'url');
+                    source.title = src['title'] as String?;
+                    source.text = src['text'] as String?;
+                    _sources.add(source);
+                    _nodes[id] = _NodeData(type: 'source', title: 'SOURCE ${_sources.length}', color: const Color(0xFF6B8E7F));
+                    _nodeSizes[id] = const Size(180, 90);
+                  }
+
+                  setLocal(() {
+                    isIngesting = false;
+                    resultText = '${ingested.length} sources ingested, $embedded embedded into RAG${errors.isNotEmpty ? ', ${errors.length} errors' : ''}';
+                  });
+                  setState(() {});
+
+                  // Auto-close after success
+                  await Future.delayed(const Duration(seconds: 2));
+                  if (ctx.mounted) Navigator.pop(ctx);
+                } catch (e) {
+                  setLocal(() { isIngesting = false; resultText = 'Failed: $e'; });
+                }
+              },
+              icon: isIngesting
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white))
+                  : const Icon(Icons.auto_awesome, size: 16),
+              label: Text(isIngesting ? 'INGESTING…' : 'DUMP & EMBED', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+              style: FilledButton.styleFrom(backgroundColor: OseeTheme.accent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
