@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { searchDocuments } from '../services/rag-search';
-import { generateMaterial, generateMindMapRecipe, generateNode, agentChat } from '../services/ai-generation';
-import type { NodeType, AgentType } from '../services/ai-generation';
+import { generateMaterial, generateMindMapRecipe, generateNode, agentChat, generateImage } from '../services/ai-generation';
+import type { NodeType, AgentType, ImageType } from '../services/ai-generation';
 import { ingestSource, assembleContext } from '../services/content-ingestion';
 import type { IngestSourceInput, SourceType } from '../services/content-ingestion';
 import { batchIngest, searchKnowledge, assembleKnowledgeContext } from '../services/knowledge-cluster';
@@ -305,13 +305,16 @@ aiRoutes.post('/knowledge-search', async (c) => {
 });
 
 /** POST /api/ai/mind-map-node — generate a single output node (remalt-style multi-node)
- *  Body: { type: 'theory'|'exercises'|'vocabulary'|'practice'|'examples', topic, notes, exam, level, item_type, context?, sources?, use_rag? }
+ *  Body: { type: 'theory'|'exercises'|'vocabulary'|'practice'|'examples', topic, notes, exam, level, item_type, context?, sources?, use_rag?, difficulty?, kp_tags?, linked_nodes? }
  *  sources: array of { type, title, text } from previously ingested content (raw context)
  *  use_rag: if true, searches the teacher's knowledge base via RAG for relevant chunks
+ *  difficulty: 'easy'|'medium'|'hard'|'expert' — adjusts generated content difficulty
+ *  kp_tags: array of { code, label } — Kurikulum Merdeka competency tags to align to
+ *  linked_nodes: array of { nodeId, type, title, content } — upstream node outputs for edge-aware pipeline
  *  Returns the node's content as JSON. */
 aiRoutes.post('/mind-map-node', async (c) => {
   const user = getAuthedUser(c);
-  let body: { type?: string; topic?: string; notes?: string; exam?: string; level?: string; item_type?: string; context?: string; sources?: Array<{ type: string; title: string; text: string }>; use_rag?: boolean };
+  let body: { type?: string; topic?: string; notes?: string; exam?: string; level?: string; item_type?: string; context?: string; sources?: Array<{ type: string; title: string; text: string }>; use_rag?: boolean; difficulty?: string; kp_tags?: Array<{ code: string; label: string }>; linked_nodes?: Array<{ nodeId: string; type: string; title: string; content: Record<string, unknown> }> };
   try { body = await c.req.json(); } catch {
     return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
   }
@@ -353,8 +356,11 @@ aiRoutes.post('/mind-map-node', async (c) => {
       level: body.level,
       item_type: body.item_type,
       context: fullContext || undefined,
+      difficulty: body.difficulty,
+      kp_tags: body.kp_tags,
+      linked_nodes: body.linked_nodes,
     });
-    console.log(`mind-map-node user=${user.id} type=${body.type} topic=${body.topic} sources=${body.sources?.length ?? 0}`);
+    console.log(`mind-map-node user=${user.id} type=${body.type} topic=${body.topic} sources=${body.sources?.length ?? 0} difficulty=${body.difficulty ?? 'medium'} linked=${body.linked_nodes?.length ?? 0}`);
     return c.json({ type: body.type, content });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Node generation failed';
@@ -400,5 +406,45 @@ aiRoutes.post('/agent-chat', async (c) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Agent chat failed';
     return c.json({ error: { code: 'CHAT_FAILED', message } }, 500);
+  }
+});
+
+/** POST /api/ai/generate-image — DALL-E 3 lesson image generation
+ *  Body: { type: 'cover'|'illustration'|'infographic'|'vocabulary'|'icon'|'scene', topic, description?, exam?, level?, size?, style? }
+ *  Returns: { type, url, revised_prompt, size, metadata }
+ *  Note: url expires in ~1hr — the teacher should save it locally. */
+aiRoutes.post('/generate-image', async (c) => {
+  const user = getAuthedUser(c);
+  let body: { type?: string; topic?: string; description?: string; exam?: string; level?: string; size?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  const validTypes: ImageType[] = ['illustration', 'cover', 'infographic', 'vocabulary', 'icon', 'scene'];
+  if (!body.type || !validTypes.includes(body.type as ImageType)) {
+    return c.json({ error: { code: 'INVALID_TYPE', message: `type must be one of: ${validTypes.join(', ')}` } }, 400);
+  }
+  if (!body.topic?.trim()) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'topic required' } }, 400);
+  }
+  try { await checkQuota(c.env, user.id, user.role, 'generation'); } catch (err) {
+    if ((err as Error & { code?: string }).code === 'QUOTA_EXCEEDED') {
+      return c.json({ error: { code: 'QUOTA_EXCEEDED', message: (err as Error).message } }, 429);
+    }
+  }
+  try {
+    const result = await generateImage(c.env, {
+      type: body.type as ImageType,
+      topic: body.topic,
+      description: body.description,
+      exam: body.exam,
+      level: body.level,
+      size: body.size as '1024x1024' | '1024x1792' | '1792x1024' | undefined,
+    });
+    console.log(`generate-image user=${user.id} type=${body.type} topic=${body.topic}`);
+    return c.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Image generation failed';
+    console.error(`generate-image error for user=${user.id}:`, message);
+    return c.json({ error: { code: 'IMAGE_FAILED', message } }, 500);
   }
 });

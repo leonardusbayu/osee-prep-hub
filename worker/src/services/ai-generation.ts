@@ -274,6 +274,13 @@ Include 5-8 exercises mixing the types. Make the theory practical, not academic.
 
 export type NodeType = 'theory' | 'exercises' | 'vocabulary' | 'practice' | 'examples';
 
+export interface LinkedNodeContent {
+  nodeId: string;
+  type: string;
+  title: string;
+  content: Record<string, unknown>;
+}
+
 export interface NodeGenInput {
   topic: string;
   notes: string;
@@ -281,6 +288,9 @@ export interface NodeGenInput {
   level?: string;
   item_type?: string;
   context?: string; // output from other nodes, passed as context
+  difficulty?: string; // 'easy' | 'medium' | 'hard' | 'expert' — adjusts generated content difficulty
+  kp_tags?: Array<{ code: string; label: string }>; // Kurikulum Merdeka competency tags
+  linked_nodes?: LinkedNodeContent[]; // upstream node contents for edge-aware pipeline
 }
 
 /** Generate a single output node. Returns the node's content as JSON. */
@@ -293,28 +303,51 @@ export async function generateNode(
   const exam = input.exam ?? 'GENERAL';
   const level = input.level ?? 'B1';
   const itemType = input.item_type ?? 'grammar';
+  const difficulty = input.difficulty ?? 'medium';
+  const kpLine = input.kp_tags && input.kp_tags.length > 0
+    ? `Align to Kurikulum Merdeka competencies: ${input.kp_tags.map((k) => `${k.code} (${k.label})`).join(', ')}.`
+    : '';
+  const linkedLine = input.linked_nodes && input.linked_nodes.length > 0
+    ? `Upstream node outputs (use as source material, do not repeat verbatim):\n${input.linked_nodes.map((n) => `- ${n.title} (${n.type}): ${JSON.stringify(n.content).slice(0, 400)}`).join('\n')}`
+    : '';
+  const difficultyLine = `Difficulty: ${difficulty}. Adjust vocabulary complexity, sentence length, and cognitive demand to match.`;
 
   const prompts: Record<NodeType, string> = {
     theory: `Generate a theory explanation for ${itemType} on "${input.topic}" at ${level} level for ${exam}.
 Teacher's notes: ${input.notes}
+${difficultyLine}
+${kpLine}
 ${input.context ? `Context from other nodes: ${input.context}` : ''}
+${linkedLine}
 Return JSON: {"title": "...", "summary": "...", "theory": "<3-5 paragraphs markdown explanation>", "key_points": ["...", "..."]}`,
     examples: `Generate worked examples for ${itemType} on "${input.topic}" at ${level} level.
 Teacher's notes: ${input.notes}
+${difficultyLine}
+${kpLine}
 ${input.context ? `Theory context: ${input.context.slice(0, 800)}` : ''}
+${linkedLine}
 Return JSON: {"examples": [{"input": "...", "output": "...", "explanation": "..."}]}`,
     exercises: `Generate practice exercises for ${itemType} on "${input.topic}" at ${level} level for ${exam}.
 Teacher's notes: ${input.notes}
+${difficultyLine}
+${kpLine}
 ${input.context ? `Theory context: ${input.context.slice(0, 800)}` : ''}
+${linkedLine}
 Return JSON: {"exercises": [{"type": "multiple_choice|fill_blank|rewrite|short_answer", "question": "...", "options": ["A","B","C","D"], "answer": "...", "explanation": "..."}]}
 Include 6-8 exercises mixing types. Use Indonesian-context scenarios where natural.`,
     vocabulary: `Generate a vocabulary list for "${input.topic}" at ${level} level.
 Teacher's notes: ${input.notes}
+${difficultyLine}
+${kpLine}
+${linkedLine}
 Return JSON: {"vocabulary": [{"word": "...", "definition": "...", "example": "..."}]}
 Include 5-8 key terms relevant to the topic.`,
     practice: `Generate a free-form practice task for "${input.topic}" at ${level} level.
 Teacher's notes: ${input.notes}
+${difficultyLine}
+${kpLine}
 ${input.context ? `Context: ${input.context.slice(0, 500)}` : ''}
+${linkedLine}
 Return JSON: {"practice_prompt": "...", "practice_type": "writing|speaking|reading|research"}`,
   };
 
@@ -423,4 +456,120 @@ Help the teacher improve this material. Be specific and practical. If they ask f
   if (!json.choices?.[0]) throw new Error('Invalid OpenAI response: no choices');
 
   return { reply: json.choices[0].message.content };
+}
+
+// ============================================================
+// Image generation — DALL-E 3 for lesson illustrations
+// ============================================================
+
+const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
+const IMAGE_MODEL = 'gpt-image-1';
+const ALLOWED_IMAGE_SIZES = ['1024x1024', '1024x1792', '1792x1024'] as const;
+type ImageSize = (typeof ALLOWED_IMAGE_SIZES)[number];
+
+export type ImageType = 'illustration' | 'cover' | 'infographic' | 'vocabulary' | 'icon' | 'scene';
+
+export interface GenerateImageInput {
+  type: ImageType;
+  topic: string;
+  description?: string;  // detailed description of what to draw
+  exam?: string;
+  level?: string;
+  size?: ImageSize;
+}
+
+export interface GeneratedImage {
+  type: ImageType;
+  url: string;        // public URL of the generated image (expires in ~1hr)
+  revised_prompt: string;
+  size: ImageSize;
+  metadata: Record<string, unknown>;
+}
+
+export async function generateImage(env: Env, input: GenerateImageInput): Promise<GeneratedImage> {
+  if (!input.topic?.trim()) throw new Error('Topic required');
+  const size: ImageSize = (input.size && ALLOWED_IMAGE_SIZES.includes(input.size)) ? input.size : '1024x1024';
+
+  // Build a detailed prompt based on the image type
+  const prompt = buildImagePrompt(input);
+
+  let response: Response;
+  try {
+    response = await fetch(OPENAI_IMAGES_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    body: JSON.stringify({
+      model: IMAGE_MODEL,
+      prompt,
+      n: 1,
+      size,
+    }),
+    });
+  } catch (err) {
+    throw new Error(`Fetch failed: ${err instanceof Error ? err.message : 'unknown'}`);
+  }
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`OpenAI images API error: ${response.status} ${errText}`);
+  }
+
+  const json = (await response.json()) as {
+    data: Array<{ url?: string; b64_json?: string; revised_prompt?: string }>;
+  };
+
+  if (!json.data?.[0]) {
+    throw new Error('Invalid OpenAI images response: no data');
+  }
+
+  const item = json.data[0];
+  // gpt-image-1 returns b64_json, dall-e-3 returns url
+  let url = item.url ?? '';
+  if (!url && item.b64_json) {
+    url = `data:image/png;base64,${item.b64_json}`;
+  }
+  if (!url) {
+    throw new Error('Invalid OpenAI images response: no URL');
+  }
+
+  return {
+    type: input.type,
+    url,
+    revised_prompt: item.revised_prompt ?? prompt,
+    size,
+    metadata: {
+      topic: input.topic,
+      exam: input.exam,
+      level: input.level,
+      description: input.description,
+    },
+  };
+}
+
+/** Build a detailed DALL-E prompt based on the image type and topic. */
+function buildImagePrompt(input: GenerateImageInput): string {
+  const level = input.level ?? 'B2';
+  const exam = input.exam ?? 'English language learning';
+  const baseContext = `Educational illustration for ${level} level ${exam} students.`;
+  const userDesc = input.description ? ` ${input.description}` : '';
+
+  switch (input.type) {
+    case 'cover':
+      return `${baseContext} Magazine-quality cover image for a lesson on "${input.topic}". ${userDesc} Style: clean, editorial, vibrant colors, bold typography-safe composition with space for a title. Professional, eye-catching, suitable for a modern education platform.`;
+    case 'illustration':
+      return `${baseContext} Flat illustration depicting "${input.topic}". ${userDesc} Style: modern, clean lines, vibrant but harmonious color palette, suitable for an educational app. Friendly, approachable, no text in the image.`;
+    case 'infographic':
+      return `${baseContext} Infographic-style visual showing the key concept of "${input.topic}". ${userDesc} Style: organized layout with visual elements, icons, and clear sections. Modern flat design, good for teaching, no actual text or labels.`;
+    case 'vocabulary':
+      return `${baseContext} Visual aid for teaching vocabulary related to "${input.topic}". ${userDesc} Style: clean, colorful, with space for a word to be added later. Educational, friendly, suitable for a flashcard.`;
+    case 'icon':
+      return `${baseContext} Icon representing "${input.topic}". ${userDesc} Style: simple, bold, single-color icon on a clean white background. Modern, recognizable, suitable for a button or category label.`;
+    case 'scene':
+      return `${baseContext} Illustrative scene showing "${input.topic}" in a real-life context. ${userDesc} Style: warm, inclusive, depicting students or teachers in action. Warm lighting, modern classroom or everyday setting, no text in the image.`;
+    default:
+      return `${baseContext} Visual for "${input.topic}". ${userDesc}`;
+  }
 }
