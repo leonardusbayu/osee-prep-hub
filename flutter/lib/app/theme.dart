@@ -247,7 +247,7 @@ class OseeTheme {
         hintStyle: TextStyle(
           fontFamily: 'Georgia',
           fontSize: 16,
-          color: stone.withOpacity(0.5),
+          color: OseeTheme.stone.withValues(alpha: 0.5),
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 12),
         filled: false,

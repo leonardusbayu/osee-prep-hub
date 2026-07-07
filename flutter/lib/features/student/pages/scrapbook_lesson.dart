@@ -33,6 +33,8 @@ class ScrapbookLesson extends StatelessWidget {
     required this.isDone,
     required this.onDeepLink,
     required this.deepLinkLabel,
+    this.onPrev,
+    this.onNext,
   });
 
   final String title;
@@ -50,6 +52,8 @@ class ScrapbookLesson extends StatelessWidget {
   final bool isDone;
   final VoidCallback? onDeepLink;
   final String? deepLinkLabel;
+  final VoidCallback? onPrev;
+  final VoidCallback? onNext;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +108,53 @@ class ScrapbookLesson extends StatelessWidget {
                       const SizedBox(height: 20),
                     ],
                     _DoneStamp(isDone: isDone, onTap: onDone),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 28),
+                    // Prev/Next chapter navigation
+                    if (onPrev != null || onNext != null) ...[
+                      Row(
+                        children: [
+                          if (onPrev != null)
+                            Expanded(
+                              child: InkWell(
+                                onTap: onPrev,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(color: Colors.white, border: Border.all(color: OseeTheme.cloud)),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.chevron_left, size: 16, color: OseeTheme.ink),
+                                      const SizedBox(width: 6),
+                                      Text('PREVIOUS', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.ink)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          else const Spacer(),
+                          const SizedBox(width: 10),
+                          if (onNext != null)
+                            Expanded(
+                              child: InkWell(
+                                onTap: onNext,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(color: OseeTheme.ink),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text('NEXT CHAPTER', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white)),
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.chevron_right, size: 16, color: Colors.white),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          else const Spacer(),
+                        ],
+                      ),
+                      const SizedBox(height: 40),
+                    ],
                     _FountainPen(),
                   ]),
                 ),
@@ -168,7 +218,7 @@ class ScrapbookLesson extends StatelessWidget {
           decoration: BoxDecoration(
             color: OseeTheme.gold,
             borderRadius: BorderRadius.circular(1),
-            boxShadow: [BoxShadow(color: OseeTheme.gold.withOpacity(0.3), blurRadius: 4, spreadRadius: 1)],
+            boxShadow: [BoxShadow(color: OseeTheme.gold.withValues(alpha: 0.3), blurRadius: 4, spreadRadius: 1)],
           ),
         ),
       ],
@@ -205,7 +255,7 @@ class _ParchmentPainter extends CustomPainter {
     canvas.drawCircle(Offset(size.width * 0.85, size.height * 0.12), 40, ringPaint);
     // Inner ring
     final innerRing = Paint()
-      ..color = OseeTheme.coffeeRing.withOpacity(0.5)
+      ..color = OseeTheme.coffeeRing.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6;
     canvas.drawCircle(Offset(size.width * 0.85, size.height * 0.12), 28, innerRing);
@@ -335,7 +385,7 @@ class _TheoryLetter extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
         decoration: BoxDecoration(
-          color: OseeTheme.clippingYellow.withOpacity(0.6),
+          color: OseeTheme.clippingYellow.withValues(alpha: 0.6),
           border: Border.all(color: OseeTheme.parchmentDark, width: 1),
           boxShadow: [
             BoxShadow(color: OseeTheme.inkBleed, blurRadius: 6, offset: const Offset(3, 4)),
@@ -434,11 +484,13 @@ class _PolaroidCard extends StatelessWidget {
     final output = example['output'] as String? ?? '';
     final explanation = example['explanation'] as String? ?? '';
     final tapeColor = index % 3 == 0 ? OseeTheme.tape : (index % 3 == 1 ? OseeTheme.tapePink : OseeTheme.tape);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = screenWidth < 400 ? screenWidth * 0.85 : 280.0;
 
     return Transform.rotate(
       angle: rotation,
       child: Container(
-        width: 280,
+        width: cardWidth,
         decoration: BoxDecoration(
           color: OseeTheme.polaroidWhite,
           boxShadow: [
@@ -459,7 +511,7 @@ class _PolaroidCard extends StatelessWidget {
                   margin: const EdgeInsets.only(top: -8),
                   decoration: BoxDecoration(
                     color: tapeColor,
-                    border: Border.all(color: tapeColor.withOpacity(0.5), width: 1),
+                    border: Border.all(color: tapeColor.withValues(alpha: 0.5), width: 1),
                   ),
                 ),
               ),
@@ -621,7 +673,7 @@ class _ExerciseClippingState extends State<_ExerciseClipping> {
                         margin: const EdgeInsets.only(bottom: 6),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: _selected == options[i] ? OseeTheme.accent.withOpacity(0.1) : Colors.transparent,
+                          color: _selected == options[i] ? OseeTheme.accent.withValues(alpha: 0.1) : Colors.transparent,
                           border: Border.all(color: _selected == options[i] ? OseeTheme.accent : OseeTheme.cloud, width: 1),
                         ),
                         child: Row(
@@ -640,7 +692,7 @@ class _ExerciseClippingState extends State<_ExerciseClipping> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: OseeTheme.sage.withOpacity(0.08),
+                      color: OseeTheme.sage.withValues(alpha: 0.08),
                       border: Border(left: BorderSide(color: OseeTheme.sage, width: 3)),
                     ),
                     child: Column(
@@ -726,10 +778,12 @@ class _VocabSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _swatchColors[index % _swatchColors.length];
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = screenWidth < 400 ? screenWidth * 0.42 : 200.0;
     return Transform.rotate(
       angle: (index % 2 == 0 ? -1 : 1) * 0.02,
       child: Container(
-        width: 200,
+        width: cardWidth,
         decoration: BoxDecoration(
           color: OseeTheme.polaroidWhite,
           boxShadow: [BoxShadow(color: OseeTheme.inkBleed, blurRadius: 4, offset: const Offset(2, 3))],
@@ -741,7 +795,7 @@ class _VocabSwatch extends StatelessWidget {
             Container(
               height: 48,
               width: double.infinity,
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               child: Center(
                 child: Text(
                   word,
@@ -840,7 +894,7 @@ class _CoffeeRingPainter extends CustomPainter {
       ..strokeWidth = 10;
     canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2 - 6, ringPaint);
     final innerPaint = Paint()
-      ..color = OseeTheme.coffeeRing.withOpacity(0.5)
+      ..color = OseeTheme.coffeeRing.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4;
     canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2 - 16, innerPaint);

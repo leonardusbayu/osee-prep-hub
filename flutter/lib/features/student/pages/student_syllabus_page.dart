@@ -1,3 +1,4 @@
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,13 +14,11 @@ import 'scrapbook_lesson.dart';
 ///
 /// Layout:
 ///  - Masthead: "MY WORKBOOK" + syllabus name + progress strip.
+///  - Search bar to filter chapters.
 ///  - Chapter list (left rail / top): one entry per item.
-///  - Reading pane: the selected item rendered as a workbook page —
-///    theory in editorial typography, examples, exercises with tap-to-reveal
-///    answers, vocabulary, and a practice prompt. Deep-link button to the
-///    source platform for more practice.
-///  - For items without ai_generated_content: shows the title/description
-///    + deep-link to the source platform.
+///  - Reading pane: the selected item rendered as a workbook page.
+///  - Prev/next chapter navigation at the bottom.
+///  - Done state persisted to localStorage.
 class StudentSyllabusPage extends ConsumerStatefulWidget {
   const StudentSyllabusPage({super.key});
 
@@ -34,11 +33,29 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
   int _selectedSyllabus = 0;
   int _selectedItem = 0;
   final Set<String> _doneIds = {};
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
+    _loadDoneState();
     _load();
+  }
+
+  void _loadDoneState() {
+    try {
+      final stored = html.window.localStorage['doneIds'];
+      if (stored != null && stored.isNotEmpty) {
+        final ids = stored.split(',');
+        _doneIds.addAll(ids.where((s) => s.isNotEmpty));
+      }
+    } catch (_) {}
+  }
+
+  void _saveDoneState() {
+    try {
+      html.window.localStorage['doneIds'] = _doneIds.join(',');
+    } catch (_) {}
   }
 
   Future<void> _load() async {
@@ -63,6 +80,24 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
     }
   }
 
+  void _toggleDone(String id) {
+    setState(() {
+      if (_doneIds.contains(id)) {
+        _doneIds.remove(id);
+      } else {
+        _doneIds.add(id);
+      }
+    });
+    _saveDoneState();
+  }
+
+  void _goToItem(int index) {
+    final items = _currentFilteredItems();
+    if (index >= 0 && index < items.length) {
+      setState(() => _selectedItem = _currentItems().indexOf(items[index]));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,6 +113,7 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
                       action: TextButton(onPressed: () => context.go('/student'), child: const Text('BACK', style: TextStyle(fontFamily: 'Helvetica', fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.accent))),
                     )
                   : _buildWorkbook(),
+      bottomNavigationBar: _buildBottomNav(1),
     );
   }
 
@@ -86,19 +122,51 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
       backgroundColor: OseeTheme.paper,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: IconButton(icon: const Icon(Icons.arrow_back, color: OseeTheme.ink), onPressed: () => context.go('/student')),
+      leading: IconButton(icon: const Icon(Icons.arrow_back, color: OseeTheme.ink), onPressed: () => context.go('/student'), tooltip: 'Back to dashboard'),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('MY WORKBOOK', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 3, color: OseeTheme.stone)),
+          Text('MY WORKBOOK', style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 3, color: OseeTheme.ink)),
           const SizedBox(height: 2),
-          Text(_currentSyllabusName(), style: const TextStyle(fontFamily: 'Georgia', fontSize: 20, fontWeight: FontWeight.w700, color: OseeTheme.ink)),
-          const SizedBox(height: 6),
+          Text(_currentSyllabusName(), style: const TextStyle(fontFamily: 'Georgia', fontSize: 18, fontWeight: FontWeight.w700, color: OseeTheme.ink)),
+          const SizedBox(height: 4),
           Container(height: 1, color: OseeTheme.gold),
         ],
       ),
-      actions: [IconButton(icon: const Icon(Icons.refresh, color: OseeTheme.ink), onPressed: _load)],
+      actions: [IconButton(icon: const Icon(Icons.refresh, color: OseeTheme.ink), onPressed: _load, tooltip: 'Refresh')],
+    );
+  }
+
+  Widget _buildBottomNav(int selected) {
+    final items = [
+      {'label': 'Dashboard', 'icon': Icons.home_outlined, 'route': '/student', 'index': 0},
+      {'label': 'Workbook', 'icon': Icons.menu_book_outlined, 'route': '/student/syllabus', 'index': 1},
+      {'label': 'Profile', 'icon': Icons.person_outline, 'route': '/student/profile', 'index': 2},
+    ];
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: OseeTheme.ink, width: 2))),
+      child: Row(
+        children: items.map((item) {
+          final isActive = item['index'] == selected;
+          return Expanded(
+            child: InkWell(
+              onTap: () => context.go(item['route'] as String),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(item['icon'] as IconData, size: 20, color: isActive ? OseeTheme.accent : OseeTheme.stone),
+                    const SizedBox(height: 2),
+                    Text((item['label'] as String).toUpperCase(), style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: isActive ? OseeTheme.accent : OseeTheme.stone)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -113,16 +181,32 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
     return items.cast<Map<String, dynamic>>();
   }
 
+  List<Map<String, dynamic>> _currentFilteredItems() {
+    final items = _currentItems();
+    if (_searchQuery.isEmpty) return items;
+    return items.where((item) {
+      final title = (item['title'] as String? ?? '').toLowerCase();
+      final desc = (item['description'] as String? ?? '').toLowerCase();
+      return title.contains(_searchQuery.toLowerCase()) || desc.contains(_searchQuery.toLowerCase());
+    }).toList();
+  }
+
   Widget _buildWorkbook() {
     final items = _currentItems();
     if (items.isEmpty) {
-      return _EmptyState(message: 'This workbook has no units yet.', action: null);
+      return const _EmptyState(message: 'This workbook has no units yet.', action: null);
     }
+    final filtered = _currentFilteredItems();
     final done = items.where((i) => _doneIds.contains(i['id'] as String)).length;
     return Column(
       children: [
         // Progress strip
         _ProgressStrip(total: items.length, done: done),
+        // Search bar
+        _SearchBar(
+          query: _searchQuery,
+          onChanged: (v) => setState(() => _searchQuery = v),
+        ),
         // Multi-syllabus switcher
         if (_syllabi.length > 1) _SyllabusSwitcher(syllabi: _syllabi, selected: _selectedSyllabus, onChanged: (i) => setState(() { _selectedSyllabus = i; _selectedItem = 0; })),
         // Chapter rail + reading pane
@@ -133,32 +217,42 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
               if (isWide) {
                 return Row(
                   children: [
-                    SizedBox(width: 260, child: _ChapterRail(items: items, selected: _selectedItem, onSelect: (i) => setState(() => _selectedItem = i), doneIds: _doneIds)),
+                    SizedBox(width: 260, child: _ChapterRail(items: filtered, selected: _selectedItem >= filtered.length ? 0 : _selectedItem, onSelect: (i) => setState(() => _selectedItem = _currentItems().indexOf(filtered[i])), doneIds: _doneIds)),
                     Container(width: 1, color: OseeTheme.cloud),
-                    Expanded(child: _ReadingPane(item: items[_selectedItem], isDone: _doneIds.contains(items[_selectedItem]['id'] as String), onToggleDone: () => setState(() {
-                      final id = items[_selectedItem]['id'] as String;
-                      if (_doneIds.contains(id)) _doneIds.remove(id); else _doneIds.add(id);
-                    }))),
+                    Expanded(child: _ReadingPane(
+                      item: items[_selectedItem.clamp(0, items.length - 1)],
+                      isDone: _doneIds.contains(items[_selectedItem.clamp(0, items.length - 1)]['id'] as String),
+                      onToggleDone: () => _toggleDone(items[_selectedItem.clamp(0, items.length - 1)]['id'] as String),
+                      onPrev: _selectedItem > 0 ? () => setState(() => _selectedItem--) : null,
+                      onNext: _selectedItem < items.length - 1 ? () => setState(() => _selectedItem++) : null,
+                    )),
                   ],
                 );
               }
-              // Narrow: stacked — chapter rail as dropdown, reading pane fills
+              // Narrow: stacked — chapter rail as styled dropdown, reading pane fills
               return Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: OseeTheme.cloud))),
                     child: DropdownButton<int>(
                       value: _selectedItem,
                       isExpanded: true,
-                      items: items.asMap().entries.map((e) => DropdownMenuItem(value: e.key, child: Text('${e.key + 1}. ${e.value['title']}', style: const TextStyle(fontFamily: 'Georgia', fontSize: 13)))).toList(),
+                      underline: const SizedBox(),
+                      style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink),
+                      icon: const Icon(Icons.expand_more, color: OseeTheme.ink),
+                      dropdownColor: Colors.white,
+                      items: items.asMap().entries.map((e) => DropdownMenuItem(value: e.key, child: Text('${e.key + 1}. ${e.value['title']}', style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink)))).toList(),
                       onChanged: (i) => setState(() => _selectedItem = i ?? 0),
                     ),
                   ),
-                  Expanded(child: _ReadingPane(item: items[_selectedItem], isDone: _doneIds.contains(items[_selectedItem]['id'] as String), onToggleDone: () => setState(() {
-                    final id = items[_selectedItem]['id'] as String;
-                    if (_doneIds.contains(id)) _doneIds.remove(id); else _doneIds.add(id);
-                  }))),
+                  Expanded(child: _ReadingPane(
+                    item: items[_selectedItem.clamp(0, items.length - 1)],
+                    isDone: _doneIds.contains(items[_selectedItem.clamp(0, items.length - 1)]['id'] as String),
+                    onToggleDone: () => _toggleDone(items[_selectedItem.clamp(0, items.length - 1)]['id'] as String),
+                    onPrev: _selectedItem > 0 ? () => setState(() => _selectedItem--) : null,
+                    onNext: _selectedItem < items.length - 1 ? () => setState(() => _selectedItem++) : null,
+                  )),
                 ],
               );
             },
@@ -170,7 +264,7 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
 }
 
 // ============================================================
-// Chapter rail — list of units
+// Chapter rail — list of units with search results
 // ============================================================
 
 class _ChapterRail extends StatelessWidget {
@@ -192,35 +286,34 @@ class _ChapterRail extends StatelessWidget {
 
     return Container(
       color: const Color(0xFFEFEDE6),
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        itemCount: weeks.length,
-        itemBuilder: (_, wi) {
-          final week = weeks[wi];
-          final indices = byWeek[week]!;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Text(
-                  week.replaceAll('-', ' ').toUpperCase(),
-                  style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2, color: OseeTheme.accent),
-                ),
-              ),
-              for (final idx in indices)
-                _ChapterTile(
-                  item: items[idx],
-                  index: idx + 1,
-                  isSelected: idx == selected,
-                  isDone: doneIds.contains(items[idx]['id'] as String),
-                  onTap: () => onSelect(idx),
-                ),
-              if (wi < weeks.length - 1) const Divider(height: 16, color: OseeTheme.cloud),
-            ],
-          );
-        },
-      ),
+      child: items.isEmpty
+          ? Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('No matching chapters.', style: TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink.withValues(alpha: 0.5), fontStyle: FontStyle.italic))))
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              itemCount: weeks.length,
+              itemBuilder: (_, wi) {
+                final week = weeks[wi];
+                final indices = byWeek[week]!;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      child: Text(week.replaceAll('-', ' ').toUpperCase(), style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2, color: OseeTheme.accent)),
+                    ),
+                    for (final idx in indices)
+                      _ChapterTile(
+                        item: items[idx],
+                        index: idx + 1,
+                        isSelected: idx == selected,
+                        isDone: doneIds.contains(items[idx]['id'] as String),
+                        onTap: () => onSelect(idx),
+                      ),
+                    if (wi < weeks.length - 1) const Divider(height: 16, color: OseeTheme.cloud),
+                  ],
+                );
+              },
+            ),
     );
   }
 }
@@ -239,7 +332,7 @@ class _ChapterTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           border: Border(left: BorderSide(color: isSelected ? OseeTheme.accent : Colors.transparent, width: 3)),
@@ -247,7 +340,7 @@ class _ChapterTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('$index.', style: TextStyle(fontFamily: 'Georgia', fontSize: 11, fontWeight: FontWeight.w700, color: isSelected ? OseeTheme.ink : OseeTheme.stone)),
+            Text('$index.', style: TextStyle(fontFamily: 'Georgia', fontSize: 12, fontWeight: FontWeight.w700, color: isSelected ? OseeTheme.ink : OseeTheme.ink.withValues(alpha: 0.6))),
             const SizedBox(width: 6),
             Expanded(
               child: Column(
@@ -257,9 +350,9 @@ class _ChapterTile extends StatelessWidget {
                     item['title'] as String? ?? '—',
                     style: TextStyle(
                       fontFamily: 'Georgia',
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                      color: isDone ? OseeTheme.stone : OseeTheme.ink,
+                      color: isDone ? OseeTheme.ink.withValues(alpha: 0.5) : OseeTheme.ink,
                       decoration: isDone ? TextDecoration.lineThrough : null,
                     ),
                     maxLines: 2,
@@ -270,9 +363,40 @@ class _ChapterTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (isDone) const Icon(Icons.check_circle, size: 12, color: OseeTheme.sage),
+            if (isDone) const Icon(Icons.check_circle, size: 14, color: OseeTheme.sage),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// Search bar
+// ============================================================
+
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({required this.query, required this.onChanged});
+  final String query;
+  final void Function(String) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: OseeTheme.cloud))),
+      child: TextField(
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          hintText: 'Search chapters…',
+          hintStyle: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.ink.withValues(alpha: 0.4), fontStyle: FontStyle.italic),
+          prefixIcon: Icon(Icons.search, size: 16, color: OseeTheme.stone),
+          border: const UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.cloud)),
+          focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.ink, width: 2)),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
+        style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.ink),
       ),
     );
   }
@@ -283,10 +407,12 @@ class _ChapterTile extends StatelessWidget {
 // ============================================================
 
 class _ReadingPane extends StatelessWidget {
-  const _ReadingPane({required this.item, required this.isDone, required this.onToggleDone});
+  const _ReadingPane({required this.item, required this.isDone, required this.onToggleDone, this.onPrev, this.onNext});
   final Map<String, dynamic> item;
   final bool isDone;
   final VoidCallback onToggleDone;
+  final VoidCallback? onPrev;
+  final VoidCallback? onNext;
 
   @override
   Widget build(BuildContext context) {
@@ -313,6 +439,8 @@ class _ReadingPane extends StatelessWidget {
         isDone: isDone,
         onDeepLink: _deepLinkUrl(item) != null ? () => _openLink(context, _deepLinkUrl(item)!) : null,
         deepLinkLabel: _deepLinkLabel(src),
+        onPrev: onPrev,
+        onNext: onNext,
       );
     }
 
@@ -325,7 +453,7 @@ class _ReadingPane extends StatelessWidget {
         Container(height: 1, color: OseeTheme.gold),
         const SizedBox(height: 16),
         if (desc != null && desc.isNotEmpty) ...[
-          Text(desc, style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 14, color: OseeTheme.stone, height: 1.5)),
+          Text(desc, style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 14, color: OseeTheme.ink.withValues(alpha: 0.6), height: 1.5)),
           const SizedBox(height: 16),
         ],
         Text('This is a practice item from ${_sourceLabel(src)}. Open the platform to start.', style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink, height: 1.5)),
@@ -380,308 +508,11 @@ class _ReadingPane extends StatelessWidget {
   }
 
   void _openLink(BuildContext context, String url) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Open: $url'), duration: const Duration(seconds: 4)),
-    );
-  }
-}
-
-// ============================================================
-// Workbook page — theory + examples + exercises + vocab
-// ============================================================
-
-class _WorkbookPage extends StatelessWidget {
-  const _WorkbookPage({required this.item, required this.content, required this.isDone, required this.onToggleDone});
-  final Map<String, dynamic> item;
-  final Map<String, dynamic> content;
-  final bool isDone;
-  final VoidCallback onToggleDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final title = content['title'] as String? ?? item['title'] as String? ?? '—';
-    final summary = content['summary'] as String?;
-    final theory = (content['theory'] as String? ?? '').replaceAll('\\n', '\n');
-    final keyPoints = (content['key_points'] as List? ?? const []) as List;
-    final examples = (content['examples'] as List? ?? const []) as List;
-    final exercises = (content['exercises'] as List? ?? const []) as List;
-    final vocab = (content['vocabulary'] as List? ?? const []) as List;
-    final practice = content['practice_prompt'] as String?;
-    final src = item['source_type'] as String? ?? '';
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 48),
-      children: [
-        // Kicker
-        Row(
-          children: [
-            Text(_sourceLabel(src).toUpperCase(), style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2.5, color: OseeTheme.accent)),
-            if (item['difficulty'] != null) ...[
-              const Text(' · ', style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, color: OseeTheme.stone)),
-              Text((item['difficulty'] as String).toUpperCase(), style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2, color: OseeTheme.stone)),
-            ],
-            if (item['estimated_minutes'] != null) ...[
-              const Text(' · ', style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, color: OseeTheme.stone)),
-              Text('${item['estimated_minutes']}m', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, color: OseeTheme.stone)),
-            ],
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Title
-        Text(title, style: const TextStyle(fontFamily: 'Georgia', fontSize: 32, fontWeight: FontWeight.w700, color: OseeTheme.ink, height: 1.15)),
-        const SizedBox(height: 8),
-        Container(height: 2, color: OseeTheme.gold),
-        const SizedBox(height: 16),
-        // Summary
-        if (summary != null && summary.isNotEmpty) ...[
-          Text(summary, style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 15, color: OseeTheme.stone, height: 1.5)),
-          const SizedBox(height: 20),
-        ],
-        // Theory
-        if (theory.isNotEmpty) ...[
-          const _SectionLabel('THEORY'),
-          const SizedBox(height: 10),
-          Text(theory, style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, color: OseeTheme.ink, height: 1.7)),
-          const SizedBox(height: 24),
-        ],
-        // Key points
-        if (keyPoints.isNotEmpty) ...[
-          const _SectionLabel('KEY POINTS'),
-          const SizedBox(height: 10),
-          for (final p in keyPoints)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6, left: 16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(width: 4, height: 4, margin: const EdgeInsets.only(top: 8), decoration: const BoxDecoration(color: OseeTheme.accent, shape: BoxShape.circle)),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(p as String, style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink, height: 1.5))),
-                ],
-              ),
-            ),
-          const SizedBox(height: 24),
-        ],
-        // Examples
-        if (examples.isNotEmpty) ...[
-          const _SectionLabel('EXAMPLES'),
-          const SizedBox(height: 10),
-          for (final e in examples)
-            Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: Colors.white, border: Border(left: BorderSide(color: OseeTheme.sage, width: 2))),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text((e as Map<String, dynamic>)['input'] as String? ?? '', style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink, fontStyle: FontStyle.italic, height: 1.4)),
-                  const SizedBox(height: 6),
-                  Text('→ ${e['output']}', style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, fontWeight: FontWeight.w700, color: OseeTheme.sage)),
-                  if ((e['explanation'] as String?)?.isNotEmpty ?? false) ...[
-                    const SizedBox(height: 4),
-                    Text(e['explanation'] as String, style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, color: OseeTheme.stone, fontStyle: FontStyle.italic)),
-                  ],
-                ],
-              ),
-            ),
-          const SizedBox(height: 24),
-        ],
-        // Exercises
-        if (exercises.isNotEmpty) ...[
-          const _SectionLabel('EXERCISES'),
-          const SizedBox(height: 10),
-          for (var i = 0; i < exercises.length; i++)
-            _ExerciseWidget(index: i + 1, exercise: exercises[i] as Map<String, dynamic>),
-          const SizedBox(height: 24),
-        ],
-        // Vocabulary
-        if (vocab.isNotEmpty) ...[
-          const _SectionLabel('VOCABULARY'),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.white, border: Border.all(color: OseeTheme.cloud)),
-            child: Column(
-              children: [
-                for (final v in vocab)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text((v as Map<String, dynamic>)['word'] as String? ?? '', style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, fontWeight: FontWeight.w700, color: OseeTheme.ink)),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(v['definition'] as String? ?? '', style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.ink, height: 1.4)),
-                              if ((v['example'] as String?)?.isNotEmpty ?? false) ...[
-                                const SizedBox(height: 2),
-                                Text('"${v['example']}"', style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 11, color: OseeTheme.stone, height: 1.3)),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-        // Practice prompt
-        if (practice != null && practice.isNotEmpty) ...[
-          const _SectionLabel('PRACTICE TASK'),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: const Color(0x1AE63946), border: Border(left: BorderSide(color: OseeTheme.accent, width: 2))),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.edit_note, size: 20, color: OseeTheme.accent),
-                const SizedBox(height: 8),
-                Text(practice, style: const TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 14, color: OseeTheme.ink, height: 1.5)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-        // Deep link + done
-        _DeepLinkButton(item: item),
-        const SizedBox(height: 16),
-        _DoneButton(isDone: isDone, onToggle: onToggleDone),
-      ],
-    );
-  }
-
-  String _sourceLabel(String src) {
-    switch (src) {
-      case 'platform_ibt': return 'iBT';
-      case 'platform_itp': return 'ITP';
-      case 'platform_ielts': return 'IELTS';
-      case 'platform_toeic': return 'TOEIC';
-      case 'edubot': return 'EduBot';
-      case 'ai_generated': return 'AI';
-      case 'video_lesson': return 'Video';
-      case 'live_class': return 'Live';
-      default: return src;
+    try {
+      html.window.open(url, '_blank');
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Open: $url'), duration: const Duration(seconds: 4)));
     }
-  }
-}
-
-// ============================================================
-// Exercise widget — interactive, tap to reveal answer
-// ============================================================
-
-class _ExerciseWidget extends StatefulWidget {
-  const _ExerciseWidget({required this.index, required this.exercise});
-  final int index;
-  final Map<String, dynamic> exercise;
-
-  @override
-  State<_ExerciseWidget> createState() => _ExerciseWidgetState();
-}
-
-class _ExerciseWidgetState extends State<_ExerciseWidget> {
-  String? _selected;
-  bool _showAnswer = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final ex = widget.exercise;
-    final type = ex['type'] as String? ?? 'short_answer';
-    final question = ex['question'] as String? ?? '';
-    final options = (ex['options'] as List?)?.cast<String>();
-    final answer = ex['answer'] as String? ?? '';
-    final explanation = ex['explanation'] as String? ?? '';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: OseeTheme.cloud)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Number + type badge
-            Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(color: OseeTheme.ink, borderRadius: BorderRadius.circular(2)),
-                  child: Center(child: Text('${widget.index}', style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white))),
-                ),
-                const SizedBox(width: 8),
-                Text(type.replaceAll('_', ' ').toUpperCase(), style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.stone)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Question
-            Text(question, style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, color: OseeTheme.ink, height: 1.4)),
-            // Options (multiple choice)
-            if (options != null && options.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              for (var i = 0; i < options.length; i++)
-                InkWell(
-                  onTap: () => setState(() => _selected = options[i]),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _selected == options[i] ? const Color(0x22E63946) : Colors.transparent,
-                      border: Border.all(color: _selected == options[i] ? OseeTheme.accent : OseeTheme.cloud),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(String.fromCharCode(65 + i), style: const TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700, color: OseeTheme.ink)),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(options[i], style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink))),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-            // Answer reveal
-            if (_showAnswer) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: const Color(0x226B8E7F), border: Border(left: BorderSide(color: OseeTheme.sage, width: 2))),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.check_circle, size: 14, color: OseeTheme.sage),
-                        const SizedBox(width: 6),
-                        Expanded(child: Text(answer, style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, fontWeight: FontWeight.w700, color: OseeTheme.sage))),
-                      ],
-                    ),
-                    if (explanation.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(explanation, style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, color: OseeTheme.stone, fontStyle: FontStyle.italic, height: 1.4)),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => setState(() => _showAnswer = !_showAnswer),
-                icon: Icon(_showAnswer ? Icons.visibility_off : Icons.visibility, size: 14, color: OseeTheme.sage),
-                label: Text(_showAnswer ? 'HIDE ANSWER' : 'SHOW ANSWER', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.sage)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -733,12 +564,12 @@ class _DeepLinkButton extends StatelessWidget {
     if (url == null && src == 'edubot') {
       return Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: const Color(0x1A6B8E7F), border: Border.all(color: OseeTheme.sage)),
+        decoration: BoxDecoration(color: OseeTheme.sage.withValues(alpha: 0.08), border: Border.all(color: OseeTheme.sage)),
         child: Row(
           children: [
             const Icon(Icons.smart_toy, size: 16, color: OseeTheme.sage),
             const SizedBox(width: 10),
-            Expanded(child: Text('Open EduBot in Telegram for more practice.', style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 12, color: OseeTheme.stone))),
+            Expanded(child: Text('Open EduBot in Telegram for more practice.', style: const TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 12, color: OseeTheme.ink))),
           ],
         ),
       );
@@ -747,7 +578,11 @@ class _DeepLinkButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
-        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Open: $url'), duration: const Duration(seconds: 4))),
+        onPressed: () {
+          try { html.window.open(url, '_blank'); } catch (_) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Open: $url'), duration: const Duration(seconds: 4)));
+          }
+        },
         icon: const Icon(Icons.open_in_new, size: 14),
         label: Text('PRACTICE ON ${_label(src)}', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
         style: FilledButton.styleFrom(backgroundColor: OseeTheme.ink, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2))),
@@ -827,11 +662,16 @@ class _SyllabusSwitcher extends StatelessWidget {
           children: [
             for (var i = 0; i < syllabi.length; i++) ...[
               if (i > 0) const SizedBox(width: 8),
-              ChoiceChip(
-                label: Text(syllabi[i]['name'] as String? ?? '—', style: TextStyle(fontFamily: 'Helvetica', fontSize: 10, fontWeight: FontWeight.w700, color: i == selected ? Colors.white : OseeTheme.ink)),
-                selected: i == selected,
-                selectedColor: OseeTheme.ink,
-                onSelected: (_) => onChanged(i),
+              InkWell(
+                onTap: () => onChanged(i),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: i == selected ? OseeTheme.ink : Colors.white,
+                    border: Border.all(color: i == selected ? OseeTheme.ink : OseeTheme.cloud),
+                  ),
+                  child: Text(syllabi[i]['name'] as String? ?? '—', style: TextStyle(fontFamily: 'Helvetica', fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1, color: i == selected ? Colors.white : OseeTheme.ink)),
+                ),
               ),
             ],
           ],
@@ -855,7 +695,7 @@ class _EmptyState extends StatelessWidget {
           children: [
             const Icon(Icons.book_outlined, size: 56, color: OseeTheme.cloud),
             const SizedBox(height: 16),
-            Text(message, style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 15, color: OseeTheme.stone, height: 1.5), textAlign: TextAlign.center),
+            Text(message, style: TextStyle(fontFamily: 'Georgia', fontStyle: FontStyle.italic, fontSize: 15, color: OseeTheme.ink.withValues(alpha: 0.5), height: 1.5), textAlign: TextAlign.center),
             if (action != null) ...[const SizedBox(height: 20), action!],
           ],
         ),
@@ -878,7 +718,7 @@ class _ErrorPanel extends StatelessWidget {
           const SizedBox(height: 16),
           Text(error, style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, color: OseeTheme.ink)),
           const SizedBox(height: 16),
-          FilledButton(onPressed: onRetry, child: const Text('Retry')),
+          FilledButton(onPressed: onRetry, style: FilledButton.styleFrom(backgroundColor: OseeTheme.ink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2))), child: const Text('Retry')),
         ],
       ),
     );
