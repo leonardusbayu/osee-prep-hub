@@ -363,6 +363,135 @@ class MindBoardApi {
     final b64 = commaIdx >= 0 ? dataUri.substring(commaIdx + 1) : dataUri;
     return base64Decode(b64);
   }
+
+  // ============================================================
+  // Material Bank (/api/materials/*)
+  // ============================================================
+
+  Future<List<Map<String, dynamic>>> listPackages({String? examType, String? productLine}) async {
+    final r = await _dio.get('/materials/packages', queryParameters: {
+      if (examType != null) 'exam_type': examType,
+      if (productLine != null) 'product_line': productLine,
+    });
+    return (r.data['packages'] as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> getPackage(String packageId) async {
+    final r = await _dio.get('/materials/packages/$packageId');
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> listQuestions({
+    String? packageId,
+    String? examType,
+    String? part,
+    String? section,
+    String? cefrLevel,
+    String? skillTag,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final r = await _dio.get('/materials/questions', queryParameters: {
+      if (packageId != null) 'package_id': packageId,
+      if (examType != null) 'exam_type': examType,
+      if (part != null) 'part': part,
+      if (section != null) 'section': section,
+      if (cefrLevel != null) 'cefr_level': cefrLevel,
+      if (skillTag != null) 'skill_tag': skillTag,
+      'limit': limit,
+      'offset': offset,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getQuestion(String questionId) async {
+    final r = await _dio.get('/materials/questions/$questionId');
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> listSkills({String? examType}) async {
+    final r = await _dio.get('/materials/skills', queryParameters: {
+      if (examType != null) 'exam_type': examType,
+    });
+    return (r.data['skills'] as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> searchQuestions(String query, {String? examType}) async {
+    final r = await _dio.get('/materials/search', queryParameters: {
+      'q': query,
+      if (examType != null) 'exam_type': examType,
+    });
+    return (r.data['questions'] as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> recordAnswer({
+    required String questionId,
+    required String studentAnswer,
+    required bool isCorrect,
+    int? timeSpentSeconds,
+    String? classroomId,
+  }) async {
+    final r = await _dio.post('/materials/answers', data: {
+      'question_id': questionId,
+      'student_answer': studentAnswer,
+      'is_correct': isCorrect,
+      if (timeSpentSeconds != null) 'time_spent_seconds': timeSpentSeconds,
+      if (classroomId != null) 'classroom_id': classroomId,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getStudentAnswers(String studentId) async {
+    final r = await _dio.get('/materials/answers/$studentId');
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getClassroomProgress(String classroomId) async {
+    final r = await _dio.get('/materials/progress/$classroomId');
+    return r.data as Map<String, dynamic>;
+  }
+
+  // ============================================================
+  // Parent Reports (/api/reports/*)
+  // ============================================================
+
+  Future<Map<String, dynamic>> generateReport({
+    required String studentId,
+    String? classroomId,
+    String? reportType,
+    String? periodStart,
+    String? periodEnd,
+  }) async {
+    final r = await _dio.post('/reports/generate', data: {
+      'student_id': studentId,
+      if (classroomId != null) 'classroom_id': classroomId,
+      if (reportType != null) 'report_type': reportType,
+      if (periodStart != null) 'period_start': periodStart,
+      if (periodEnd != null) 'period_end': periodEnd,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> listReports({String? studentId, String? classroomId}) async {
+    final r = await _dio.get('/reports', queryParameters: {
+      if (studentId != null) 'student_id': studentId,
+      if (classroomId != null) 'classroom_id': classroomId,
+    });
+    return (r.data['reports'] as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> getReport(String reportId) async {
+    final r = await _dio.get('/reports/$reportId');
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> sendReport(String reportId, {required String parentEmail, String? parentName}) async {
+    final r = await _dio.post('/reports/$reportId/send', data: {
+      'parent_email': parentEmail,
+      if (parentName != null) 'parent_name': parentName,
+    });
+    return r.data as Map<String, dynamic>;
+  }
 }
 
 /// Riverpod provider for MindBoardApi. Uses the shared Dio instance from

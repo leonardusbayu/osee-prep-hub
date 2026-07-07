@@ -18,6 +18,8 @@ import '../features/syllabus/pages/syllabus_list_page.dart';
 import '../features/syllabus/pages/syllabus_builder_page.dart';
 import '../features/syllabus/pages/syllabus_assign_page.dart';
 import '../features/teacher/pages/mind_map_recipe_page.dart';
+import '../features/teacher/pages/material_bank_page.dart';
+import '../features/teacher/pages/student_progress_page.dart';
 import '../features/partner/pages/partner_dashboard_page.dart';
 import '../features/ambassador/pages/ambassador_dashboard_page.dart';
 
@@ -85,6 +87,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/student', builder: (c, s) => const StudentDashboardPage()),
       GoRoute(path: '/student/syllabus', builder: (c, s) => const StudentSyllabusPage()),
       GoRoute(path: '/student/profile', builder: (c, s) => const StudentProfilePage()),
+      GoRoute(path: '/teacher/materials', builder: (c, s) => const MaterialBankPage()),
+      GoRoute(path: '/teacher/progress/:classroomId', builder: (c, s) => StudentProgressPage(classroomId: s.pathParameters['classroomId']!)),
       GoRoute(path: '/partner', builder: (c, s) => const PartnerDashboardPage()),
       GoRoute(path: '/ambassador', builder: (c, s) => const AmbassadorDashboardPage()),
       GoRoute(
