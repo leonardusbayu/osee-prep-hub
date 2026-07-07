@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/api_client.dart';
 import '../../../core/mind_board_api.dart';
+import 'material_bank_page.dart';
 
 /// Notion-style block builder for OSEE lesson creation.
 class MindMapRecipePage extends ConsumerStatefulWidget {
@@ -42,6 +43,9 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
   // Material library
   final List<Map<String, dynamic>> _materials = [];
   bool _materialsLoading = false;
+
+  // Material Bank side panel
+  bool _showMaterialPanel = false;
 
   // Templates
   final List<Map<String, dynamic>> _templates = [];
@@ -100,6 +104,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     'vocabulary': Icons.translate, 'practice': Icons.fitness_center,
     'assessment': Icons.assignment, 'reading_agent': Icons.menu_book_outlined,
     'speaking_agent': Icons.mic, 'writing_agent': Icons.edit,
+    'exam_question': Icons.library_books,
   };
 
   @override
@@ -653,33 +658,72 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
             constraints: const BoxConstraints(maxWidth: 820),
             child: _isLoadingBoard
                 ? const Center(child: CircularProgressIndicator(color: OseeTheme.ink))
-                : Stack(
+                : Row(
                     children: [
-                      ReorderableListView.builder(
-                        key: const PageStorageKey('blocks'),
-                        scrollController: _scrollCtl,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        itemCount: _blockOrder.length + 1,
-                        buildDefaultDragHandles: false,
-                        onReorder: _onReorder,
-                        proxyDecorator: (child, index, anim) => AnimatedBuilder(
-                          animation: anim,
-                          builder: (_, c) => Material(
-                            color: Colors.transparent,
-                            elevation: anim.value * 6,
-                            child: c,
-                          ),
-                          child: child,
+                      // Main lesson area
+                      Expanded(
+                        child: DragTarget<Map<String, dynamic>>(
+                          onAcceptWithDetails: (details) {
+                            final question = details.data;
+                            _addExamQuestionBlock(question);
+                          },
+                          builder: (ctx, candidate, rejected) {
+                            return Stack(
+                              children: [
+                                ReorderableListView.builder(
+                                  key: const PageStorageKey('blocks'),
+                                  scrollController: _scrollCtl,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  itemCount: _blockOrder.length + 1,
+                                  buildDefaultDragHandles: false,
+                                  onReorder: _onReorder,
+                                  proxyDecorator: (child, index, anim) => AnimatedBuilder(
+                                    animation: anim,
+                                    builder: (_, c) => Material(
+                                      color: Colors.transparent,
+                                      elevation: anim.value * 6,
+                                      child: c,
+                                    ),
+                                    child: child,
+                                  ),
+                                  itemBuilder: (ctx, index) {
+                                    if (index >= _blockOrder.length) {
+                                      return _buildSlashBar();
+                                    }
+                                    final blockId = _blockOrder[index];
+                                    return _buildBlock(blockId, index);
+                                  },
+                                ),
+                                _buildSlashMenu(),
+                                // Drop zone overlay
+                                if (candidate.isNotEmpty)
+                                  Positioned.fill(
+                                    child: IgnorePointer(
+                                      child: Container(
+                                        color: OseeTheme.sage.withValues(alpha: 0.1),
+                                        child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                          Icon(Icons.add_circle, size: 40, color: OseeTheme.sage.withValues(alpha: 0.5)),
+                                          const SizedBox(height: 8),
+                                          Text('Drop to add question', style: TextStyle(fontFamily: 'Georgia', fontSize: 14, color: OseeTheme.sage, fontStyle: FontStyle.italic)),
+                                        ])),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
                         ),
-                        itemBuilder: (ctx, index) {
-                          if (index >= _blockOrder.length) {
-                            return _buildSlashBar();
-                          }
-                          final blockId = _blockOrder[index];
-                          return _buildBlock(blockId, index);
-                        },
                       ),
-                      _buildSlashMenu(),
+                      // Material Bank side panel
+                      if (_showMaterialPanel)
+                        Container(
+                          width: 380,
+                          decoration: const BoxDecoration(border: Border(left: BorderSide(color: OseeTheme.ink, width: 2))),
+                          child: MaterialBankPage(
+                            enableDrag: true,
+                            onSelectQuestion: (q) => _addExamQuestionBlock(q),
+                          ),
+                        ),
                     ],
                   ),
           ),
@@ -720,6 +764,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
       ]),
       actions: [
         IconButton(icon: const Icon(Icons.dashboard_outlined, size: 18, color: OseeTheme.ink), tooltip: 'Templates', onPressed: _showTemplatesDialog),
+        IconButton(icon: Icon(Icons.library_books, size: 18, color: _showMaterialPanel ? OseeTheme.accent : OseeTheme.ink), tooltip: 'Material Bank', onPressed: () => setState(() => _showMaterialPanel = !_showMaterialPanel)),
         IconButton(icon: const Icon(Icons.history, size: 18, color: OseeTheme.ink), tooltip: 'Version History', onPressed: _showVersionHistory),
         IconButton(icon: const Icon(Icons.shield_outlined, size: 18, color: OseeTheme.ink), tooltip: 'AI Critic', onPressed: _runCriticReview),
         IconButton(icon: const Icon(Icons.share_outlined, size: 18, color: OseeTheme.ink), tooltip: 'Share', onPressed: _showShareDialog),
@@ -777,6 +822,29 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
         },
       ),
     );
+  }
+
+  // ---- Add an exam question from the Material Bank as a new block ----
+  void _addExamQuestionBlock(Map<String, dynamic> question) {
+    final newId = 'exam_question_${DateTime.now().microsecondsSinceEpoch}';
+    final examType = (question['exam_type'] as String?) ?? 'EXAM';
+    final part = (question['part'] as String?) ?? '';
+    final topic = (question['topic'] as String?) ?? '';
+    final title = topic.isNotEmpty ? topic : '$examType Part $part';
+    _blockOrder.insert(_blockOrder.length, newId);
+    _nodes[newId] = _NodeData(
+      type: 'exam_question',
+      title: title,
+      color: OseeTheme.gold,
+    );
+    _nodes[newId]!.content = question;
+    _blockCollapsed[newId] = false;
+    setState(() {});
+    _markDirty();
+    // Scroll to the new block
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollCtl.hasClients) _scrollCtl.animateTo(_scrollCtl.position.maxScrollExtent, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+    });
   }
 
   void _addBlockAfter(String afterId, String newBlockType) {
@@ -940,8 +1008,98 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
         return _blockGenerate(blockId, node);
       case 'assessment': return _blockAssessment();
       case 'agent': return _blockAgent(blockId, node);
+      case 'exam_question': return _blockExamQuestion(node);
       default: return const SizedBox.shrink();
     }
+  }
+
+  // ---- Exam question block — renders a real question from the material bank ----
+  Widget _blockExamQuestion(_NodeData node) {
+    final c = node.content ?? {};
+    final text = (c['question_text'] as String?) ?? '';
+    final options = c['options'] as Map<String, dynamic>?;
+    final answer = (c['correct_answer'] as String?) ?? '';
+    final explanation = (c['explanation'] as String?) ?? '';
+    final examType = (c['exam_type'] as String?) ?? '';
+    final part = (c['part'] as String?) ?? '';
+    final topic = (c['topic'] as String?) ?? '';
+    final cefr = (c['cefr_level'] as String?) ?? '';
+    return StatefulBuilder(
+      builder: (ctx, setLocal) {
+        bool showAnswer = false;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Badges
+            Row(
+              children: [
+                if (examType.isNotEmpty)
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: OseeTheme.ink), child: Text(examType.replaceAll('_', ' ').toUpperCase(), style: const TextStyle(fontFamily: 'Helvetica', fontSize: 7, fontWeight: FontWeight.w700, letterSpacing: 1, color: Colors.white))),
+                if (part.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(border: Border.all(color: OseeTheme.gold)), child: Text('PART $part', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 7, fontWeight: FontWeight.w700, letterSpacing: 1, color: OseeTheme.gold))),
+                ],
+                if (cefr.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Text(cefr, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 7, color: OseeTheme.stone)),
+                ],
+                if (topic.isNotEmpty) ...[
+                  const Spacer(),
+                  Text(topic, style: const TextStyle(fontFamily: 'Georgia', fontSize: 9, color: OseeTheme.stone, fontStyle: FontStyle.italic)),
+                ],
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Question text
+            Text(text, style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, color: OseeTheme.ink, height: 1.6)),
+            // Options
+            if (options != null && options.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              for (final entry in options.entries)
+                GestureDetector(
+                  onTap: () => setLocal(() => showAnswer = true),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: showAnswer && entry.key == answer ? OseeTheme.sage.withValues(alpha: 0.08) : Colors.transparent,
+                      border: Border.all(color: showAnswer && entry.key == answer ? OseeTheme.sage : OseeTheme.cloud),
+                    ),
+                    child: Row(
+                      children: [
+                        Text('${entry.key}.', style: TextStyle(fontFamily: 'Georgia', fontSize: 13, fontWeight: FontWeight.w700, color: showAnswer && entry.key == answer ? OseeTheme.sage : OseeTheme.ink)),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(entry.value.toString(), style: TextStyle(fontFamily: 'Georgia', fontSize: 13, color: showAnswer && entry.key == answer ? OseeTheme.sage : OseeTheme.ink, fontWeight: showAnswer && entry.key == answer ? FontWeight.w700 : FontWeight.w400, height: 1.4))),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+            // Answer reveal
+            if (showAnswer) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: OseeTheme.sage.withValues(alpha: 0.06), border: Border(left: BorderSide(color: OseeTheme.sage, width: 2))),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [const Icon(Icons.check_circle, size: 14, color: OseeTheme.sage), const SizedBox(width: 6), Text(answer, style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, fontWeight: FontWeight.w700, color: OseeTheme.sage))]),
+                    if (explanation.isNotEmpty) ...[const SizedBox(height: 4), Text(explanation, style: TextStyle(fontFamily: 'Georgia', fontSize: 11, color: OseeTheme.ink.withValues(alpha: 0.6), fontStyle: FontStyle.italic, height: 1.4))],
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => setLocal(() => showAnswer = !showAnswer),
+              icon: Icon(showAnswer ? Icons.visibility_off : Icons.visibility, size: 14, color: OseeTheme.sage),
+              label: Text(showAnswer ? 'HIDE ANSWER' : 'SHOW ANSWER', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.sage)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // ---- Setup block — editorial form ----
@@ -1243,6 +1401,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
       ('reading_agent', 'Reading Coach', Icons.menu_book_outlined, OseeTheme.sage),
       ('speaking_agent', 'Speaking Coach', Icons.mic, OseeTheme.sage),
       ('writing_agent', 'Writing Coach', Icons.edit, OseeTheme.sage),
+      ('exam_question', 'Exam Question from Bank', Icons.library_books, OseeTheme.gold),
     ];
     return Positioned(
       bottom: 60,
@@ -1267,9 +1426,18 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
                 leading: Icon(o.$3, size: 16, color: o.$4),
                 title: Text(o.$2, style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, fontWeight: FontWeight.w600, color: OseeTheme.ink)),
                 onTap: () {
-                  _addBlockAfter(_blockOrder.last, o.$1);
-                  setState(() => _showSlashMenu = false);
-                  _slashCtl.clear();
+                  if (o.$1 == 'exam_question') {
+                    // Open Material Bank side panel instead of creating empty block
+                    setState(() {
+                      _showSlashMenu = false;
+                      _slashCtl.clear();
+                      _showMaterialPanel = true;
+                    });
+                  } else {
+                    _addBlockAfter(_blockOrder.last, o.$1);
+                    setState(() => _showSlashMenu = false);
+                    _slashCtl.clear();
+                  }
                 },
               )),
             ]),
