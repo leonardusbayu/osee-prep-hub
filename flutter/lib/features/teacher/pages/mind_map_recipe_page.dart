@@ -646,13 +646,13 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
       autofocus: true,
       onKeyEvent: _handleKeyEvent,
       child: Scaffold(
-        backgroundColor: const Color(0xFFFAFAFA),
+        backgroundColor: OseeTheme.paper,
         appBar: _buildAppBar(),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 820),
             child: _isLoadingBoard
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF072c1f)))
+                ? const Center(child: CircularProgressIndicator(color: OseeTheme.ink))
                 : Stack(
                     children: [
                       ReorderableListView.builder(
@@ -690,44 +690,46 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
 
   PreferredSizeWidget _buildAppBar() {
     final saveColor = _saveStatus.startsWith('SAVED')
-        ? const Color(0xFF059669)
+        ? OseeTheme.sage
         : _saveStatus == 'SAVING...'
-            ? const Color(0xFFF59E0B)
+            ? OseeTheme.gold
             : _saveStatus == 'ERROR'
-                ? const Color(0xFFEF4444)
-                : const Color(0xFF9CA3AF);
+                ? OseeTheme.accent
+                : OseeTheme.stone;
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: OseeTheme.paper,
       elevation: 0,
-      shape: const Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+      shape: Border(bottom: BorderSide(color: OseeTheme.ink, width: 2)),
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
+        icon: const Icon(Icons.arrow_back, color: OseeTheme.ink),
         onPressed: () => context.go('/teacher/syllabi/${widget.syllabusId}'),
       ),
       title: Row(children: [
-        const Text('OSEE', style: TextStyle(fontFamily: 'Georgia', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF072c1f))),
-        Container(margin: const EdgeInsets.symmetric(horizontal: 10), width: 1, height: 20, color: const Color(0xFFE5E7EB)),
-        Expanded(child: Text(_boardTitle.isEmpty ? 'Lesson Builder' : _boardTitle, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 13, color: Color(0xFF1F2937), fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('OSEE', style: TextStyle(fontFamily: 'Georgia', fontSize: 18, fontWeight: FontWeight.w700, color: OseeTheme.ink, letterSpacing: -0.5)),
+          Container(margin: const EdgeInsets.only(top: 2), width: 28, height: 2, color: OseeTheme.accent),
+        ]),
+        Container(margin: const EdgeInsets.symmetric(horizontal: 12), width: 1, height: 24, color: OseeTheme.cloud),
+        Expanded(child: Text(_boardTitle.isEmpty ? 'Lesson Builder' : _boardTitle, style: const TextStyle(fontFamily: 'Georgia', fontSize: 15, color: OseeTheme.ink, fontWeight: FontWeight.w600, fontStyle: FontStyle.italic), overflow: TextOverflow.ellipsis)),
         const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(color: saveColor, borderRadius: BorderRadius.circular(3)),
-          child: Text(_saveStatus, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1, color: Colors.white)),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(color: saveColor, borderRadius: BorderRadius.zero),
+          child: Text(_saveStatus, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white)),
         ),
       ]),
       actions: [
-        IconButton(icon: const Icon(Icons.dashboard_outlined, size: 18, color: Color(0xFF1F2937)), tooltip: 'Templates', onPressed: _showTemplatesDialog),
-        IconButton(icon: const Icon(Icons.history, size: 18, color: Color(0xFF1F2937)), tooltip: 'Version History', onPressed: _showVersionHistory),
-        IconButton(icon: const Icon(Icons.shield_outlined, size: 18, color: Color(0xFF1F2937)), tooltip: 'AI Critic', onPressed: _runCriticReview),
-        IconButton(icon: const Icon(Icons.share_outlined, size: 18, color: Color(0xFF1F2937)), tooltip: 'Share', onPressed: _showShareDialog),
-        IconButton(icon: const Icon(Icons.download_outlined, size: 18, color: Color(0xFF1F2937)), tooltip: 'Export', onPressed: _showExportDialog),
-        IconButton(icon: const Icon(Icons.keyboard_outlined, size: 18, color: Color(0xFF1F2937)), tooltip: 'Shortcuts', onPressed: _showShortcutsDialog),
+        IconButton(icon: const Icon(Icons.dashboard_outlined, size: 18, color: OseeTheme.ink), tooltip: 'Templates', onPressed: _showTemplatesDialog),
+        IconButton(icon: const Icon(Icons.history, size: 18, color: OseeTheme.ink), tooltip: 'Version History', onPressed: _showVersionHistory),
+        IconButton(icon: const Icon(Icons.shield_outlined, size: 18, color: OseeTheme.ink), tooltip: 'AI Critic', onPressed: _runCriticReview),
+        IconButton(icon: const Icon(Icons.share_outlined, size: 18, color: OseeTheme.ink), tooltip: 'Share', onPressed: _showShareDialog),
+        IconButton(icon: const Icon(Icons.download_outlined, size: 18, color: OseeTheme.ink), tooltip: 'Export', onPressed: _showExportDialog),
         const SizedBox(width: 4),
         FilledButton.icon(
           onPressed: _isSaving ? null : () => _explicitSave(label: 'manual save'),
           icon: _isSaving ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white)) : const Icon(Icons.save, size: 14, color: Colors.white),
-          label: Text(_isSaving ? 'SAVING…' : 'Save', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700)),
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF072c1f), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
+          label: Text(_isSaving ? 'SAVING…' : 'Save', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1)),
+          style: FilledButton.styleFrom(backgroundColor: OseeTheme.ink, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
         ),
         const SizedBox(width: 12),
       ],
@@ -745,23 +747,26 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     _markDirty();
   }
 
-  // ---- Slash command bar (at bottom of list) ----
+  // ---- Slash command bar — editor's note style ----
   Widget _buildSlashBar() {
     return Container(
       key: const ValueKey('slash'),
-      margin: const EdgeInsets.only(top: 8),
+      margin: const EdgeInsets.only(top: 12, bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextField(
         controller: _slashCtl,
         focusNode: _slashFocus,
         decoration: InputDecoration(
           hintText: 'Type / to add a block…',
-          prefixIcon: const Icon(Icons.add, size: 18, color: Color(0xFF6B7280)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+          hintStyle: TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.stone.withValues(alpha: 0.6), fontStyle: FontStyle.italic),
+          prefixIcon: Icon(Icons.add, size: 18, color: OseeTheme.gold),
+          border: UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.cloud, width: 1)),
+          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.gold, width: 2)),
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          filled: false,
         ),
-        style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: Color(0xFF1F2937)),
+        style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink),
         onTap: () {
           if (_slashCtl.text.isEmpty) {
             setState(() => _showSlashMenu = true);
@@ -801,7 +806,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     _markDirty();
   }
 
-  // ---- Individual block card ----
+  // ---- Individual block card — magazine section style ----
   Widget _buildBlock(String blockId, int index) {
     final node = _nodes[blockId];
     if (node == null) return const SizedBox.shrink();
@@ -810,74 +815,114 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     final isSetup = blockId == 'setup';
     final hasContent = node.content != null;
     final status = node.isGenerating
-        ? 'Generating…'
+        ? 'Generating'
         : hasContent
-            ? '✓ Generated'
+            ? 'Ready'
             : node.error != null
                 ? 'Error'
                 : '';
+    final statusColor = node.isGenerating
+        ? OseeTheme.gold
+        : hasContent
+            ? OseeTheme.sage
+            : node.error != null
+                ? OseeTheme.accent
+                : OseeTheme.stone;
+
+    // Block type determines visual treatment
+    final isAgent = node.type == 'agent';
+    final isAssessment = node.type == 'assessment';
+    final isSource = node.type == 'source';
+    final accentColor = isSetup
+        ? OseeTheme.ink
+        : isAgent
+            ? OseeTheme.sage
+            : isAssessment
+                ? OseeTheme.accent
+                : isSource
+                    ? OseeTheme.sage
+                    : node.color;
+    final cardBg = isAgent
+        ? OseeTheme.polaroidWhite
+        : isSetup
+            ? OseeTheme.ink
+            : Colors.white;
+    final headerBg = isSetup
+        ? OseeTheme.ink
+        : isAgent
+            ? const Color(0xFFF0EDE5)
+            : isAssessment
+                ? const Color(0xFFFDF2F2)
+                : OseeTheme.parchment.withValues(alpha: 0.4);
+    final titleColor = isSetup ? Colors.white : OseeTheme.ink;
+    final labelColor = isSetup ? OseeTheme.gold : OseeTheme.stone;
 
     return Container(
       key: ValueKey(blockId),
-      margin: const EdgeInsets.only(bottom: 6),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1))],
+        color: cardBg,
+        borderRadius: BorderRadius.circular(2),
+        border: Border(
+          top: BorderSide(color: accentColor, width: 3),
+          bottom: BorderSide(color: OseeTheme.cloud, width: 1),
+          left: BorderSide(color: OseeTheme.cloud, width: 1),
+          right: BorderSide(color: OseeTheme.cloud, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(color: OseeTheme.ink.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(color: OseeTheme.ink.withValues(alpha: 0.03), blurRadius: 1, offset: const Offset(0, 1)),
+        ],
       ),
       child: Column(
         children: [
-          // Header
+          // Header — magazine section style
           InkWell(
             onTap: () => _toggleBlock(blockId),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            borderRadius: BorderRadius.zero,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: const BoxDecoration(color: Color(0xFFF9FAFB), borderRadius: BorderRadius.vertical(top: Radius.circular(8))),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(color: headerBg),
               child: Row(
                 children: [
                   if (!isSetup)
                     ReorderableDragStartListener(
                       index: index,
-                      child: const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.drag_indicator, size: 16, color: Color(0xFF9CA3AF))),
+                      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.drag_indicator, size: 16, color: OseeTheme.stone)),
                     )
                   else
-                    const SizedBox(width: 24),
+                    const SizedBox(width: 20),
                   const SizedBox(width: 4),
-                  Icon(icon, size: 16, color: node.color),
-                  const SizedBox(width: 8),
+                  Icon(icon, size: 18, color: isSetup ? OseeTheme.gold : accentColor),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(node.title, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1F2937))),
-                  ),
-                  if (status.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: node.isGenerating
-                            ? const Color(0xFFF59E0B).withValues(alpha: 0.1)
-                            : hasContent
-                                ? const Color(0xFF059669).withValues(alpha: 0.1)
-                                : const Color(0xFFEF4444).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: Text(status, style: TextStyle(
-                        fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700,
-                        color: node.isGenerating ? const Color(0xFFF59E0B) : hasContent ? const Color(0xFF059669) : const Color(0xFFEF4444),
-                      )),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(blockId.toUpperCase().split('_').join(' '), style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2, color: labelColor)),
+                        Text(node.title, style: TextStyle(fontFamily: 'Georgia', fontSize: 16, fontWeight: FontWeight.w600, color: titleColor, height: 1.2)),
+                      ],
                     ),
-                  const SizedBox(width: 4),
-                  Icon(collapsed ? Icons.chevron_right : Icons.expand_more, size: 16, color: const Color(0xFF6B7280)),
+                  ),
+                  if (status.isNotEmpty) ...[
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 4),
+                    Text(status, style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1, color: isSetup ? Colors.white70 : statusColor)),
+                  ],
+                  const SizedBox(width: 6),
+                  Icon(collapsed ? Icons.add : Icons.remove, size: 16, color: isSetup ? OseeTheme.gold : OseeTheme.stone),
                 ],
               ),
             ),
           ),
-          // Body (expanded only)
-          if (!collapsed)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: _buildBlockBody(blockId, node),
-            ),
+          // Body — with animated expand/collapse
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: !collapsed
+                ? Padding(padding: const EdgeInsets.all(16), child: _buildBlockBody(blockId, node))
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );
@@ -899,62 +944,116 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     }
   }
 
-  // ---- Setup block ----
+  // ---- Setup block — editorial form ----
   Widget _blockSetup() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      TextField(controller: _topicCtl, decoration: const InputDecoration(labelText: 'Topic', border: OutlineInputBorder(), isDense: true), style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, color: Color(0xFF1F2937)), onChanged: (_) => _markDirty()),
-      const SizedBox(height: 10),
-      TextField(controller: _notesCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Notes', border: OutlineInputBorder(), isDense: true), style: const TextStyle(fontFamily: 'Georgia', fontSize: 14, color: Color(0xFF1F2937)), onChanged: (_) => _markDirty()),
-      const SizedBox(height: 10),
+      TextField(
+        controller: _topicCtl,
+        decoration: InputDecoration(
+          labelText: 'LESSON TOPIC',
+          labelStyle: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2, color: OseeTheme.stone),
+          hintText: 'e.g. Conditional Sentences',
+          hintStyle: TextStyle(fontFamily: 'Georgia', fontSize: 15, color: OseeTheme.stone.withValues(alpha: 0.5), fontStyle: FontStyle.italic),
+          border: UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.cloud, width: 1)),
+          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.ink, width: 2)),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
+        style: const TextStyle(fontFamily: 'Georgia', fontSize: 16, color: OseeTheme.ink, height: 1.4),
+        onChanged: (_) => _markDirty(),
+      ),
+      const SizedBox(height: 14),
+      TextField(
+        controller: _notesCtl,
+        maxLines: 2,
+        decoration: InputDecoration(
+          labelText: 'TEACHER NOTES',
+          labelStyle: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2, color: OseeTheme.stone),
+          hintText: 'What should this lesson cover?',
+          hintStyle: TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.stone.withValues(alpha: 0.5), fontStyle: FontStyle.italic),
+          border: const UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.cloud, width: 1)),
+          focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.ink, width: 2)),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
+        style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink, height: 1.5),
+        onChanged: (_) => _markDirty(),
+      ),
+      const SizedBox(height: 16),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        _mobileDropdown('Exam', _exam, {'TOEFL_IBT': 'TOEFL iBT', 'TOEFL_ITP': 'TOEFL ITP', 'IELTS': 'IELTS', 'TOEIC': 'TOEIC', 'GENERAL': 'General'}, (v) { setState(() { _exam = v; _markDirty(); }); }),
-        _mobileDropdown('Level', _level, {'A1': 'A1', 'A2': 'A2', 'B1': 'B1', 'B2': 'B2', 'C1': 'C1', 'C2': 'C2'}, (v) { setState(() { _level = v; _markDirty(); }); }),
-        _mobileDropdown('Type', _itemType, {'grammar': 'Grammar', 'reading': 'Reading', 'writing': 'Writing', 'listening': 'Listening', 'speaking': 'Speaking', 'vocabulary': 'Vocabulary'}, (v) { setState(() { _itemType = v; _markDirty(); }); }),
-        _mobileDropdown('Difficulty', _difficulty, {'easy': 'Easy', 'medium': 'Medium', 'hard': 'Hard', 'expert': 'Expert'}, (v) { setState(() { _difficulty = v; _markDirty(); }); }),
+        _magDropdown('Exam', _exam, {'TOEFL_IBT': 'TOEFL iBT', 'TOEFL_ITP': 'TOEFL ITP', 'IELTS': 'IELTS', 'TOEIC': 'TOEIC', 'GENERAL': 'General'}, (v) { setState(() { _exam = v; _markDirty(); }); }),
+        _magDropdown('Level', _level, {'A1': 'A1', 'A2': 'A2', 'B1': 'B1', 'B2': 'B2', 'C1': 'C1', 'C2': 'C2'}, (v) { setState(() { _level = v; _markDirty(); }); }),
+        _magDropdown('Type', _itemType, {'grammar': 'Grammar', 'reading': 'Reading', 'writing': 'Writing', 'listening': 'Listening', 'speaking': 'Speaking', 'vocabulary': 'Vocabulary'}, (v) { setState(() { _itemType = v; _markDirty(); }); }),
+        _magDropdown('Difficulty', _difficulty, {'easy': 'Easy', 'medium': 'Medium', 'hard': 'Hard', 'expert': 'Expert'}, (v) { setState(() { _difficulty = v; _markDirty(); }); }),
       ]),
     ]);
   }
 
-  // ---- Sources block ----
+  // ---- Sources block — magazine clippings style ----
   Widget _blockSources(String blockId) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (_sources.isEmpty)
-        const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('No sources yet. Add a URL or paste text below.', style: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF9CA3AF))))
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: OseeTheme.parchment.withValues(alpha: 0.3),
+            border: Border.all(color: OseeTheme.cloud, width: 1),
+            borderRadius: BorderRadius.circular(2),
+          ),
+          child: Row(children: [
+            Icon(Icons.collections_bookmark_outlined, size: 28, color: OseeTheme.gold),
+            const SizedBox(width: 12),
+            Expanded(child: Text('No sources yet. Add a URL, paste text, or drag files to feed the AI with context.', style: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.stone, fontStyle: FontStyle.italic, height: 1.5))),
+          ]),
+        )
       else
         ..._sources.asMap().entries.map((e) {
           final s = e.value;
-          return Card(margin: const EdgeInsets.only(bottom: 4), child: ListTile(
-            dense: true,
-            leading: Icon(s.type == 'youtube' ? Icons.play_circle_outline : s.type == 'text' ? Icons.text_snippet : Icons.link, color: const Color(0xFF6B8E7F), size: 18),
-            title: Text(s.title ?? s.urlOrQuery, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w600)),
-            subtitle: Text(s.text != null ? '${s.text!.length} chars' : 'Not fetched', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, color: Color(0xFF9CA3AF))),
-            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (s.text == null) TextButton(onPressed: () => _ingestSource('source_${e.key}', s), child: const Text('Fetch', style: TextStyle(fontSize: 10)))
-              else const Icon(Icons.check_circle, color: Color(0xFF059669), size: 16),
-              IconButton(icon: const Icon(Icons.close, size: 12, color: Color(0xFF9CA3AF)), onPressed: () { setState(() => _sources.removeAt(e.key)); _markDirty(); }, iconSize: 12, constraints: const BoxConstraints(minWidth: 28, minHeight: 28)),
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: OseeTheme.polaroidWhite,
+              border: Border(left: BorderSide(color: OseeTheme.sage, width: 3), top: BorderSide(color: OseeTheme.cloud, width: 1), bottom: BorderSide(color: OseeTheme.cloud, width: 1), right: BorderSide(color: OseeTheme.cloud, width: 1)),
+              borderRadius: BorderRadius.circular(2),
+              boxShadow: [BoxShadow(color: OseeTheme.ink.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1))],
+            ),
+            child: Row(children: [
+              Icon(s.type == 'youtube' ? Icons.play_circle_outline : s.type == 'text' ? Icons.text_snippet : Icons.link, color: OseeTheme.sage, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(s.title ?? s.urlOrQuery, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, fontWeight: FontWeight.w600, color: OseeTheme.ink, fontStyle: FontStyle.italic)),
+                Text(s.text != null ? '${s.text!.length} chars extracted' : 'Not fetched yet', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, color: OseeTheme.stone, letterSpacing: 0.5)),
+              ])),
+              if (s.text == null)
+                TextButton(onPressed: () => _ingestSource('source_${e.key}', s), style: TextButton.styleFrom(foregroundColor: OseeTheme.accent, padding: const EdgeInsets.symmetric(horizontal: 8)), child: const Text('Fetch', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)))
+              else
+                Icon(Icons.check_circle, color: OseeTheme.sage, size: 16),
+              const SizedBox(width: 4),
+              IconButton(icon: const Icon(Icons.close, size: 12, color: OseeTheme.stone), onPressed: () { setState(() => _sources.removeAt(e.key)); _markDirty(); }, iconSize: 12, constraints: const BoxConstraints(minWidth: 28, minHeight: 28)),
             ]),
-          ));
+          );
         }),
-      const SizedBox(height: 8),
+      const SizedBox(height: 10),
       Row(children: [
         Expanded(child: FilledButton.tonalIcon(
           onPressed: _showAddMaterialDialog,
-          icon: const Icon(Icons.add_link, size: 14),
-          label: const Text('Add URL / Text', style: TextStyle(fontSize: 11)),
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFECFDF5), foregroundColor: const Color(0xFF072c1f)),
+          icon: Icon(Icons.add_link, size: 14, color: OseeTheme.sage),
+          label: const Text('Add URL / Text', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+          style: FilledButton.styleFrom(backgroundColor: OseeTheme.parchment.withValues(alpha: 0.5), foregroundColor: OseeTheme.ink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)), padding: const EdgeInsets.symmetric(vertical: 10)),
         )),
         const SizedBox(width: 8),
         FilledButton.tonalIcon(
           onPressed: _showBrainDumpDialog,
-          icon: const Icon(Icons.auto_awesome, size: 14),
-          label: const Text('Brain Dump', style: TextStyle(fontSize: 11)),
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF3F4F6), foregroundColor: const Color(0xFF1F2937)),
+          icon: Icon(Icons.auto_awesome, size: 14, color: OseeTheme.gold),
+          label: const Text('Brain Dump', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF3F4F6), foregroundColor: OseeTheme.ink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)), padding: const EdgeInsets.symmetric(vertical: 10)),
         ),
       ]),
     ]);
   }
 
-  // ---- Generate block (theory/examples/exercises/vocab/practice) ----
+  // ---- Generate block — editorial AI generation ----
   Widget _blockGenerate(String blockId, _NodeData node) {
     final hasContent = node.content != null;
     final descriptions = {
@@ -966,39 +1065,60 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     };
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (!hasContent && !node.isGenerating)
-        Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(descriptions[blockId] ?? '', style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF6B7280), height: 1.4))),
+        Container(
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(color: OseeTheme.parchment.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
+          child: Row(children: [
+            Icon(Icons.auto_awesome, size: 20, color: OseeTheme.gold),
+            const SizedBox(width: 10),
+            Expanded(child: Text(descriptions[blockId] ?? '', style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.stone, height: 1.5, fontStyle: FontStyle.italic))),
+          ]),
+        ),
       if (node.isGenerating)
-        const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E40AF))),
-          SizedBox(height: 8),
-          Text('Generating…', style: TextStyle(fontFamily: 'Georgia', fontSize: 11, color: Color(0xFF6B7280))),
-        ])))
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(color: OseeTheme.parchment.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
+          child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.5, color: node.color)),
+            const SizedBox(height: 10),
+            const Text('Generating…', style: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.stone, fontStyle: FontStyle.italic)),
+          ])),
+        )
       else if (hasContent)
         ..._buildContentCards(node.content!, node.type)
       else
         Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: FilledButton.icon(
           onPressed: () => _generateNode(blockId),
           icon: const Icon(Icons.auto_awesome, size: 16),
-          label: const Text('Generate', style: TextStyle(fontFamily: 'Helvetica', fontSize: 13, fontWeight: FontWeight.w700)),
-          style: FilledButton.styleFrom(backgroundColor: node.color, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10)),
+          label: const Text('Generate', style: TextStyle(fontFamily: 'Helvetica', fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1)),
+          style: FilledButton.styleFrom(backgroundColor: OseeTheme.ink, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)), padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12)),
         ))),
       if (hasContent && !node.isGenerating)
-        Padding(padding: const EdgeInsets.only(top: 8), child: FilledButton.tonalIcon(
+        Padding(padding: const EdgeInsets.only(top: 10), child: OutlinedButton.icon(
           onPressed: () => _generateNode(blockId),
           icon: const Icon(Icons.refresh, size: 14),
-          label: const Text('Regenerate', style: TextStyle(fontSize: 11)),
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF3F4F6), foregroundColor: const Color(0xFF1F2937)),
+          label: const Text('Regenerate', style: TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+          style: OutlinedButton.styleFrom(foregroundColor: OseeTheme.ink, side: BorderSide(color: OseeTheme.cloud, width: 1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
         )),
       if (node.error != null)
-        Padding(padding: const EdgeInsets.only(top: 8), child: Text(node.error!, style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, color: Color(0xFFEF4444)))),
+        Padding(padding: const EdgeInsets.only(top: 8), child: Text(node.error!, style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, color: OseeTheme.accent, fontStyle: FontStyle.italic))),
     ]);
   }
 
   // ---- Assessment block ----
   Widget _blockAssessment() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Generate assessment artifacts from your lesson content.', style: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF6B7280), height: 1.4)),
-      const SizedBox(height: 12),
+      Container(
+        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(color: const Color(0xFFFDF2F2), borderRadius: BorderRadius.circular(2), border: Border(left: BorderSide(color: OseeTheme.accent, width: 2))),
+        child: Row(children: [
+          Icon(Icons.assignment, size: 20, color: OseeTheme.accent),
+          const SizedBox(width: 10),
+          Expanded(child: Text('Generate assessment artifacts from your lesson content.', style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.ink, height: 1.5, fontStyle: FontStyle.italic))),
+        ]),
+      ),
       _assessButton('Answer Key', 'answer_key', Icons.vpn_key),
       _assessButton('Rubric', 'rubric', Icons.grading),
       _assessButton('Exit Ticket', 'exit_ticket', Icons.confirmation_number),
@@ -1006,7 +1126,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
     ]);
   }
 
-  // ---- Agent chat block ----
+  // ---- Agent chat block — magazine sidebar style ----
   Widget _blockAgent(String blockId, _NodeData node) {
     _agentInputCtls.putIfAbsent(blockId, () => TextEditingController());
     final ctl = _agentInputCtls[blockId]!;
@@ -1015,12 +1135,21 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (node.chatHistory.isEmpty)
-            const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('Type a message to chat with the agent.', style: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF9CA3AF), fontStyle: FontStyle.italic)))
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: OseeTheme.parchment.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+              child: Row(children: [
+                Icon(Icons.chat_bubble_outline, size: 18, color: OseeTheme.sage),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Type a message below to start coaching with the ${node.title}.', style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.stone, fontStyle: FontStyle.italic, height: 1.5))),
+              ]),
+            )
           else
             Container(
-              constraints: const BoxConstraints(maxHeight: 300),
+              constraints: const BoxConstraints(maxHeight: 320),
               margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFFE5E7EB))),
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(color: const Color(0xFFF5F3ED), borderRadius: BorderRadius.circular(2), border: Border.all(color: OseeTheme.cloud, width: 1)),
               child: ListView.builder(
                 shrinkWrap: true,
                 reverse: true,
@@ -1030,17 +1159,18 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
                   final msg = node.chatHistory[idx];
                   final isUser = msg['role'] == 'user';
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     child: Align(
                       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        constraints: const BoxConstraints(maxWidth: 280),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        constraints: const BoxConstraints(maxWidth: 300),
                         decoration: BoxDecoration(
-                          color: isUser ? const Color(0xFFECFDF5) : const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(6),
+                          color: isUser ? OseeTheme.sage.withValues(alpha: 0.12) : Colors.white,
+                          border: isUser ? Border.all(color: OseeTheme.sage.withValues(alpha: 0.3), width: 1) : Border.all(color: OseeTheme.cloud, width: 1),
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                        child: Text(msg['content'] ?? '', style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, color: Color(0xFF1F2937), height: 1.4)),
+                        child: Text(msg['content'] ?? '', style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.ink, height: 1.5)),
                       ),
                     ),
                   );
@@ -1048,12 +1178,19 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
               ),
             ),
           if (node.isGenerating)
-            const Padding(padding: EdgeInsets.only(bottom: 8), child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF059669))))),
+            Padding(padding: const EdgeInsets.only(bottom: 8), child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5, color: OseeTheme.sage)))),
           Row(children: [
             Expanded(child: TextField(
               controller: ctl,
-              decoration: const InputDecoration(hintText: 'Ask the agent…', border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-              style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF1F2937)),
+              decoration: InputDecoration(
+                hintText: 'Ask the ${node.title}…',
+                hintStyle: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.stone.withValues(alpha: 0.5), fontStyle: FontStyle.italic),
+                border: const UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.cloud, width: 1)),
+                focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: OseeTheme.sage, width: 2)),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+              ),
+              style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.ink),
               onSubmitted: (v) {
                 if (v.trim().isNotEmpty) {
                   _sendAgentMessage(blockId, v.trim());
@@ -1071,7 +1208,7 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
                   setLocal(() {});
                 }
               },
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF059669), minimumSize: const Size(40, 40), padding: EdgeInsets.zero),
+              style: FilledButton.styleFrom(backgroundColor: OseeTheme.sage, foregroundColor: Colors.white, minimumSize: const Size(42, 42), padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2))),
               child: const Icon(Icons.send, size: 14, color: Colors.white),
             ),
           ]),
@@ -1097,15 +1234,15 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
   Widget _buildSlashMenu() {
     if (!_showSlashMenu) return const SizedBox.shrink();
     final options = [
-      ('theory', 'Theory', Icons.menu_book, const Color(0xFF1E40AF)),
-      ('examples', 'Examples', Icons.lightbulb_outline, const Color(0xFF1E40AF)),
-      ('exercises', 'Exercises', Icons.quiz_outlined, const Color(0xFF1E40AF)),
-      ('vocabulary', 'Vocabulary', Icons.translate, const Color(0xFF1E40AF)),
-      ('practice', 'Practice', Icons.fitness_center, const Color(0xFF1E40AF)),
-      ('assessment', 'Assessment', Icons.assignment, const Color(0xFFF97316)),
-      ('reading_agent', 'Reading Coach', Icons.menu_book_outlined, const Color(0xFF059669)),
-      ('speaking_agent', 'Speaking Coach', Icons.mic, const Color(0xFF059669)),
-      ('writing_agent', 'Writing Coach', Icons.edit, const Color(0xFF059669)),
+      ('theory', 'Theory', Icons.menu_book, OseeTheme.ink),
+      ('examples', 'Examples', Icons.lightbulb_outline, OseeTheme.ink),
+      ('exercises', 'Exercises', Icons.quiz_outlined, OseeTheme.ink),
+      ('vocabulary', 'Vocabulary', Icons.translate, OseeTheme.ink),
+      ('practice', 'Practice', Icons.fitness_center, OseeTheme.ink),
+      ('assessment', 'Assessment', Icons.assignment, OseeTheme.accent),
+      ('reading_agent', 'Reading Coach', Icons.menu_book_outlined, OseeTheme.sage),
+      ('speaking_agent', 'Speaking Coach', Icons.mic, OseeTheme.sage),
+      ('writing_agent', 'Writing Coach', Icons.edit, OseeTheme.sage),
     ];
     return Positioned(
       bottom: 60,
@@ -1116,13 +1253,19 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
           constraints: const BoxConstraints(maxWidth: 820),
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE5E7EB)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 12)]),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(2),
+              border: Border(top: BorderSide(color: OseeTheme.ink, width: 2), bottom: BorderSide(color: OseeTheme.cloud, width: 1), left: BorderSide(color: OseeTheme.cloud, width: 1), right: BorderSide(color: OseeTheme.cloud, width: 1)),
+              boxShadow: [BoxShadow(color: OseeTheme.ink.withValues(alpha: 0.15), blurRadius: 16, offset: const Offset(0, 4))],
+            ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Padding(padding: EdgeInsets.all(8), child: Text('ADD BLOCK', style: TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2, color: Color(0xFF6B7280)))),
+              Padding(padding: const EdgeInsets.all(10), child: Text('ADD BLOCK', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 2, color: OseeTheme.stone))),
+              Container(height: 1, color: OseeTheme.cloud),
               ...options.map((o) => ListTile(
                 dense: true,
                 leading: Icon(o.$3, size: 16, color: o.$4),
-                title: Text(o.$2, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 12, fontWeight: FontWeight.w600)),
+                title: Text(o.$2, style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, fontWeight: FontWeight.w600, color: OseeTheme.ink)),
                 onTap: () {
                   _addBlockAfter(_blockOrder.last, o.$1);
                   setState(() => _showSlashMenu = false);
@@ -1133,6 +1276,30 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
           ),
         ),
       ),
+    );
+  }
+
+  // ---- Magazine-styled dropdown ----
+  Widget _magDropdown(String label, String value, Map<String, String> items, void Function(String) onChanged) {
+    return Container(
+      padding: const EdgeInsets.only(left: 10, right: 4, top: 2, bottom: 2),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: OseeTheme.cloud, width: 1)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label.toUpperCase(), style: const TextStyle(fontFamily: 'Helvetica', fontSize: 7, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.stone)),
+        DropdownButton<String>(
+          value: value,
+          underline: const SizedBox(),
+          isExpanded: true,
+          isDense: true,
+          dropdownColor: Colors.white,
+          style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.ink, fontWeight: FontWeight.w600),
+          icon: const Icon(Icons.expand_more, size: 14, color: OseeTheme.stone),
+          items: items.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value, style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.ink, fontWeight: FontWeight.w500)))).toList(),
+          onChanged: (v) => onChanged(v ?? value),
+        ),
+      ]),
     );
   }
 
@@ -1198,35 +1365,43 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
   }
 
   Widget _contentCard(String label, String body) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1, color: Color(0xFF6B7280))),
-            const SizedBox(height: 4),
-            Text(body, style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF1F2937), height: 1.5)),
-          ],
-        ),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(left: BorderSide(color: OseeTheme.gold, width: 2), top: BorderSide(color: OseeTheme.cloud, width: 1), bottom: BorderSide(color: OseeTheme.cloud, width: 1), right: BorderSide(color: OseeTheme.cloud, width: 1)),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (label.isNotEmpty && label != 'Content')
+            Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(label.toUpperCase(), style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.stone))),
+          Text(body, style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, color: OseeTheme.ink, height: 1.6)),
+        ],
       ),
     );
   }
 
   Widget _contentListCard(String label, List<String> items) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1, color: Color(0xFF6B7280))),
-            const SizedBox(height: 4),
-            ...items.map((item) => Padding(padding: const EdgeInsets.only(top: 2), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('• ', style: TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF10B981))), Expanded(child: Text(item, style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: Color(0xFF1F2937), height: 1.4)))]))),
-          ],
-        ),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: OseeTheme.polaroidWhite,
+        border: Border(left: BorderSide(color: OseeTheme.accent, width: 2), top: BorderSide(color: OseeTheme.cloud, width: 1), bottom: BorderSide(color: OseeTheme.cloud, width: 1), right: BorderSide(color: OseeTheme.cloud, width: 1)),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(label.toUpperCase(), style: const TextStyle(fontFamily: 'Helvetica', fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.stone))),
+          ...items.map((item) => Padding(padding: const EdgeInsets.only(top: 3), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(margin: const EdgeInsets.only(top: 5, right: 8), width: 4, height: 4, decoration: const BoxDecoration(color: OseeTheme.accent, shape: BoxShape.circle)),
+            Expanded(child: Text(item, style: const TextStyle(fontFamily: 'Georgia', fontSize: 12, color: OseeTheme.ink, height: 1.5))),
+          ]))),
+        ],
       ),
     );
   }
@@ -1234,21 +1409,26 @@ class _MindMapRecipePageState extends ConsumerState<MindMapRecipePage> {
   Widget _assessButton(String label, String type, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: FilledButton.tonalIcon(
+      child: OutlinedButton.icon(
         onPressed: _boardId == null ? null : () async {
           try {
             final result = await _api.generateAssessment(_boardId!, type: type, topic: _topicCtl.text.trim(), level: _level, exam: _exam, nodeContent: _nodes['exercises']?.content);
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$label generated'), backgroundColor: const Color(0xFF059669)));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$label generated'), backgroundColor: OseeTheme.sage));
               _showAssessmentResult(label, result['content'] as Map<String, dynamic>? ?? {});
             }
           } catch (e) {
             if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
           }
         },
-        icon: Icon(icon, size: 16),
-        label: Text(label, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 13, fontWeight: FontWeight.w600)),
-        style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF3F4F6), foregroundColor: const Color(0xFF1F2937), padding: const EdgeInsets.symmetric(vertical: 12)),
+        icon: Icon(icon, size: 16, color: OseeTheme.gold),
+        label: Text(label, style: const TextStyle(fontFamily: 'Georgia', fontSize: 13, fontWeight: FontWeight.w600, color: OseeTheme.ink)),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: OseeTheme.cloud, width: 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          backgroundColor: Colors.white,
+        ),
       ),
     );
   }
