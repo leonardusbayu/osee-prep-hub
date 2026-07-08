@@ -10,6 +10,7 @@ import '../features/landing/pages/landing_page.dart';
 import '../features/student/pages/student_dashboard_page.dart';
 import '../features/student/pages/student_syllabus_page.dart';
 import '../features/student/pages/student_profile_page.dart';
+import '../features/student/pages/student_practice_page.dart';
 import '../features/teacher/pages/teacher_dashboard_page.dart';
 import '../features/teacher/pages/order_page.dart';
 import '../features/teacher/pages/ai_grader_page.dart';
@@ -87,6 +88,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/student', builder: (c, s) => const StudentDashboardPage()),
       GoRoute(path: '/student/syllabus', builder: (c, s) => const StudentSyllabusPage()),
       GoRoute(path: '/student/profile', builder: (c, s) => const StudentProfilePage()),
+      GoRoute(path: '/student/practice', builder: (c, s) => const StudentPracticePage()),
       GoRoute(path: '/teacher/materials', builder: (c, s) => const MaterialBankPage()),
       GoRoute(path: '/teacher/progress/:classroomId', builder: (c, s) => StudentProgressPage(classroomId: s.pathParameters['classroomId']!)),
       GoRoute(path: '/partner', builder: (c, s) => const PartnerDashboardPage()),

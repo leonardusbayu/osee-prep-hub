@@ -11,6 +11,9 @@ import {
   recordAnswer,
   getStudentAnswers,
   getClassroomProgress,
+  getPracticeSession,
+  submitPracticeSession,
+  getPracticeHistory,
 } from '../services/material-bank';
 
 export const materialRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -165,5 +168,60 @@ materialRoutes.get('/progress/:classroomId', async (c) => {
       return c.json({ error: { code: 'NOT_FOUND', message } }, 404);
     }
     return c.json({ error: { code: 'FETCH_FAILED', message } }, 500);
+  }
+});
+
+// ============================================================
+// Practice sessions — student interactive practice
+// ============================================================
+
+/** GET /api/materials/practice/:packageId — get a shuffled practice session (student) */
+materialRoutes.get('/practice/:packageId', async (c) => {
+  const user = getAuthedUser(c);
+  if (user.role !== 'student' && user.role !== 'admin') {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Student role required' } }, 403);
+  }
+  const packageId = c.req.param('packageId');
+  const count = c.req.query('count') ? parseInt(c.req.query('count') as string, 10) : 20;
+  try {
+    const session = await getPracticeSession(c.env, packageId, count);
+    return c.json(session);
+  } catch (err) {
+    return c.json({ error: { code: 'PRACTICE_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** POST /api/materials/practice/submit — submit practice answers (student) */
+materialRoutes.post('/practice/submit', async (c) => {
+  const user = getAuthedUser(c);
+  if (user.role !== 'student' && user.role !== 'admin') {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Student role required' } }, 403);
+  }
+  let body: { answers?: Array<{ question_id: string; student_answer: string }>; classroom_id?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.answers || !Array.isArray(body.answers) || body.answers.length === 0) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'answers array required' } }, 400);
+  }
+  try {
+    const result = await submitPracticeSession(c.env, user.id, body.answers, body.classroom_id);
+    return c.json(result);
+  } catch (err) {
+    return c.json({ error: { code: 'SUBMIT_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** GET /api/materials/practice/history — get practice session history (student) */
+materialRoutes.get('/practice/history', async (c) => {
+  const user = getAuthedUser(c);
+  if (user.role !== 'student' && user.role !== 'admin') {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Student role required' } }, 403);
+  }
+  try {
+    const history = await getPracticeHistory(c.env, user.id);
+    return c.json({ history, count: history.length });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
   }
 });

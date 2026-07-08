@@ -492,6 +492,31 @@ class MindBoardApi {
     });
     return r.data as Map<String, dynamic>;
   }
+
+  // ============================================================
+  // Practice sessions
+  // ============================================================
+
+  Future<Map<String, dynamic>> getPracticeSession(String packageId, {int count = 20}) async {
+    final r = await _dio.get('/materials/practice/$packageId', queryParameters: {'count': count});
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> submitPractice({
+    required List<Map<String, String>> answers,
+    String? classroomId,
+  }) async {
+    final r = await _dio.post('/materials/practice/submit', data: {
+      'answers': answers,
+      if (classroomId != null) 'classroom_id': classroomId,
+    });
+    return r.data as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> getPracticeHistory() async {
+    final r = await _dio.get('/materials/practice/history');
+    return (r.data['history'] as List).cast<Map<String, dynamic>>();
+  }
 }
 
 /// Riverpod provider for MindBoardApi. Uses the shared Dio instance from

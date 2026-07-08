@@ -153,7 +153,7 @@ class _StudentProfilePageState extends ConsumerState<StudentProfilePage> {
                 ),
               ],
             ),
-      bottomNavigationBar: _buildBottomNav(2),
+      bottomNavigationBar: _buildBottomNav(3),
     );
   }
 
@@ -167,7 +167,8 @@ class _StudentProfilePageState extends ConsumerState<StudentProfilePage> {
     final items = [
       {'label': 'Dashboard', 'icon': Icons.home_outlined, 'route': '/student', 'index': 0},
       {'label': 'Workbook', 'icon': Icons.menu_book_outlined, 'route': '/student/syllabus', 'index': 1},
-      {'label': 'Profile', 'icon': Icons.person_outline, 'route': '/student/profile', 'index': 2},
+      {'label': 'Practice', 'icon': Icons.quiz_outlined, 'route': '/student/practice', 'index': 2},
+      {'label': 'Profile', 'icon': Icons.person_outline, 'route': '/student/profile', 'index': 3},
     ];
     return Container(
       decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: OseeTheme.ink, width: 2))),
