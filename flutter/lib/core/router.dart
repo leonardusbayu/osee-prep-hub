@@ -7,6 +7,9 @@ import '../features/auth/pages/login_page.dart';
 import '../features/auth/pages/register_page.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/landing/pages/landing_page.dart';
+import '../features/public/verify_credential_page.dart';
+import '../features/student/pages/coach_page.dart';
+import '../features/student/pages/passport_page.dart';
 import '../features/student/pages/student_dashboard_page.dart';
 import '../features/student/pages/student_syllabus_page.dart';
 import '../features/student/pages/student_profile_page.dart';
@@ -89,6 +92,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/student/syllabus', builder: (c, s) => const StudentSyllabusPage()),
       GoRoute(path: '/student/profile', builder: (c, s) => const StudentProfilePage()),
       GoRoute(path: '/student/practice', builder: (c, s) => const StudentPracticePage()),
+      GoRoute(path: '/student/coach', builder: (c, s) => const CoachPage()),
+      GoRoute(path: '/student/passport', builder: (c, s) => const PassportPage()),
+      GoRoute(
+        path: '/verify/:credentialId',
+        builder: (c, s) => VerifyCredentialPage(credentialId: s.pathParameters['credentialId']!),
+      ),
       GoRoute(path: '/teacher/materials', builder: (c, s) => const MaterialBankPage()),
       GoRoute(path: '/teacher/progress/:classroomId', builder: (c, s) => StudentProgressPage(classroomId: s.pathParameters['classroomId']!)),
       GoRoute(path: '/partner', builder: (c, s) => const PartnerDashboardPage()),

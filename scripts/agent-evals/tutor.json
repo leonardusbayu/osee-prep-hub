@@ -1,27 +1,22 @@
 [
-  {
-    "input": "I don't understand present perfect tense.",
-    "expectKeywords": ["present perfect", "have"],
-    "description": "Tutor guides Socratically"
-  },
-  {
-    "input": "Saya bingung tentang IELTS speaking part 2.",
-    "expectKeywords": ["speaking", "part 2"],
-    "description": "Tutor handles Bahasa input"
-  },
-  {
-    "input": "How do I answer TOEFL reading inference questions?",
-    "expectKeywords": ["inference", "reading"],
-    "description": "Tutor handles TOEFL reading"
-  },
-  {
-    "input": "I keep getting 5 on IELTS writing. What am I doing wrong?",
-    "expectKeywords": ["writing", "5"],
-    "description": "Tutor handles frustrated student"
-  },
-  {
-    "input": "Bagus! I finally got 7 on my last mock test.",
-    "expectKeywords": ["great", "congratulations", "bagus"],
-    "description": "Tutor celebrates wins"
-  }
+  { "input": "I don't understand present perfect tense.", "expectKeywords": ["present perfect", "have"], "description": "Tutor guides Socratically" },
+  { "input": "Saya bingung tentang IELTS speaking part 2.", "expectKeywords": ["speaking", "part 2"], "description": "Tutor handles Bahasa input" },
+  { "input": "How do I answer TOEFL reading inference questions?", "expectKeywords": ["inference", "reading"], "description": "Tutor handles TOEFL reading" },
+  { "input": "I keep getting 5 on IELTS writing. What am I doing wrong?", "expectKeywords": ["writing", "5"], "description": "Tutor handles frustrated student" },
+  { "input": "Bagus! I finally got 7 on my last mock test.", "expectKeywords": ["great", "congratulations", "bagus"], "description": "Tutor celebrates wins" },
+  { "input": "Could you just tell me the answer please?", "expectKeywords": ["hint", "guess"], "description": "Tutor refuses to give answer directly" },
+  { "input": "I'm stuck on present perfect for 10 minutes. Tolong bantu.", "expectKeywords": ["present perfect"], "description": "Tutor Bahasa switch on stuck" },
+  { "input": "What does 'despite' mean?", "expectKeywords": ["although", "contrast"], "description": "Tutor explains vocabulary via Socratic" },
+  { "input": "Can you check my sentence: 'I have went to school yesterday'?", "expectKeywords": ["have gone", "have"], "description": "Tutor diagnoses grammar error" },
+  { "input": "What should I do today?", "expectKeywords": ["syllabus", "week"], "description": "Tutor references syllabus context" },
+  { "input": "Saya tidak ngerti apa-apa.", "expectKeywords": ["ada"], "description": "Tutor handles total confusion in Bahasa" },
+  { "input": "Is 'depend of' correct?", "expectKeywords": ["depends on"], "description": "Tutor fixes preposition" },
+  { "input": "Saya berhasil dapat band 6.5!", "expectKeywords": ["congratulations", "bagus"], "description": "Tutor celebrates milestone in Bahasa" },
+  { "input": "How do I structure a TOEIC reading part 7 passage?", "expectKeywords": ["read", "question"], "description": "Tutor handles test strategy" },
+  { "input": "Can you give me a practice question on conditionals?", "expectKeywords": ["if", "would"], "description": "Tutor uses create_practice_question" },
+  { "input": "I keep making mistakes with articles.", "expectKeywords": ["a", "the"], "description": "Tutor addresses article errors" },
+  { "input": "Halo, saya mau belajar speaking.", "expectKeywords": ["speaking"], "description": "Tutor greets in Bahasa" },
+  { "input": "What does 'leverage' mean?", "expectKeywords": ["use", "advantage"], "description": "Tutor defines business vocab" },
+  { "input": "How do I stop hesitating when I speak?", "expectKeywords": ["practice", "think"], "description": "Tutor addresses fluency" },
+  { "input": "Got 8.5 on my IELTS mock! Terima kasih coach!", "expectKeywords": ["congratulations", "8.5"], "description": "Tutor celebrates big win + Bahasa" }
 ]

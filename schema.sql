@@ -1151,3 +1151,121 @@ ALTER TABLE agent_traces ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS agent_traces_user_read ON agent_traces;
 CREATE POLICY agent_traces_user_read ON agent_traces
   FOR SELECT USING (user_id = auth.uid());
+
+-- ============================================================
+-- Task 10 (Wave 2): Coach sessions — student AI tutor chat history
+-- ============================================================
+CREATE TABLE IF NOT EXISTS coach_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  student_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  syllabus_id UUID REFERENCES syllabi(id) ON DELETE SET NULL,
+  agent_name TEXT NOT NULL DEFAULT 'tutor',
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ended_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_coach_sessions_student ON coach_sessions(student_id);
+
+CREATE TABLE IF NOT EXISTS coach_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  session_id UUID NOT NULL REFERENCES coach_sessions(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system', 'tool')),
+  content TEXT NOT NULL,
+  tool_calls JSONB,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_coach_messages_session ON coach_messages(session_id);
+
+ALTER TABLE coach_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS coach_sessions_user_read ON coach_sessions;
+CREATE POLICY coach_sessions_user_read ON coach_sessions
+  FOR SELECT USING (student_id = auth.uid());
+DROP POLICY IF EXISTS coach_sessions_user_insert ON coach_sessions;
+CREATE POLICY coach_sessions_user_insert ON coach_sessions
+  FOR INSERT WITH CHECK (student_id = auth.uid());
+
+ALTER TABLE coach_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS coach_messages_user_read ON coach_messages;
+CREATE POLICY coach_messages_user_read ON coach_messages
+  FOR SELECT USING (
+    session_id IN (SELECT id FROM coach_sessions WHERE student_id = auth.uid())
+  );
+DROP POLICY IF EXISTS coach_messages_user_insert ON coach_messages;
+CREATE POLICY coach_messages_user_insert ON coach_messages
+  FOR INSERT WITH CHECK (
+    session_id IN (SELECT id FROM coach_sessions WHERE student_id = auth.uid())
+  );
+
+-- ============================================================
+-- Task 14 (Wave 2): OSEE Marketplace
+-- ============================================================
+CREATE TABLE IF NOT EXISTS marketplace_listings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  seller_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  listing_type TEXT NOT NULL CHECK (listing_type IN ('lesson_plan', 'mock_test', 'live_class', 'video', 'ebook')),
+  exam TEXT NOT NULL CHECK (exam IN ('TOEFL_IBT', 'TOEFL_ITP', 'IELTS', 'TOEIC', 'GENERAL')),
+  level TEXT NOT NULL CHECK (level IN ('A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'GENERAL')),
+  price_idr INTEGER NOT NULL CHECK (price_idr > 0),
+  preview_url TEXT,
+  syllabus_id UUID REFERENCES syllabi(id) ON DELETE SET NULL,
+  is_published BOOLEAN NOT NULL DEFAULT TRUE,
+  view_count INTEGER NOT NULL DEFAULT 0,
+  purchase_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_marketplace_listings_seller ON marketplace_listings(seller_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_listings_exam ON marketplace_listings(exam, level, is_published);
+
+CREATE TABLE IF NOT EXISTS marketplace_purchases (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  listing_id UUID NOT NULL REFERENCES marketplace_listings(id) ON DELETE RESTRICT,
+  buyer_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  seller_id UUID NOT NULL REFERENCES unified_profiles(id),
+  price_idr INTEGER NOT NULL,
+  commission_idr INTEGER NOT NULL, -- 15% to OSEE
+  payout_idr INTEGER NOT NULL, -- 85% to seller
+  escrow_status TEXT NOT NULL DEFAULT 'pending' CHECK (escrow_status IN ('pending', 'paid', 'released', 'refunded', 'disputed')),
+  tripay_transaction_ref TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  released_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_marketplace_purchases_buyer ON marketplace_purchases(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_purchases_listing ON marketplace_purchases(listing_id);
+
+CREATE TABLE IF NOT EXISTS marketplace_reviews (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  purchase_id UUID NOT NULL UNIQUE REFERENCES marketplace_purchases(id) ON DELETE CASCADE,
+  listing_id UUID NOT NULL REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+  reviewer_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
+  comment TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_marketplace_reviews_listing ON marketplace_reviews(listing_id);
+
+ALTER TABLE marketplace_listings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS marketplace_listings_public_read ON marketplace_listings;
+CREATE POLICY marketplace_listings_public_read ON marketplace_listings
+  FOR SELECT USING (is_published = true OR seller_id = auth.uid());
+DROP POLICY IF EXISTS marketplace_listings_seller_insert ON marketplace_listings;
+CREATE POLICY marketplace_listings_seller_insert ON marketplace_listings
+  FOR INSERT WITH CHECK (seller_id = auth.uid());
+DROP POLICY IF EXISTS marketplace_listings_seller_update ON marketplace_listings;
+CREATE POLICY marketplace_listings_seller_update ON marketplace_listings
+  FOR UPDATE USING (seller_id = auth.uid());
+
+ALTER TABLE marketplace_purchases ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS marketplace_purchases_buyer_read ON marketplace_purchases;
+CREATE POLICY marketplace_purchases_buyer_read ON marketplace_purchases
+  FOR SELECT USING (buyer_id = auth.uid() OR seller_id = auth.uid());
+
+ALTER TABLE marketplace_reviews ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS marketplace_reviews_public_read ON marketplace_reviews;
+CREATE POLICY marketplace_reviews_public_read ON marketplace_reviews
+  FOR SELECT USING (true);
+DROP POLICY IF EXISTS marketplace_reviews_buyer_insert ON marketplace_reviews;
+CREATE POLICY marketplace_reviews_buyer_insert ON marketplace_reviews
+  FOR INSERT WITH CHECK (reviewer_id = auth.uid());

@@ -23,6 +23,8 @@ import { adminRoutes } from './routes/admin';
 import { agentRoutes } from './routes/agents';
 import { realtimeRoutes } from './routes/realtime';
 import { passportRoutes } from './routes/passport';
+import { coachRoutes } from './routes/coach';
+import { marketplaceRoutes } from './routes/marketplace';
 import type { Env, ContextVars } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -58,6 +60,8 @@ app.route('/api/admin', adminRoutes);
 app.route('/api/agents', agentRoutes);
 app.route('/api/syllabi', realtimeRoutes);
 app.route('/api/passport', passportRoutes);
+app.route('/api/coach', coachRoutes);
+app.route('/api/marketplace', marketplaceRoutes);
 
 // Public Ed25519 key for Passport employer-side verification.
 app.get('/.well-known/passport-public-key.pem', async (c) => {

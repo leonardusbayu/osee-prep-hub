@@ -15,7 +15,7 @@ import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { rateLimit } from '../middleware/rate-limit';
 import { getAgent, listAgents } from '../agents';
 import { AgentRunner, ToolBus, type AgentContext, type ChatMessage } from '../agents/runtime';
-import { registerBuiltinTools } from '../agents/tools';
+import { registerBuiltinTools, searchCatalogTool, createPracticeQuestionTool, fetchGradingHistoryTool } from '../agents/tools';
 
 export const agentRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -63,6 +63,9 @@ agentRoutes.post('/:agentName/invoke', async (c) => {
   // (We register all tools; the agent definition gates which ones it can call.)
   const bus = new ToolBus();
   registerBuiltinTools(bus, ctx);
+  bus.register('search_catalog', searchCatalogTool);
+  bus.register('create_practice_question', createPracticeQuestionTool);
+  bus.register('fetch_grading_history', fetchGradingHistoryTool);
 
   try {
     const runner = new AgentRunner(c.env, def, bus);

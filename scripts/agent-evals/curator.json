@@ -1,27 +1,22 @@
 [
-  {
-    "input": "I'm a B1 student targeting IELTS 6.5. What should I study this week?",
-    "expectKeywords": ["IELTS", "B1", "6.5"],
-    "description": "Curator acknowledges student level + target"
-  },
-  {
-    "input": "Suggest 3 syllabus items for a TOEFL IBT student struggling with reading.",
-    "expectKeywords": ["TOEFL", "reading"],
-    "description": "Curator handles TOEFL + reading"
-  },
-  {
-    "input": "What should I include in a 4-week syllabus for TOEIC listening?",
-    "expectKeywords": ["TOEIC", "listening"],
-    "description": "Curator handles TOEIC listening"
-  },
-  {
-    "input": "My student needs to improve IELTS writing task 2. What do you recommend?",
-    "expectKeywords": ["IELTS", "writing"],
-    "description": "Curator handles IELTS writing"
-  },
-  {
-    "input": "Build a syllabus for complete beginner aiming for A2 in 3 months.",
-    "expectKeywords": ["A2", "beginner"],
-    "description": "Curator handles beginner path"
-  }
+  { "input": "I'm a B1 student targeting IELTS 6.5. What should I study this week?", "expectKeywords": ["IELTS", "B1", "6.5"], "description": "Curator acknowledges student level + target" },
+  { "input": "Suggest 3 syllabus items for a TOEFL IBT student struggling with reading.", "expectKeywords": ["TOEFL", "reading"], "description": "Curator handles TOEFL + reading" },
+  { "input": "What should I include in a 4-week syllabus for TOEIC listening?", "expectKeywords": ["TOEIC", "listening"], "description": "Curator handles TOEIC listening" },
+  { "input": "My student needs to improve IELTS writing task 2. What do you recommend?", "expectKeywords": ["IELTS", "writing"], "description": "Curator handles IELTS writing" },
+  { "input": "Build a syllabus for complete beginner aiming for A2 in 3 months.", "expectKeywords": ["A2", "beginner"], "description": "Curator handles beginner path" },
+  { "input": "Mahasiswa saya level A2, target TOEFL ITP 450. Beri 3 item.", "expectKeywords": ["TOEFL", "ITP"], "description": "Curator handles Bahasa input" },
+  { "input": "C2 student 6 weeks before IELTS 8.0 — last-mile suggestions?", "expectKeywords": ["C2", "IELTS", "8"], "description": "Curator handles advanced + time pressure" },
+  { "input": "IELTS 6.0 student weak in writing task 1 — describe a process.", "expectKeywords": ["writing", "task 1", "process"], "description": "Curator addresses specific weakness" },
+  { "input": "Add 4 items to the current syllabus focused on listening.", "expectKeywords": ["listening"], "description": "Curator handles add-to-syllabus request" },
+  { "input": "What platforms are available for TOEIC practice?", "expectKeywords": ["TOEIC"], "description": "Curator answers platform question" },
+  { "input": "My student got TOEFL ITP 380 last week. New syllabus?", "expectKeywords": ["TOEFL", "ITP", "380"], "description": "Curator handles low score baseline" },
+  { "input": "Quick: 3 items for a C1 student finishing IELTS prep.", "expectKeywords": ["C1", "IELTS"], "description": "Curator handles C1 completion" },
+  { "input": "What marketplace listings match IELTS reading advanced?", "expectKeywords": ["marketplace", "IELTS"], "description": "Curator uses search_catalog" },
+  { "input": "B2 student needs to break 100 on TOEFL IBT.", "expectKeywords": ["B2", "TOEFL", "100"], "description": "Curator handles TOEFL IBT target" },
+  { "input": "10-week plan for student going from 0 to TOEIC 600.", "expectKeywords": ["10", "week", "TOEIC", "600"], "description": "Curator handles long plan" },
+  { "input": "Siswa saya IELTS 5.5 sekarang. Butuh naik ke 7.0 dalam 12 minggu.", "expectKeywords": ["IELTS", "5.5", "7.0", "12"], "description": "Curator handles Bahasa + timeline" },
+  { "input": "Suggest 5 items for a teacher building their own custom syllabus.", "expectKeywords": ["teacher_custom"], "description": "Curator uses teacher_custom source" },
+  { "input": "What AI-generated materials do we have for TOEFL speaking?", "expectKeywords": ["ai_generated", "TOEFL", "speaking"], "description": "Curator handles AI-generated source" },
+  { "input": "Add a live class for IELTS writing feedback to week 3.", "expectKeywords": ["live_class", "writing"], "description": "Curator suggests live_class source" },
+  { "input": "Help me design a syllabus for a C1 student targeting 7.5 in 16 weeks.", "expectKeywords": ["C1", "7.5", "16"], "description": "Curator handles long-term + high target" }
 ]

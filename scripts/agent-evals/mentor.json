@@ -1,27 +1,22 @@
 [
-  {
-    "input": "I want to study abroad in 2 years. What's my English plan?",
-    "expectKeywords": ["year", "plan"],
-    "description": "Mentor thinks in years"
-  },
-  {
-    "input": "I just got IELTS 6.5. What's next?",
-    "expectKeywords": ["6.5", "next", "year"],
-    "description": "Mentor handles post-test milestone"
-  },
-  {
-    "input": "I want to switch careers to international business. How does English fit?",
-    "expectKeywords": ["career", "English"],
-    "description": "Mentor handles career change"
-  },
-  {
-    "input": "I'm 30. Is it too late to reach C1 English?",
-    "expectKeywords": ["C1", "year"],
-    "description": "Mentor handles age anxiety"
-  },
-  {
-    "input": "I want a promotion at my current job. What English do I need?",
-    "expectKeywords": ["promotion", "English"],
-    "description": "Mentor handles job promotion"
-  }
+  { "input": "I want to study abroad in 2 years. What's my English plan?", "expectKeywords": ["year", "plan"], "description": "Mentor thinks in years" },
+  { "input": "I just got IELTS 6.5. What's next?", "expectKeywords": ["6.5", "next", "year"], "description": "Mentor handles post-test milestone" },
+  { "input": "I want to switch careers to international business. How does English fit?", "expectKeywords": ["career", "English"], "description": "Mentor handles career change" },
+  { "input": "I'm 30. Is it too late to reach C1 English?", "expectKeywords": ["C1", "year"], "description": "Mentor handles age anxiety" },
+  { "input": "I want a promotion at my current job. What English do I need?", "expectKeywords": ["promotion", "English"], "description": "Mentor handles job promotion" },
+  { "input": "Should I aim for IELTS or TOEFL for an MBA abroad?", "expectKeywords": ["MBA", "IELTS", "TOEFL"], "description": "Mentor handles MBA decision" },
+  { "input": "I'm a teacher. Will C1 English change my career?", "expectKeywords": ["C1", "teacher", "career"], "description": "Mentor handles teacher advancement" },
+  { "input": "3 years from now I want to run a startup in Singapore.", "expectKeywords": ["Singapore", "startup", "year"], "description": "Mentor handles long-term startup goal" },
+  { "input": "Can you help me plan English learning for my child?", "expectKeywords": ["child", "year", "plan"], "description": "Mentor handles child learning" },
+  { "input": "I want to pass TOEIC 800 in 18 months. Realistic?", "expectKeywords": ["TOEIC", "800", "18"], "description": "Mentor handles timeline feasibility" },
+  { "input": "What English do nurses need for working in Australia?", "expectKeywords": ["IELTS", "nursing", "Australia"], "description": "Mentor handles profession-specific" },
+  { "input": "Should I learn British or American English?", "expectKeywords": ["american", "british"], "description": "Mentor handles English variant question" },
+  { "input": "Saya bekerja di bank dan mau naik jabatan. English helps?", "expectKeywords": ["bank", "English"], "description": "Mentor handles Bahasa + banking career" },
+  { "input": "How important is English for software engineers in Indonesia?", "expectKeywords": ["engineer", "software"], "description": "Mentor handles tech career" },
+  { "input": "5-year plan: from B1 to working in London.", "expectKeywords": ["5", "year", "London"], "description": "Mentor handles 5-year plan" },
+  { "input": "I'm stuck at IELTS 6.0 for 3 attempts. Frustrated.", "expectKeywords": ["6.0", "frustrat", "next"], "description": "Mentor handles plateau frustration" },
+  { "input": "Do I need C2 if I just want to read English papers?", "expectKeywords": ["C2", "read", "academic"], "description": "Mentor handles academic reading goal" },
+  { "input": "Will English help me get a remote job for a US company?", "expectKeywords": ["remote", "English"], "description": "Mentor handles remote work" },
+  { "input": "I'm 50. Is learning English still worth it?", "expectKeywords": ["50", "worth", "year"], "description": "Mentor handles age question" },
+  { "input": "Saya mimpi jadi profesor di luar negeri. Apa yang harus saya persiapkan dalam 10 tahun ke depan?", "expectKeywords": ["professor", "year", "English"], "description": "Mentor handles long-term Bahasa goal" }
 ]

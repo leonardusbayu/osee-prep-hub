@@ -1,27 +1,22 @@
 [
-  {
-    "input": "Grade this IELTS task 2 essay: 'Some people think that the internet has improved our lives. To what extent do you agree?' Essay: The internet has changed everything. I agree fully. We can talk to anyone. It is very good for students. They can learn anything. So yes, internet is great.",
-    "expectKeywords": ["band", "IELTS", "Task Achievement"],
-    "description": "Examiner grades IELTS essay with rubric"
-  },
-  {
-    "input": "Grade this TOEFL independent essay on whether students should work part-time.",
-    "expectKeywords": ["TOEFL", "score"],
-    "description": "Examiner handles TOEFL essay"
-  },
-  {
-    "input": "Grade this IELTS speaking part 2 transcript about my hometown.",
-    "expectKeywords": ["speaking", "fluency", "band"],
-    "description": "Examiner handles IELTS speaking"
-  },
-  {
-    "input": "Grade this TOEIC writing task 8 opinion essay.",
-    "expectKeywords": ["TOEIC", "writing"],
-    "description": "Examiner handles TOEIC writing"
-  },
-  {
-    "input": "Grade this IELTS task 1 process description essay.",
-    "expectKeywords": ["task 1", "IELTS"],
-    "description": "Examiner handles IELTS task 1"
-  }
+  { "input": "Grade this IELTS task 2 essay: 'Some people think that the internet has improved our lives. To what extent do you agree?' Essay: The internet has changed everything. I agree fully. We can talk to anyone. It is very good for students. They can learn anything. So yes, internet is great.", "expectKeywords": ["band", "IELTS", "Task Achievement"], "description": "Examiner grades IELTS essay with rubric" },
+  { "input": "Grade this TOEFL independent essay on whether students should work part-time.", "expectKeywords": ["TOEFL", "score"], "description": "Examiner handles TOEFL essay" },
+  { "input": "Grade this IELTS speaking part 2 transcript about my hometown.", "expectKeywords": ["speaking", "fluency", "band"], "description": "Examiner handles IELTS speaking" },
+  { "input": "Grade this TOEIC writing task 8 opinion essay.", "expectKeywords": ["TOEIC", "writing"], "description": "Examiner handles TOEIC writing" },
+  { "input": "Grade this IELTS task 1 process description essay.", "expectKeywords": ["task 1", "IELTS"], "description": "Examiner handles IELTS task 1" },
+  { "input": "Grade this IELTS task 2: 'Some people say that the best way to learn a language is to live in a country where it is spoken.' Essay: Language learning requires immersion. I totally agree. When you live in a country you hear it every day. You pick up words fast. So immersion is the best.", "expectKeywords": ["band", "5.5", "weakness"], "description": "Examiner scores low-band essay" },
+  { "input": "Grade IELTS task 2 about technology in education. 'Technology in education has made learning easier but also more challenging. Discuss both views.'", "expectKeywords": ["band", "discuss", "both views"], "description": "Examiner handles discuss-type question" },
+  { "input": "IELTS speaking part 1: Tell me about your hometown. Response: I'm from Jakarta. It's very big. Many people. Traffic is bad. I don't like. That's all.", "expectKeywords": ["band", "speaking", "fluency"], "description": "Examiner scores weak speaking response" },
+  { "input": "TOEFL independent essay: Do you agree or disagree with the following statement: 'It is better to work for a large company than a small company.' Essay of 350 words.", "expectKeywords": ["TOEFL", "score"], "description": "Examiner grades TOEFL essay with full rubric" },
+  { "input": "Grade this high-scoring IELTS writing: 'Rich countries should not be responsible for solving global problems.' [strong essay]", "expectKeywords": ["band", "7", "strength"], "description": "Examiner scores high-band essay" },
+  { "input": "Grade IELTS task 1 graph describing pie chart of energy sources.", "expectKeywords": ["task 1", "graph", "describes"], "description": "Examiner handles IELTS task 1 graph" },
+  { "input": "Grade IELTS task 2 opinion essay about remote work.", "expectKeywords": ["opinion", "band", "coherence"], "description": "Examiner handles opinion question" },
+  { "input": "Grade this IELTS speaking part 3 follow-up about the impact of tourism.", "expectKeywords": ["speaking", "abstract"], "description": "Examiner handles abstract speaking question" },
+  { "input": "Grade TOEIC writing task 7 letter of complaint.", "expectKeywords": ["TOEIC", "letter"], "description": "Examiner handles TOEIC letter writing" },
+  { "input": "Grade this IELTS task 2 with weak grammar.", "expectKeywords": ["grammatical", "band"], "description": "Examiner flags grammar errors" },
+  { "input": "Grade this TOEFL integrated essay about psychology and business.", "expectKeywords": ["TOEFL", "integrated"], "description": "Examiner handles TOEFL integrated" },
+  { "input": "Grade IELTS task 2 with well-balanced 280-word essay.", "expectKeywords": ["band", "6.5", "balanced"], "description": "Examiner scores mid-band essay" },
+  { "input": "Grade this IELTS speaking part 2 about a memorable journey.", "expectKeywords": ["speaking", "band"], "description": "Examiner handles journey cue card" },
+  { "input": "Grade IELTS task 2 with excellent cohesion devices.", "expectKeywords": ["cohesion", "band"], "description": "Examiner praises strong cohesion" },
+  { "input": "Grade IELTS task 2: 'The best education comes from teachers who are inspiring.' Discuss.", "expectKeywords": ["band", "inspiring"], "description": "Examiner handles inspiring-teachers essay" }
 ]
