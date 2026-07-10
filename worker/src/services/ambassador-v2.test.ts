@@ -63,9 +63,14 @@ describe('TIER_DEFINITIONS', () => {
   });
 
   it('only elite and top_ambassador have equity', () => {
-    expect(TIER_DEFINITIONS.partner.equity).toBe(0);
-    expect(TIER_DEFINITIONS.ambassador.equity).toBe(0);
-    expect(TIER_DEFINITIONS.top_ambassador.equity).toBeGreaterThan(0);
-    expect(TIER_DEFINITIONS.elite.equity).toBeGreaterThan(0);
+    expect(TIER_DEFINITIONS.partner.equity_pct).toBe(0);
+    expect(TIER_DEFINITIONS.ambassador.equity_pct).toBe(0);
+    expect(TIER_DEFINITIONS.top_ambassador.equity_pct).toBeGreaterThan(0);
+    expect(TIER_DEFINITIONS.elite.equity_pct).toBeGreaterThan(0);
+  });
+
+  it('equity_pct matches plan: 0.01-0.05% range', () => {
+    expect(TIER_DEFINITIONS.top_ambassador.equity_pct).toBeCloseTo(0.01, 5);
+    expect(TIER_DEFINITIONS.elite.equity_pct).toBeCloseTo(0.05, 5);
   });
 });

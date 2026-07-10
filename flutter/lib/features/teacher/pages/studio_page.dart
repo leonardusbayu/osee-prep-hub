@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
+import 'package:osee_prep_hub/core/api_client.dart';
 import 'package:osee_prep_hub/design/tokens.dart';
 import 'package:osee_prep_hub/design/components.dart';
 
@@ -24,6 +26,175 @@ class _StudioPageState extends ConsumerState<StudioPage> {
     _Collaborator('Citra L.', 'CL', MagazineColors.dropCapBlue),
   ];
 
+  /// Invite a collaborator by email. Calls POST /api/syllabi/:id/collaborators (T2).
+  Future<void> _showInviteDialog(BuildContext context, String syllabusId) async {
+    final controller = TextEditingController();
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MagazineColors.paperCream,
+        title: const Text('Invite collaborator', style: TextStyle(fontFamily: 'Georgia', fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: MagazineColors.mastheadGold),
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('INVITE', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (email == null || email.trim().isEmpty) return;
+
+    try {
+      final dio = ApiClient.create();
+      await dio.post('/syllabi/$syllabusId/collaborators', data: {'email': email.trim()});
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: MagazineColors.successGreen,
+        content: Text('Invited $email to collaborate'),
+      ));
+    } on DioException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: MagazineColors.errorRed,
+        content: Text('Invite failed: ${e.response?.data['error']?['message'] ?? e.message}'),
+      ));
+    }
+  }
+
+  /// Show a modal sheet that calls the real Curator agent (POST /api/agents/curator/invoke).
+  Future<void> _showCuratorSuggest(BuildContext context) async {
+    final controller = TextEditingController(text: 'Suggest 3-5 items for this syllabus based on student progress.');
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: MagazineColors.paperCream,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(8))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: MagazineSpacing.base,
+          right: MagazineSpacing.base,
+          top: MagazineSpacing.base,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + MagazineSpacing.base,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const MagazineSectionRule(label: 'CURATOR AGENT'),
+            const SizedBox(height: MagazineSpacing.sm),
+            Text('Curator will suggest syllabus items.', style: magazineTitle()),
+            const SizedBox(height: MagazineSpacing.sm),
+            TextField(
+              controller: controller,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'What do you want the curator to consider?',
+                filled: true,
+                fillColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: MagazineSpacing.base),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                const SizedBox(width: MagazineSpacing.sm),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: MagazineColors.mastheadGold),
+                  onPressed: () => Navigator.pop(ctx, controller.text),
+                  child: const Text('ASK CURATOR', style: TextStyle(color: Colors.white, fontFamily: 'Georgia', fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result == null || result.trim().isEmpty || !context.mounted) return;
+
+    // Show loading.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: MagazineColors.mastheadGold)),
+    );
+
+    try {
+      final dio = ApiClient.create();
+      final resp = await dio.post('/agents/curator/invoke', data: {
+        'input': result,
+        // Note: in production the server reads syllabus from the agent context.
+        // For this wire-up we pass the input directly.
+      });
+      if (!context.mounted) return;
+      Navigator.pop(context); // dismiss loading
+      final response = resp.data['response'] as String? ?? '(no response)';
+      // Show the curator's suggestions as a result sheet.
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: MagazineColors.paperCream,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(8))),
+        builder: (ctx) => Padding(
+          padding: const EdgeInsets.all(MagazineSpacing.base),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const MagazineSectionRule(label: 'CURATOR SUGGESTIONS'),
+                const SizedBox(height: MagazineSpacing.sm),
+                Text('Curator\'s response', style: magazineTitle()),
+                const SizedBox(height: MagazineSpacing.base),
+                Container(
+                  padding: const EdgeInsets.all(MagazineSpacing.base),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: MagazineColors.mastheadGold.withValues(alpha: 0.3)),
+                  ),
+                  child: SelectableText(response, style: magazineBody()),
+                ),
+                const SizedBox(height: MagazineSpacing.base),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: MagazineColors.mastheadGold),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('CLOSE', style: TextStyle(color: Colors.white, fontFamily: 'Georgia', fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } on DioException catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: MagazineColors.errorRed,
+        content: Text('Curator failed: ${e.message ?? e.toString()}'),
+      ));
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: MagazineColors.errorRed,
+        content: Text('Curator failed: $e'),
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -35,9 +206,7 @@ class _StudioPageState extends ConsumerState<StudioPage> {
           IconButton(
             icon: const Icon(Icons.lightbulb_outline, color: MagazineColors.mastheadGold),
             tooltip: 'Curator Suggest',
-            onPressed: () {
-              // TODO(T9): call Curator agent for syllabus suggestions.
-            },
+            onPressed: () => _showCuratorSuggest(context),
           ),
           IconButton(
             icon: const Icon(Icons.share, color: MagazineColors.mastheadGold),
@@ -49,7 +218,10 @@ class _StudioPageState extends ConsumerState<StudioPage> {
       backgroundColor: MagazineColors.paperCream,
       body: Column(
         children: [
-          _PresenceBar(present: _present),
+          _PresenceBar(
+            present: _present,
+            onInvite: () => _showInviteDialog(context, widget.syllabusId),
+          ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(MagazineSpacing.base),
@@ -82,8 +254,9 @@ class _Collaborator {
 }
 
 class _PresenceBar extends StatelessWidget {
-  const _PresenceBar({required this.present});
+  const _PresenceBar({required this.present, required this.onInvite});
   final List<_Collaborator> present;
+  final VoidCallback onInvite;
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +283,7 @@ class _PresenceBar extends StatelessWidget {
           OutlinedButton.icon(
             icon: const Icon(Icons.person_add, size: 14, color: MagazineColors.mastheadGold),
             label: const Text('Invite', style: TextStyle(color: MagazineColors.mastheadGold, fontFamily: 'Georgia')),
-            onPressed: () {},
+            onPressed: onInvite,
             style: OutlinedButton.styleFrom(side: const BorderSide(color: MagazineColors.mastheadGold)),
           ),
         ],
