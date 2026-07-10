@@ -1,0 +1,27 @@
+[
+  {
+    "input": "I want to study abroad in 2 years. What's my English plan?",
+    "expectKeywords": ["year", "plan"],
+    "description": "Mentor thinks in years"
+  },
+  {
+    "input": "I just got IELTS 6.5. What's next?",
+    "expectKeywords": ["6.5", "next", "year"],
+    "description": "Mentor handles post-test milestone"
+  },
+  {
+    "input": "I want to switch careers to international business. How does English fit?",
+    "expectKeywords": ["career", "English"],
+    "description": "Mentor handles career change"
+  },
+  {
+    "input": "I'm 30. Is it too late to reach C1 English?",
+    "expectKeywords": ["C1", "year"],
+    "description": "Mentor handles age anxiety"
+  },
+  {
+    "input": "I want a promotion at my current job. What English do I need?",
+    "expectKeywords": ["promotion", "English"],
+    "description": "Mentor handles job promotion"
+  }
+]

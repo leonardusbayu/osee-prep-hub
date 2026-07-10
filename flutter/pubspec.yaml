@@ -28,6 +28,25 @@ dependencies:
   dio_web_adapter: ^2.2.0
   web: ^1.1.1
 
+  # Task 2 (Wave 1): Real-time collaboration
+  # Note: y_supabase / y_crdt are JS-only; Flutter uses supabase_flutter's realtime.
+  supabase_flutter: ^2.0.0
+
+  # Task 4 (Wave 1): i18n
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+  shared_preferences: ^2.2.0
+
+  # Task 5 (Wave 1): Native mobile + offline
+  isar: ^3.1.0
+  isar_flutter_libs: ^3.1.0
+  connectivity_plus: ^5.0.0
+  path_provider: ^2.1.0
+
+  # Task 7 (Wave 1): Observability (Sentry Flutter)
+  sentry_flutter: ^8.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -39,6 +58,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
 
   assets:
     - assets/images/

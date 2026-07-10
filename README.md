@@ -1,5 +1,8 @@
 # OSEE Prep Hub
 
+[![CI](https://github.com/osee-edubot/osee-prep-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/osee-edubot/osee-prep-hub/actions/workflows/ci.yml)
+[![Deploy](https://github.com/osee-edubot/osee-prep-hub/actions/workflows/deploy-prod.yml/badge.svg)](https://github.com/osee-edubot/osee-prep-hub/actions/workflows/deploy-prod.yml)
+
 AI Teaching Assistant platform for English teachers in Indonesia — connects all OSEE assets (4 practice platforms + EduBot) into one ecosystem.
 
 ## What This Is

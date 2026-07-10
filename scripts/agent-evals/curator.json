@@ -1,0 +1,27 @@
+[
+  {
+    "input": "I'm a B1 student targeting IELTS 6.5. What should I study this week?",
+    "expectKeywords": ["IELTS", "B1", "6.5"],
+    "description": "Curator acknowledges student level + target"
+  },
+  {
+    "input": "Suggest 3 syllabus items for a TOEFL IBT student struggling with reading.",
+    "expectKeywords": ["TOEFL", "reading"],
+    "description": "Curator handles TOEFL + reading"
+  },
+  {
+    "input": "What should I include in a 4-week syllabus for TOEIC listening?",
+    "expectKeywords": ["TOEIC", "listening"],
+    "description": "Curator handles TOEIC listening"
+  },
+  {
+    "input": "My student needs to improve IELTS writing task 2. What do you recommend?",
+    "expectKeywords": ["IELTS", "writing"],
+    "description": "Curator handles IELTS writing"
+  },
+  {
+    "input": "Build a syllabus for complete beginner aiming for A2 in 3 months.",
+    "expectKeywords": ["A2", "beginner"],
+    "description": "Curator handles beginner path"
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "input": "I don't understand present perfect tense.",
+    "expectKeywords": ["present perfect", "have"],
+    "description": "Tutor guides Socratically"
+  },
+  {
+    "input": "Saya bingung tentang IELTS speaking part 2.",
+    "expectKeywords": ["speaking", "part 2"],
+    "description": "Tutor handles Bahasa input"
+  },
+  {
+    "input": "How do I answer TOEFL reading inference questions?",
+    "expectKeywords": ["inference", "reading"],
+    "description": "Tutor handles TOEFL reading"
+  },
+  {
+    "input": "I keep getting 5 on IELTS writing. What am I doing wrong?",
+    "expectKeywords": ["writing", "5"],
+    "description": "Tutor handles frustrated student"
+  },
+  {
+    "input": "Bagus! I finally got 7 on my last mock test.",
+    "expectKeywords": ["great", "congratulations", "bagus"],
+    "description": "Tutor celebrates wins"
+  }
+]

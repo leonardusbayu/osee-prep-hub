@@ -1,0 +1,27 @@
+[
+  {
+    "input": "Grade this IELTS task 2 essay: 'Some people think that the internet has improved our lives. To what extent do you agree?' Essay: The internet has changed everything. I agree fully. We can talk to anyone. It is very good for students. They can learn anything. So yes, internet is great.",
+    "expectKeywords": ["band", "IELTS", "Task Achievement"],
+    "description": "Examiner grades IELTS essay with rubric"
+  },
+  {
+    "input": "Grade this TOEFL independent essay on whether students should work part-time.",
+    "expectKeywords": ["TOEFL", "score"],
+    "description": "Examiner handles TOEFL essay"
+  },
+  {
+    "input": "Grade this IELTS speaking part 2 transcript about my hometown.",
+    "expectKeywords": ["speaking", "fluency", "band"],
+    "description": "Examiner handles IELTS speaking"
+  },
+  {
+    "input": "Grade this TOEIC writing task 8 opinion essay.",
+    "expectKeywords": ["TOEIC", "writing"],
+    "description": "Examiner handles TOEIC writing"
+  },
+  {
+    "input": "Grade this IELTS task 1 process description essay.",
+    "expectKeywords": ["task 1", "IELTS"],
+    "description": "Examiner handles IELTS task 1"
+  }
+]

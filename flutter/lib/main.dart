@@ -14,6 +14,7 @@ class OseePrepHub extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    return OseeApp(router: router);
+    // TODO(T4): wire locale from SharedPreferences (defaults to 'en' until T4 finalize).
+    return OseeApp(router: router, locale: const Locale('en'));
   }
 }

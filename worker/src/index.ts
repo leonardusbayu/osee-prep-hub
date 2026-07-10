@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
+import * as Sentry from '@sentry/cloudflare';
 import { cors } from './middleware/cors';
 import { authRoutes } from './routes/auth';
 import { webhookRoutes } from './routes/webhook';
@@ -19,6 +20,9 @@ import { classRoutes } from './routes/classes';
 import { externalRoutes } from './routes/external';
 import { ambassadorRoutes } from './routes/ambassador';
 import { adminRoutes } from './routes/admin';
+import { agentRoutes } from './routes/agents';
+import { realtimeRoutes } from './routes/realtime';
+import { passportRoutes } from './routes/passport';
 import type { Env, ContextVars } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -51,6 +55,23 @@ app.route('/api/classes', classRoutes);
 app.route('/api/external', externalRoutes);
 app.route('/api/ambassador', ambassadorRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/agents', agentRoutes);
+app.route('/api/syllabi', realtimeRoutes);
+app.route('/api/passport', passportRoutes);
+
+// Public Ed25519 key for Passport employer-side verification.
+app.get('/.well-known/passport-public-key.pem', async (c) => {
+  const { getPublicKeyPem } = await import('./services/passport');
+  try {
+    const pem = await getPublicKeyPem(c.env);
+    return new Response(pem, {
+      status: 200,
+      headers: { 'Content-Type': 'application/x-pem-file', 'Cache-Control': 'public, max-age=3600' },
+    });
+  } catch {
+    return c.json({ error: { code: 'KEY_UNAVAILABLE', message: 'Passport signing key not configured' } }, 500);
+  }
+});
 
 // Root
 app.get('/', (c) => {
@@ -74,8 +95,11 @@ app.notFound((c) => {
   );
 });
 
-// Error handler
+// Error handler — Task 7: report to Sentry before responding.
 app.onError((err, c) => {
+  if (c.env.SENTRY_DSN) {
+    try { Sentry.captureException(err); } catch { /* best-effort */ }
+  }
   console.error('Unhandled error:', err);
   return c.json(
     {

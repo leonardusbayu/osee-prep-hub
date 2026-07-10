@@ -1043,3 +1043,111 @@ RETURNS TABLE (
   ORDER BY e.embedding <=> query_embedding
   LIMIT match_count;
 $$ LANGUAGE SQL;
+
+-- ============================================================
+-- Task 2 (Wave 1): Syllabus collaborators
+-- ============================================================
+CREATE TABLE IF NOT EXISTS syllabus_collaborators (
+  syllabus_id UUID NOT NULL REFERENCES syllabi(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'editor' CHECK (role IN ('owner', 'editor', 'viewer')),
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (syllabus_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_syllabus_collaborators_user ON syllabus_collaborators(user_id);
+ALTER TABLE syllabus_collaborators ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS collaborators_select_self ON syllabus_collaborators;
+CREATE POLICY collaborators_select_self ON syllabus_collaborators
+  FOR SELECT USING (true);
+
+-- ============================================================
+-- Task 3 (Wave 1): OSEE Passport ledger
+-- ============================================================
+CREATE TABLE IF NOT EXISTS passport_credentials (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  credential_type TEXT NOT NULL CHECK (credential_type IN ('score_report', 'course_completion', 'badge', 'recommendation')),
+  issuer_id UUID NOT NULL REFERENCES unified_profiles(id),
+  subject_data JSONB NOT NULL,
+  signature TEXT NOT NULL,
+  public_key_id TEXT NOT NULL,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_passport_credentials_user ON passport_credentials(user_id);
+
+CREATE TABLE IF NOT EXISTS passport_evidence (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  credential_id UUID NOT NULL REFERENCES passport_credentials(id) ON DELETE CASCADE,
+  evidence_type TEXT NOT NULL CHECK (evidence_type IN ('pdf', 'image', 'video', 'transcript')),
+  storage_url TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_passport_evidence_credential ON passport_evidence(credential_id);
+
+CREATE TABLE IF NOT EXISTS passport_verifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  credential_id UUID NOT NULL REFERENCES passport_credentials(id) ON DELETE CASCADE,
+  verifier_id UUID,
+  verifier_ip INET,
+  verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  valid BOOLEAN NOT NULL,
+  reason TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_passport_verifications_credential ON passport_verifications(credential_id);
+
+ALTER TABLE passport_credentials ENABLE ROW LEVEL SECURITY;
+-- Public read: anyone can verify a credential by ID (no auth required).
+DROP POLICY IF EXISTS passport_credentials_public_read ON passport_credentials;
+CREATE POLICY passport_credentials_public_read ON passport_credentials
+  FOR SELECT USING (true);
+-- Only authenticated issuers (teachers/admins) can insert via worker (service key bypasses RLS).
+DROP POLICY IF EXISTS passport_credentials_owner_insert ON passport_credentials;
+CREATE POLICY passport_credentials_owner_insert ON passport_credentials
+  FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS passport_credentials_issuer_update ON passport_credentials;
+CREATE POLICY passport_credentials_issuer_update ON passport_credentials
+  FOR UPDATE USING (issuer_id = auth.uid() OR auth.uid() IN (SELECT id FROM unified_profiles WHERE role = 'admin'));
+
+ALTER TABLE passport_evidence ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS passport_evidence_public_read ON passport_evidence;
+CREATE POLICY passport_evidence_public_read ON passport_evidence
+  FOR SELECT USING (true);
+DROP POLICY IF EXISTS passport_evidence_owner_insert ON passport_evidence;
+CREATE POLICY passport_evidence_owner_insert ON passport_evidence
+  FOR INSERT WITH CHECK (true);
+
+ALTER TABLE passport_verifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS passport_verifications_public_insert ON passport_verifications;
+CREATE POLICY passport_verifications_public_insert ON passport_verifications
+  FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS passport_verifications_public_read ON passport_verifications;
+CREATE POLICY passport_verifications_public_read ON passport_verifications
+  FOR SELECT USING (true);
+
+-- ============================================================
+-- Task 7 (Wave 1): Agent traces
+-- ============================================================
+CREATE TABLE IF NOT EXISTS agent_traces (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES unified_profiles(id) ON DELETE SET NULL,
+  agent_name TEXT NOT NULL,
+  session_id UUID NOT NULL DEFAULT uuid_generate_v4(),
+  input_summary TEXT,
+  output_summary TEXT,
+  tool_calls JSONB NOT NULL DEFAULT '[]'::JSONB,
+  tokens_used INTEGER NOT NULL DEFAULT 0,
+  duration_ms INTEGER NOT NULL DEFAULT 0,
+  success BOOLEAN NOT NULL,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_agent_traces_user ON agent_traces(user_id);
+CREATE INDEX IF NOT EXISTS idx_agent_traces_agent ON agent_traces(agent_name);
+ALTER TABLE agent_traces ENABLE ROW LEVEL SECURITY;
+-- Service key (worker) bypasses RLS for inserts. Users can read their own traces.
+DROP POLICY IF EXISTS agent_traces_user_read ON agent_traces;
+CREATE POLICY agent_traces_user_read ON agent_traces
+  FOR SELECT USING (user_id = auth.uid());

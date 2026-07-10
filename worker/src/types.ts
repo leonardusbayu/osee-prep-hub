@@ -53,6 +53,13 @@ export interface Env {
 
   // Environment
   ENVIRONMENT: 'development' | 'staging' | 'production';
+
+  // Task 3 (Wave 1): OSEE Passport Ed25519 signing
+  PASSPORT_SIGNING_KEY: string; // Ed25519 private key (base64 or PEM)
+  PASSPORT_KEY_ID: string; // public key identifier (e.g. SHA-256 fingerprint)
+
+  // Task 7 (Wave 1): Sentry
+  SENTRY_DSN: string;
 }
 
 /** User roles supported by the platform. */

@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main, magazine-ui]
+  pull_request:
+    branches: [main]
+
+jobs:
+  worker-test:
+    name: Worker test + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm --workspace worker run typecheck
+      - run: npm --workspace worker run test
+
+  admin-typecheck:
+    name: Admin typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm --workspace frontend-admin run typecheck
+
+  admin-build:
+    name: Admin build
+    runs-on: ubuntu-latest
+    needs: admin-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build:admin
+
+  flutter-test:
+    name: Flutter test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: flutter
+      - run: flutter analyze
+        working-directory: flutter
+      - run: flutter test
+        working-directory: flutter
+        continue-on-error: true # no tests yet — allow to pass
+
+  flutter-build-web:
+    name: Flutter build web
+    runs-on: ubuntu-latest
+    needs: flutter-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: flutter
+      - run: flutter build web --release
+        working-directory: flutter
+
+  schema-verify:
+    name: Schema verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run verify:schema
