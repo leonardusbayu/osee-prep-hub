@@ -98,7 +98,7 @@ coachRoutes.post('/sessions/:id/messages', async (c) => {
   const id = c.req.param('id');
   if (!id) return c.json({ error: { code: 'BAD_REQUEST', message: 'id required' } }, 400);
 
-  let body: { content?: string };
+  let body: { content?: string; clientId?: string };
   try { body = await c.req.json(); } catch {
     return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
   }
@@ -138,6 +138,7 @@ coachRoutes.post('/sessions/:id/messages', async (c) => {
     session_id: id,
     role: 'user',
     content: body.content,
+    metadata: { client_id: body.clientId },
   });
 
   // Invoke tutor agent.
@@ -171,6 +172,7 @@ coachRoutes.post('/sessions/:id/messages', async (c) => {
       response: result.response,
       toolCalls: result.toolCalls,
       tokensUsed: result.tokensUsed,
+      clientId: body.clientId, // echo for offline-sync dedup
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Coach failed';
@@ -183,4 +185,81 @@ coachRoutes.post('/sessions/:id/messages', async (c) => {
     });
     return c.json({ error: { code: 'COACH_FAILED', message } }, 500);
   }
+});
+
+/** POST /api/coach/sessions/:id/sync — T24 offline-sync batch upload.
+ *  Accepts an array of queued messages (when device was offline).
+ *  Each message has a clientId for dedup. Returns assistant responses
+ *  in the same order. */
+coachRoutes.post('/sessions/:id/sync', async (c) => {
+  const user = getAuthedUser(c);
+  const id = c.req.param('id');
+  if (!id) return c.json({ error: { code: 'BAD_REQUEST', message: 'id required' } }, 400);
+
+  let body: { messages?: Array<{ content: string; clientId: string }> };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.messages || body.messages.length === 0) {
+    return c.json({ results: [] });
+  }
+
+  const supabase = getSupabase(c.env);
+  // Verify session.
+  const { data: session } = await supabase
+    .from('coach_sessions')
+    .select('id')
+    .eq('id', id)
+    .eq('student_id', user.id)
+    .single();
+  if (!session) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }, 404);
+  }
+
+  const results: Array<{ clientId: string; response?: string; error?: string }> = [];
+  for (const msg of body.messages) {
+    // Dedup: skip if already saved (by client_id metadata).
+    const { data: existing } = await supabase
+      .from('coach_messages')
+      .select('id')
+      .eq('session_id', id)
+      .eq('metadata->>client_id', msg.clientId)
+      .maybeSingle();
+    if (existing) {
+      results.push({ clientId: msg.clientId, response: '(duplicate — already processed)' });
+      continue;
+    }
+
+    await supabase.from('coach_messages').insert({
+      session_id: id,
+      role: 'user',
+      content: msg.content,
+      metadata: { client_id: msg.clientId },
+    });
+
+    // Run agent.
+    try {
+      const def = getAgent('tutor');
+      const ctx: AgentContext = { userId: user.id, sessionId: id, history: [] };
+      const bus = new ToolBus();
+      registerBuiltinTools(bus, ctx);
+      bus.register('search_catalog', searchCatalogTool);
+      bus.register('create_practice_question', createPracticeQuestionTool);
+      bus.register('fetch_grading_history', fetchGradingHistoryTool);
+      const runner = new AgentRunner(c.env, def, bus);
+      const traced = traceMiddleware(c.env, runner, ctx);
+      const result = await traced.run(msg.content);
+      await supabase.from('coach_messages').insert({
+        session_id: id,
+        role: 'assistant',
+        content: result.response,
+        tool_calls: result.toolCalls,
+      });
+      results.push({ clientId: msg.clientId, response: result.response });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed';
+      results.push({ clientId: msg.clientId, error: message });
+    }
+  }
+  return c.json({ results });
 });

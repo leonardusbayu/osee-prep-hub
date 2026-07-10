@@ -1342,3 +1342,98 @@ ALTER TABLE live_class_attendees ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS live_class_attendees_self_read ON live_class_attendees;
 CREATE POLICY live_class_attendees_self_read ON live_class_attendees
   FOR SELECT USING (user_id = auth.uid());
+
+-- ============================================================
+-- Task 23 (Wave 3): Push notifications
+-- ============================================================
+CREATE TABLE IF NOT EXISTS push_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  token TEXT NOT NULL,
+  platform TEXT NOT NULL CHECK (platform IN ('ios', 'android', 'web')),
+  device_info JSONB,
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, token)
+);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  topic TEXT NOT NULL, -- 'class_starting', 'coach_reply', 'passport_issued', 'marketplace_sale'
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, topic)
+);
+
+CREATE TABLE IF NOT EXISTS push_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  topic TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('sent', 'failed', 'queued')),
+  error_message TEXT,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_push_log_user ON push_log(user_id, sent_at DESC);
+
+ALTER TABLE push_tokens ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS push_tokens_user_read ON push_tokens;
+CREATE POLICY push_tokens_user_read ON push_tokens
+  FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS push_tokens_user_insert ON push_tokens;
+CREATE POLICY push_tokens_user_insert ON push_tokens
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS push_subscriptions_user_read ON push_subscriptions;
+CREATE POLICY push_subscriptions_user_read ON push_subscriptions
+  FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS push_subscriptions_user_write ON push_subscriptions;
+CREATE POLICY push_subscriptions_user_write ON push_subscriptions
+  FOR ALL USING (user_id = auth.uid());
+
+-- ============================================================
+-- Task 25 (Wave 3): Viral growth — referral tracking
+-- ============================================================
+CREATE TABLE IF NOT EXISTS referrals (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  referrer_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  referee_id UUID REFERENCES unified_profiles(id) ON DELETE SET NULL,
+  referral_code TEXT NOT NULL UNIQUE,
+  source TEXT, -- 'coach', 'passport_share', 'marketplace', 'direct_link'
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'signed_up', 'converted', 'expired')),
+  reward_idr INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  converted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_code ON referrals(referral_code);
+
+CREATE TABLE IF NOT EXISTS viral_share_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  surface TEXT NOT NULL, -- 'passport_share', 'coach_recommend', 'syllabus_share'
+  entity_id TEXT NOT NULL,
+  channel TEXT, -- 'whatsapp', 'twitter', 'email', 'copy_link'
+  clicks INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_viral_share_user ON viral_share_events(user_id);
+
+ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS referrals_self_read ON referrals;
+CREATE POLICY referrals_self_read ON referrals
+  FOR SELECT USING (referrer_id = auth.uid() OR referee_id = auth.uid());
+DROP POLICY IF EXISTS referrals_self_insert ON referrals;
+CREATE POLICY referrals_self_insert ON referrals
+  FOR INSERT WITH CHECK (referrer_id = auth.uid());
+
+ALTER TABLE viral_share_events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS viral_share_self_read ON viral_share_events;
+CREATE POLICY viral_share_self_read ON viral_share_events
+  FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS viral_share_self_insert ON viral_share_events;
+CREATE POLICY viral_share_self_insert ON viral_share_events
+  FOR INSERT WITH CHECK (user_id = auth.uid());

@@ -128,3 +128,48 @@ export const fetchGradingHistoryTool: ToolHandler = async (args, _ctx, env) => {
   }
   return data ?? [];
 };
+
+/** fetch_passport(userId) → user's OSEE Passport credentials — T18 Mentor tool. */
+export const fetchPassportTool: ToolHandler = async (args, _ctx, env) => {
+  const userId = String(args.userId ?? '').trim();
+  if (!userId) return [];
+  const supabase = getSupabase(env);
+  const { data, error } = await supabase
+    .from('passport_credentials')
+    .select('id, credential_type, subject_data, issued_at, revoked_at')
+    .eq('user_id', userId)
+    .is('revoked_at', null)
+    .order('issued_at', { ascending: false })
+    .limit(20);
+  if (error) return [];
+  return data ?? [];
+};
+
+/** fetch_job_market(role, level) → matching job listings — T18 Mentor tool (stub). */
+export const fetchJobMarketTool: ToolHandler = async (args) => {
+  const role = String(args.role ?? 'engineer');
+  const level = String(args.level ?? 'B2');
+  // Stub: returns curated suggestions based on common Indonesia → international paths.
+  // Real impl: query job_boards API or partner data.
+  const suggestions: Record<string, { path: string; requirements: string; salary_idr: string }[]> = {
+    engineer: [
+      { path: 'Singapore Tech', requirements: 'IELTS 6.5+ + 3yr experience + tech interview', salary_idr: '80-150M IDR/month' },
+      { path: 'Germany Ausbildung', requirements: 'IELTS 5.5 + B1 German + vocational training', salary_idr: '30-50M IDR/month' },
+      { path: 'Australia Skilled Visa', requirements: 'IELTS 7.0+ + skills assessment', salary_idr: '100-180M IDR/month' },
+    ],
+    teacher: [
+      { path: 'International Schools', requirements: 'IELTS 7.5 + TEFL + 2yr experience', salary_idr: '15-30M IDR/month' },
+      { path: 'Online Tutoring (Cambly, iTalki)', requirements: 'C1+ English + TEFL', salary_idr: '5-15M IDR/month' },
+    ],
+    nurse: [
+      { path: 'Australia RN', requirements: 'IELTS 7.0 (each band 7.0) + AHPRA registration', salary_idr: '120-200M IDR/month' },
+      { path: 'UK NHS', requirements: 'IELTS 7.0 (each band 7.0) + OSCE exam', salary_idr: '100-180M IDR/month' },
+    ],
+    general: [
+      { path: 'BPO/Call Centers (English-speaking)', requirements: 'B2 + neutral accent', salary_idr: '5-12M IDR/month' },
+      { path: 'Content Writer (Remote)', requirements: 'C1 English + portfolio', salary_idr: '8-20M IDR/month' },
+    ],
+  };
+  const jobs = suggestions[role] ?? suggestions.general;
+  return { role, level, jobs, note: 'T18 stub — real impl queries job_boards API.' };
+};
