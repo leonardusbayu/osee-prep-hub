@@ -32,6 +32,8 @@ import { handoffRoutes } from './routes/handoffs';
 import { pushRoutes } from './routes/push';
 import { viralRoutes } from './routes/viral';
 import { disputeRoutes } from './routes/disputes';
+import { ambassadorV2Routes } from './routes/ambassador-v2';
+import { viralMetricsRoutes } from './routes/viral-metrics';
 import type { Env, ContextVars } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -76,6 +78,8 @@ app.route('/api/handoffs', handoffRoutes);
 app.route('/api/push', pushRoutes);
 app.route('/api/viral', viralRoutes);
 app.route('/api/disputes', disputeRoutes);
+app.route('/api/ambassador-v2', ambassadorV2Routes);
+app.route('/api/viral-metrics', viralMetricsRoutes);
 
 // Public Ed25519 key for Passport employer-side verification.
 app.get('/.well-known/passport-public-key.pem', async (c) => {

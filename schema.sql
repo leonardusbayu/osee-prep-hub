@@ -1485,3 +1485,27 @@ ALTER TABLE marketplace_seller_reputation ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS marketplace_seller_reputation_public_read ON marketplace_seller_reputation;
 CREATE POLICY marketplace_seller_reputation_public_read ON marketplace_seller_reputation
   FOR SELECT USING (true);
+
+-- ============================================================
+-- Task 37 (Wave 5): Ambassador program v2 — equity + 2x commission
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ambassador_tiers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL UNIQUE REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  tier TEXT NOT NULL DEFAULT 'partner' CHECK (tier IN ('partner', 'ambassador', 'top_ambassador', 'elite')),
+  commission_multiplier DECIMAL(3,2) NOT NULL DEFAULT 1.00,
+  equity_grant_idr BIGINT NOT NULL DEFAULT 0, -- notional equity value
+  equity_vest_years INTEGER NOT NULL DEFAULT 0,
+  badge TEXT,
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  promoted_at TIMESTAMPTZ,
+  notes TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ambassador_tiers_tier ON ambassador_tiers(tier);
+
+ALTER TABLE ambassador_tiers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS ambassador_tiers_self_read ON ambassador_tiers;
+CREATE POLICY ambassador_tiers_self_read ON ambassador_tiers
+  FOR SELECT USING (user_id = auth.uid() OR auth.uid() IN (
+    SELECT id FROM unified_profiles WHERE role = 'admin'
+  ));
