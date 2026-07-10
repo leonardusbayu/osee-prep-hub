@@ -1269,3 +1269,76 @@ CREATE POLICY marketplace_reviews_public_read ON marketplace_reviews
 DROP POLICY IF EXISTS marketplace_reviews_buyer_insert ON marketplace_reviews;
 CREATE POLICY marketplace_reviews_buyer_insert ON marketplace_reviews
   FOR INSERT WITH CHECK (reviewer_id = auth.uid());
+
+-- ============================================================
+-- Task 9 (Wave 2): Studio snapshots — Yjs doc persistence
+-- ============================================================
+CREATE TABLE IF NOT EXISTS syllabus_snapshots (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  syllabus_id UUID NOT NULL REFERENCES syllabi(id) ON DELETE CASCADE,
+  state_json JSONB NOT NULL,
+  created_by UUID NOT NULL REFERENCES unified_profiles(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_syllabus_snapshots_syllabus ON syllabus_snapshots(syllabus_id, created_at DESC);
+
+ALTER TABLE syllabus_snapshots ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS syllabus_snapshots_collab_read ON syllabus_snapshots;
+CREATE POLICY syllabus_snapshots_collab_read ON syllabus_snapshots
+  FOR SELECT USING (
+    syllabus_id IN (
+      SELECT syllabus_id FROM syllabus_collaborators WHERE user_id = auth.uid()
+    )
+    OR syllabus_id IN (
+      SELECT id FROM syllabi WHERE teacher_id = auth.uid()
+    )
+  );
+DROP POLICY IF EXISTS syllabus_snapshots_collab_write ON syllabus_snapshots;
+CREATE POLICY syllabus_snapshots_collab_write ON syllabus_snapshots
+  FOR INSERT WITH CHECK (
+    syllabus_id IN (
+      SELECT syllabus_id FROM syllabus_collaborators
+      WHERE user_id = auth.uid() AND role IN ('owner', 'editor')
+    )
+    OR syllabus_id IN (
+      SELECT id FROM syllabi WHERE teacher_id = auth.uid()
+    )
+  );
+
+-- ============================================================
+-- Task 12 (Wave 2): Live classes — LiveKit video sessions
+-- ============================================================
+CREATE TABLE IF NOT EXISTS live_classes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  syllabus_id UUID NOT NULL REFERENCES syllabi(id) ON DELETE CASCADE,
+  teacher_id UUID NOT NULL REFERENCES unified_profiles(id),
+  title TEXT NOT NULL,
+  scheduled_at TIMESTAMPTZ NOT NULL,
+  duration_minutes INTEGER NOT NULL CHECK (duration_minutes > 0),
+  livekit_room_name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'live', 'ended', 'cancelled')),
+  recording_url TEXT,
+  started_at TIMESTAMPTZ,
+  ended_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_live_classes_syllabus ON live_classes(syllabus_id);
+CREATE INDEX IF NOT EXISTS idx_live_classes_teacher ON live_classes(teacher_id, scheduled_at DESC);
+
+CREATE TABLE IF NOT EXISTS live_class_attendees (
+  class_id UUID NOT NULL REFERENCES live_classes(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  joined_at TIMESTAMPTZ,
+  left_at TIMESTAMPTZ,
+  PRIMARY KEY (class_id, user_id)
+);
+
+ALTER TABLE live_classes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS live_classes_public_read ON live_classes;
+CREATE POLICY live_classes_public_read ON live_classes
+  FOR SELECT USING (true); -- can be filtered by classroom enrollment later
+
+ALTER TABLE live_class_attendees ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS live_class_attendees_self_read ON live_class_attendees;
+CREATE POLICY live_class_attendees_self_read ON live_class_attendees
+  FOR SELECT USING (user_id = auth.uid());

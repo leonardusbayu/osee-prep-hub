@@ -60,6 +60,11 @@ export interface Env {
 
   // Task 7 (Wave 1): Sentry
   SENTRY_DSN: string;
+
+  // Task 12 (Wave 2): LiveKit
+  LIVEKIT_API_KEY: string;
+  LIVEKIT_API_SECRET: string;
+  LIVEKIT_URL: string;
 }
 
 /** User roles supported by the platform. */

@@ -7,6 +7,7 @@ import '../features/auth/pages/login_page.dart';
 import '../features/auth/pages/register_page.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/landing/pages/landing_page.dart';
+import '../features/admin/pages/insight_page.dart';
 import '../features/public/verify_credential_page.dart';
 import '../features/student/pages/coach_page.dart';
 import '../features/student/pages/passport_page.dart';
@@ -23,6 +24,8 @@ import '../features/syllabus/pages/syllabus_builder_page.dart';
 import '../features/syllabus/pages/syllabus_assign_page.dart';
 import '../features/teacher/pages/mind_map_recipe_page.dart';
 import '../features/teacher/pages/material_bank_page.dart';
+import '../features/teacher/pages/studio_page.dart';
+import '../features/student/pages/live_class_page.dart';
 import '../features/teacher/pages/student_progress_page.dart';
 import '../features/partner/pages/partner_dashboard_page.dart';
 import '../features/ambassador/pages/ambassador_dashboard_page.dart';
@@ -108,6 +111,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           appBar: AppBar(title: const Text('Admin')),
           body: const Center(child: Text('Admin — use frontend-admin')),
         ),
+      ),
+      GoRoute(path: '/insight', builder: (c, s) => const InsightPage()),
+      GoRoute(
+        path: '/teacher/studio/:syllabusId',
+        builder: (c, s) => StudioPage(syllabusId: s.pathParameters['syllabusId']!),
+      ),
+      GoRoute(
+        path: '/student/live-class/:classId',
+        builder: (c, s) => LiveClassPage(classId: s.pathParameters['classId']!),
       ),
     ],
     errorBuilder: (c, s) => Scaffold(body: Center(child: Text('Not found: ${s.path}'))),
