@@ -16,6 +16,7 @@
  */
 
 import type { Env } from '../types';
+import { fetchWithRetry } from '../services/cost-guard';
 
 const OPENAI_CHAT_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -221,27 +222,30 @@ Always respond in Bahasa Indonesia if the user wrote in Bahasa. Always respond i
   private async callLlm(
     messages: ChatMessage[]
   ): Promise<{ envelope: { response: string; toolCalls: ToolCall[] }; tokens: number }> {
-    const completion = await fetch(OPENAI_CHAT_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: this.def.model,
-        messages,
-        temperature: this.def.temperature,
-        max_tokens: 1200,
-        response_format: { type: 'json_object' },
-      }),
-    });
+    const response = await fetchWithRetry(
+      OPENAI_CHAT_URL,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.def.model,
+          messages,
+          temperature: this.def.temperature,
+          max_tokens: 1200,
+          response_format: { type: 'json_object' },
+        }),
+      }
+    );
 
-    if (!completion.ok) {
-      const errText = await completion.text();
-      throw new Error(`OpenAI API error ${completion.status}: ${errText}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenAI API error ${response.status}: ${errText}`);
     }
 
-    const json = (await completion.json()) as {
+    const json = (await response.json()) as {
       choices: Array<{ message: { content: string } }>;
       usage: { total_tokens: number };
     };

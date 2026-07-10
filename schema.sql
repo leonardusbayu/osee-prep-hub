@@ -1437,3 +1437,51 @@ CREATE POLICY viral_share_self_read ON viral_share_events
 DROP POLICY IF EXISTS viral_share_self_insert ON viral_share_events;
 CREATE POLICY viral_share_self_insert ON viral_share_events
   FOR INSERT WITH CHECK (user_id = auth.uid());
+
+-- ============================================================
+-- Task 28 (Wave 4): Marketplace dispute + reputation
+-- ============================================================
+CREATE TABLE IF NOT EXISTS marketplace_disputes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  purchase_id UUID NOT NULL REFERENCES marketplace_purchases(id) ON DELETE CASCADE,
+  opened_by UUID NOT NULL REFERENCES unified_profiles(id),
+  reason TEXT NOT NULL CHECK (reason IN ('not_as_described', 'never_delivered', 'quality_issue', 'duplicate', 'other')),
+  description TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'under_review', 'resolved_refund', 'resolved_reject', 'closed')),
+  resolution_notes TEXT,
+  resolved_by UUID REFERENCES unified_profiles(id),
+  resolved_at TIMESTAMPTZ,
+  evidence_urls JSONB NOT NULL DEFAULT '[]'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_marketplace_disputes_purchase ON marketplace_disputes(purchase_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_disputes_status ON marketplace_disputes(status);
+
+ALTER TABLE marketplace_disputes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS marketplace_disputes_party_read ON marketplace_disputes;
+CREATE POLICY marketplace_disputes_party_read ON marketplace_disputes
+  FOR SELECT USING (
+    purchase_id IN (
+      SELECT id FROM marketplace_purchases WHERE buyer_id = auth.uid() OR seller_id = auth.uid()
+    )
+    OR resolved_by = auth.uid()
+  );
+DROP POLICY IF EXISTS marketplace_disputes_buyer_insert ON marketplace_disputes;
+CREATE POLICY marketplace_disputes_buyer_insert ON marketplace_disputes
+  FOR INSERT WITH CHECK (opened_by = auth.uid());
+
+-- Reputation: aggregate computed from reviews (cached).
+CREATE TABLE IF NOT EXISTS marketplace_seller_reputation (
+  seller_id UUID PRIMARY KEY REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  average_stars DECIMAL(3,2) NOT NULL DEFAULT 0,
+  review_count INTEGER NOT NULL DEFAULT 0,
+  completed_sales INTEGER NOT NULL DEFAULT 0,
+  dispute_count INTEGER NOT NULL DEFAULT 0,
+  badges JSONB NOT NULL DEFAULT '[]'::JSONB, -- ['top_rated', 'responsive', 'verified_teacher']
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE marketplace_seller_reputation ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS marketplace_seller_reputation_public_read ON marketplace_seller_reputation;
+CREATE POLICY marketplace_seller_reputation_public_read ON marketplace_seller_reputation
+  FOR SELECT USING (true);

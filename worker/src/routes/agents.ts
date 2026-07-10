@@ -15,7 +15,10 @@ import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { rateLimit } from '../middleware/rate-limit';
 import { getAgent, listAgents } from '../agents';
 import { AgentRunner, ToolBus, type AgentContext, type ChatMessage } from '../agents/runtime';
-import { registerBuiltinTools, searchCatalogTool, createPracticeQuestionTool, fetchGradingHistoryTool, fetchPassportTool, fetchJobMarketTool } from '../agents/tools';
+import {
+  registerBuiltinTools, searchCatalogTool, createPracticeQuestionTool, fetchGradingHistoryTool, fetchPassportTool, fetchJobMarketTool,
+} from '../agents/tools';
+import { checkDailyTokenBudget, checkGlobalDailyBudget } from '../services/cost-guard';
 
 export const agentRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -58,6 +61,28 @@ agentRoutes.post('/:agentName/invoke', async (c) => {
     sessionId,
     history: body.history ?? [],
   };
+
+  // T26: check daily token budget before invoking.
+  const isPro = ['teacher', 'admin', 'partner'].includes(user.role);
+  const userBudget = await checkDailyTokenBudget(c.env, user.id, isPro);
+  if (!userBudget.allowed) {
+    c.header('X-RateLimit-Reset', userBudget.resetAt.toISOString());
+    return c.json({
+      error: {
+        code: 'DAILY_BUDGET_EXCEEDED',
+        message: `Daily token limit reached (${userBudget.used}/${userBudget.limit}). Resets at ${userBudget.resetAt.toISOString()}.`,
+      },
+    }, 429);
+  }
+  const globalBudget = await checkGlobalDailyBudget(c.env);
+  if (!globalBudget.allowed) {
+    return c.json({
+      error: {
+        code: 'PLATFORM_QUOTA_EXCEEDED',
+        message: `Platform-wide daily token limit reached. Try again tomorrow.`,
+      },
+    }, 503);
+  }
 
   // Build tool bus with all built-in tools registered.
   // (We register all tools; the agent definition gates which ones it can call.)
