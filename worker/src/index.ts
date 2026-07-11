@@ -83,9 +83,17 @@ app.route('/api/viral-metrics', viralMetricsRoutes);
 
 // Public Ed25519 key for Passport employer-side verification.
 app.get('/.well-known/passport-public-key.pem', async (c) => {
-  const { getPublicKeyPem } = await import('./services/passport');
+  const { getPublicKeyPem, recordAudit } = await import('./services/passport');
   try {
     const pem = await getPublicKeyPem(c.env);
+    // T27 audit: record public key fetch (no credential id — system event).
+    await recordAudit(c.env, {
+      action: 'public_key_fetched',
+      actor_type: 'anonymous',
+      actor_ip: c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For') ?? null,
+      user_agent: c.req.header('User-Agent') ?? null,
+      details: { key_length: pem.length },
+    });
     return new Response(pem, {
       status: 200,
       headers: { 'Content-Type': 'application/x-pem-file', 'Cache-Control': 'public, max-age=3600' },

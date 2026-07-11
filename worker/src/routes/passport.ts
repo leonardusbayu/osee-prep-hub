@@ -16,10 +16,30 @@ import {
   verifyCredential,
   revokeCredential,
   recordVerification,
+  listAuditForCredential,
   type IssueInput,
 } from '../services/passport';
 
 export const passportRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
+
+passportRoutes.use('*', requireAuth());
+
+/** GET /api/passport/audit/:id — T27 admin: full audit log for a credential. */
+passportRoutes.get('/audit/:id', async (c) => {
+  const user = getAuthedUser(c);
+  if (user.role !== 'admin') {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Admin only' } }, 403);
+  }
+  const id = c.req.param('id');
+  if (!id) return c.json({ error: { code: 'BAD_REQUEST', message: 'id required' } }, 400);
+  try {
+    const events = await listAuditForCredential(c.env, id);
+    return c.json({ credential_id: id, events });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Audit failed';
+    return c.json({ error: { code: 'AUDIT_FAILED', message } }, 500);
+  }
+});
 
 /** POST /api/passport/issue — teacher/admin issues a credential. */
 passportRoutes.post('/issue', requireAuth(), requireRole('teacher', 'admin'), async (c) => {

@@ -1509,3 +1509,30 @@ CREATE POLICY ambassador_tiers_self_read ON ambassador_tiers
   FOR SELECT USING (user_id = auth.uid() OR auth.uid() IN (
     SELECT id FROM unified_profiles WHERE role = 'admin'
   ));
+
+-- ============================================================
+-- Task 27 (Wave 4 follow-up): Passport audit log — credential lifecycle
+-- ============================================================
+CREATE TABLE IF NOT EXISTS passport_audit_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  credential_id UUID REFERENCES passport_credentials(id) ON DELETE CASCADE,
+  actor_id UUID REFERENCES unified_profiles(id), -- nullable: system actions have no actor
+  action TEXT NOT NULL CHECK (action IN ('issued', 'verified', 'verify_failed', 'revoked', 'reissued', 'public_key_fetched')),
+  actor_type TEXT NOT NULL CHECK (actor_type IN ('issuer', 'verifier', 'admin', 'system', 'anonymous')),
+  actor_ip INET,
+  user_agent TEXT,
+  details JSONB NOT NULL DEFAULT '{}'::JSONB, -- action-specific metadata
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_passport_audit_credential ON passport_audit_log(credential_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_passport_audit_actor ON passport_audit_log(actor_id) WHERE actor_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_passport_audit_action ON passport_audit_log(action, created_at DESC);
+
+ALTER TABLE passport_audit_log ENABLE ROW LEVEL SECURITY;
+-- Only admins can read the audit log. Everyone can write (server uses service key).
+DROP POLICY IF EXISTS passport_audit_admin_read ON passport_audit_log;
+CREATE POLICY passport_audit_admin_read ON passport_audit_log
+  FOR SELECT USING (auth.uid() IN (SELECT id FROM unified_profiles WHERE role = 'admin'));
+DROP POLICY IF EXISTS passport_audit_service_write ON passport_audit_log;
+CREATE POLICY passport_audit_service_write ON passport_audit_log
+  FOR INSERT WITH CHECK (true);

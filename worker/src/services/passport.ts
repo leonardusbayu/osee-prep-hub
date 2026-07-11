@@ -14,13 +14,77 @@
 import * as ed from '@noble/ed25519';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { sha512 } from '@noble/hashes/sha2.js';
+import type { Env } from '../types';
+import { getSupabase } from './supabase';
 
 // @noble/ed25519 v2 decoupled SHA-512 — set the sync impl so sign/verify work.
 ed.etc.sha512Sync = sha512 as never;
 // Also set async (uses sync under the hood in v2).
 ed.etc.sha512Async = sha512 as never;
-import type { Env } from '../types';
-import { getSupabase } from './supabase';
+
+/** T27: Record a Passport audit event. */
+export async function recordAudit(
+  env: Env,
+  params: {
+    credential_id?: string | null;
+    actor_id?: string | null;
+    action: 'issued' | 'verified' | 'verify_failed' | 'revoked' | 'reissued' | 'public_key_fetched';
+    actor_type: 'issuer' | 'verifier' | 'admin' | 'system' | 'anonymous';
+    actor_ip?: string | null;
+    user_agent?: string | null;
+    details?: Record<string, unknown>;
+  }
+): Promise<void> {
+  try {
+    const supabase = getSupabase(env);
+    await supabase.from('passport_audit_log').insert({
+      credential_id: params.credential_id ?? null,
+      actor_id: params.actor_id ?? null,
+      action: params.action,
+      actor_type: params.actor_type,
+      actor_ip: params.actor_ip ?? null,
+      user_agent: params.user_agent ?? null,
+      details: params.details ?? {},
+    });
+  } catch (err) {
+    // Audit log failures must never block the main flow.
+    console.error('recordAudit failed:', err instanceof Error ? err.message : err);
+  }
+}
+
+/** T27: List audit events for a credential (admin only). */
+export async function listAuditForCredential(
+  env: Env,
+  credentialId: string,
+  limit = 100
+): Promise<Array<{
+  id: string;
+  credential_id: string | null;
+  actor_id: string | null;
+  action: string;
+  actor_type: string;
+  actor_ip: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+}>> {
+  const supabase = getSupabase(env);
+  const { data } = await supabase
+    .from('passport_audit_log')
+    .select('id, credential_id, actor_id, action, actor_type, actor_ip, details, created_at')
+    .eq('credential_id', credentialId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return (data ?? []) as Array<{
+    id: string;
+    credential_id: string | null;
+    actor_id: string | null;
+    action: string;
+    actor_type: string;
+    actor_ip: string | null;
+    details: Record<string, unknown>;
+    created_at: string;
+  }>;
+}
 
 export interface PassportCredential {
   id: string;
@@ -189,6 +253,19 @@ export async function issueCredential(
     }
   }
 
+  // T27 audit: record the issuance (issuer_id is patched in by the route).
+  await recordAudit(env, {
+    credential_id: credRow.id,
+    actor_id: null,
+    action: 'issued',
+    actor_type: 'issuer',
+    details: {
+      credential_type: input.credentialType,
+      subject_keys: Object.keys(input.subjectData ?? {}),
+      evidence_count: evidenceRows.length,
+    },
+  });
+
   return {
     credential: {
       id: credRow.id,
@@ -242,6 +319,12 @@ export async function verifyCredential(
 
   // Check revocation first.
   if (cred.revoked_at) {
+    await recordAudit(env, {
+      credential_id: credentialId,
+      action: 'verify_failed',
+      actor_type: 'verifier',
+      details: { reason: 'revoked', revoked_at: cred.revoked_at },
+    });
     return {
       credential: cred as PassportCredential,
       evidence,
@@ -263,6 +346,12 @@ export async function verifyCredential(
     const publicKey = await ed.getPublicKey(privateKey);
     const ok = await ed.verify(signature, message, publicKey);
     if (!ok) {
+      await recordAudit(env, {
+        credential_id: credentialId,
+        action: 'verify_failed',
+        actor_type: 'verifier',
+        details: { reason: 'signature_mismatch' },
+      });
       return {
         credential: cred as PassportCredential,
         evidence,
@@ -273,6 +362,12 @@ export async function verifyCredential(
   } catch (err) {
     // If signing key not configured (e.g., public verification by employer),
     // we can only check revocation — mark as 'unverified' rather than 'invalid'.
+    await recordAudit(env, {
+      credential_id: credentialId,
+      action: 'verify_failed',
+      actor_type: 'verifier',
+      details: { reason: 'verification_key_unavailable' },
+    });
     return {
       credential: cred as PassportCredential,
       evidence,
@@ -280,6 +375,16 @@ export async function verifyCredential(
       reason: 'verification_key_unavailable',
     };
   }
+
+  await recordAudit(env, {
+    credential_id: credentialId,
+    action: 'verified',
+    actor_type: 'verifier',
+    details: {
+      credential_type: cred.credential_type,
+      evidence_count: evidence.length,
+    },
+  });
 
   return {
     credential: cred as PassportCredential,
@@ -318,6 +423,15 @@ export async function revokeCredential(
     .update({ revoked_at: new Date().toISOString() })
     .eq('id', credentialId);
   if (error) throw new Error(`Revoke failed: ${error.message}`);
+
+  // T27 audit: record revocation with actor + reason.
+  await recordAudit(env, {
+    credential_id: credentialId,
+    actor_id: revokerId,
+    action: 'revoked',
+    actor_type: revoker?.role === 'admin' ? 'admin' : 'issuer',
+    details: { reason: _reason, original_issuer_id: cred.issuer_id },
+  });
 }
 
 /** Record a verification event (employer viewed the credential). */
