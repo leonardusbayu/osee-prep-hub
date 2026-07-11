@@ -1,4 +1,4 @@
-﻿
+
 -- ============================================================
 -- OSEE EDUCATION HUB â€” DATABASE SCHEMA
 -- Platform: Supabase PostgreSQL
