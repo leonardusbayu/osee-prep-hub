@@ -37,10 +37,38 @@ wrangler secret put TRIPAY_MERCHANT_CODE
 
 ## Step 2: Apply Supabase Schema
 
-1. Open Supabase dashboard → SQL Editor
-2. Paste contents of `schema.sql` (1013 lines: 23 blueprint tables + 4 order system tables + match_documents function + triggers)
+Three options, listed easiest-first:
+
+### Option A: Supabase SQL Editor (easiest)
+
+1. Open https://supabase.com/dashboard/project/zrnencaixfwpswfpmliv/sql/new
+2. Paste contents of `schema.sql` (1040+ lines: 29 blueprint tables + order/commission/Passport/marketplace/agent/push/viral/disputes/audit extensions + match_documents function + triggers)
 3. Click "Run"
 4. Verify: `SELECT count(*) FROM information_schema.tables WHERE table_schema='public';` should return 27+ tables
+
+### Option B: `apply-schema.ts` (Node, no psql required)
+
+```bash
+# Get the DB connection string from:
+#   https://supabase.com/dashboard/project/zrnencaixfwpswfpmliv/settings/database
+#   → Connection string → URI
+# Format: postgresql://postgres.zrnencaixfwpswfpmliv:[PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres
+
+export SUPABASE_DB_URL='postgresql://postgres:[PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres'
+npx tsx scripts/apply-schema.ts
+```
+
+The script installs `pg` automatically if not present, reads `schema.sql`, and applies it in a single transaction. Works on macOS, Linux, and Windows.
+
+### Option C: psql (if you have it installed locally)
+
+```bash
+# Linux/macOS
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f schema.sql
+
+# Windows PowerShell
+psql $env:SUPABASE_DB_URL -v ON_ERROR_STOP=1 -f schema.sql
+```
 
 ## Step 3: Ingest Knowledge Base
 
