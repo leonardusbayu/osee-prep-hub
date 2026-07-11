@@ -16,9 +16,12 @@ bucket_name = "osee-videos"
 binding = "R2_AUDIO"
 bucket_name = "osee-audio"
 
-# Cron triggers — webhook processing every minute, class reminders
-[triggers]
-crons = ["*/1 * * * *"]
+# Cron triggers: webhook processing + class reminders.
+# Originally configured as [triggers] crons = ["*/1 * * * *"], but the
+# Cloudflare API rejected deploys of the schedule endpoint (403 from
+# /schedules). The cron can be re-added via the Cloudflare dashboard
+# (Workers → osee-prep-hub-worker → Triggers → Cron Triggers) without
+# redeploying the worker. See docs/DEPLOYMENT.md for instructions.
 
 # Secrets (set via `wrangler secret put <NAME>`):
 # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY
@@ -30,3 +33,7 @@ crons = ["*/1 * * * *"]
 # TRIPAY_API_KEY, TRIPAY_PRIVATE_KEY, TRIPAY_MERCHANT_CODE
 # TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 # OSEE_BOOKING_API_URL, OSEE_BOOKING_API_SECRET
+# PASSPORT_SIGNING_KEY, PASSPORT_KEY_ID   — for OSEE Passport (Ed25519)
+# LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL — for live classes
+# SENTRY_DSN   — for error tracking
+# OSEE_VALUATION_IDR  — for ambassador equity implied value
