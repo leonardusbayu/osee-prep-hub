@@ -22,10 +22,11 @@ import {
 
 export const passportRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
-passportRoutes.use('*', requireAuth());
+// Per-route auth instead of blanket requireAuth() — some routes are public
+// (GET /:id for employer verification, GET /.well-known/... at worker level).
 
 /** GET /api/passport/audit/:id — T27 admin: full audit log for a credential. */
-passportRoutes.get('/audit/:id', async (c) => {
+passportRoutes.get('/audit/:id', requireAuth(), async (c) => {
   const user = getAuthedUser(c);
   if (user.role !== 'admin') {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Admin only' } }, 403);
