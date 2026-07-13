@@ -282,6 +282,7 @@ class _ReadinessCard extends StatelessWidget {
 class _NavGrid extends StatelessWidget {
   final _items = [
     _NavItem(Icons.trending_up_rounded, 'Progress', '/student/progress'),
+    _NavItem(Icons.view_kanban_rounded, 'Syllabus', '/student/syllabus'),
     _NavItem(Icons.verified_rounded, 'Readiness', '/student/readiness'),
     _NavItem(Icons.video_library_rounded, 'Videos', '/student/videos'),
     _NavItem(Icons.videocam_rounded, 'Live', '/student/classes'),
@@ -294,7 +295,7 @@ class _NavGrid extends StatelessWidget {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 3,
+      crossAxisCount: 4,
       childAspectRatio: 1.1,
       crossAxisSpacing: Spacing.sm,
       mainAxisSpacing: Spacing.sm,

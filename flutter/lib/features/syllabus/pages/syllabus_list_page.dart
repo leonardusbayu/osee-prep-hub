@@ -8,11 +8,79 @@ import '../../../shared/widgets/ui_components.dart';
 import '../models/syllabus.dart';
 import '../providers/syllabus_repository.dart';
 
-class SyllabusListPage extends ConsumerWidget {
+class SyllabusListPage extends ConsumerStatefulWidget {
   const SyllabusListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SyllabusListPage> createState() => _SyllabusListPageState();
+}
+
+class _SyllabusListPageState extends ConsumerState<SyllabusListPage> {
+  Map<String, String> _classroomNames = {}; // classroomId → name
+  bool _loadedClassrooms = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClassroomNames();
+  }
+
+  Future<void> _loadClassroomNames() async {
+    try {
+      final dio = ApiClient.create();
+      final r = await dio.get('/teacher/classrooms');
+      final classrooms = (r.data as Map)['classrooms'] as List? ?? [];
+      final map = <String, String>{};
+      for (final c in classrooms) {
+        final cr = c as Map<String, dynamic>;
+        map[cr['id'] as String] = cr['name'] as String? ?? '';
+      }
+      setState(() {
+        _classroomNames = map;
+        _loadedClassrooms = true;
+      });
+    } catch (_) {
+      setState(() => _loadedClassrooms = true);
+    }
+  }
+
+  Future<void> _deleteSyllabus(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete syllabus?'),
+        content: const Text('This will remove the syllabus and all its items. This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: OseeTheme.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final dio = ApiClient.create();
+      await dio.delete('/teacher/syllabi/$id');
+      ref.invalidate(syllabiListProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Syllabus deleted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final asyncSyllabi = ref.watch(syllabiListProvider);
 
     return Scaffold(
@@ -26,7 +94,10 @@ class SyllabusListPage extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => ref.invalidate(syllabiListProvider),
+            onPressed: () {
+              ref.invalidate(syllabiListProvider);
+              _loadClassroomNames();
+            },
             tooltip: 'Refresh',
           ),
         ],
@@ -43,7 +114,10 @@ class SyllabusListPage extends ConsumerWidget {
           onRetry: () => ref.invalidate(syllabiListProvider),
         ),
         data: (syllabi) => RefreshIndicator(
-          onRefresh: () async => ref.invalidate(syllabiListProvider),
+          onRefresh: () async {
+            ref.invalidate(syllabiListProvider);
+            _loadClassroomNames();
+          },
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
               Spacing.md,
@@ -87,7 +161,11 @@ class SyllabusListPage extends ConsumerWidget {
                 ...syllabi.map(
                   (s) => Padding(
                     padding: const EdgeInsets.only(bottom: Spacing.sm),
-                    child: _SyllabusCard(syllabus: s),
+                    child: _SyllabusCard(
+                      syllabus: s,
+                      classroomName: _classroomNames[s.classroomId],
+                      onDelete: () => _deleteSyllabus(s.id),
+                    ),
                   ),
                 ),
             ],
@@ -112,6 +190,7 @@ class SyllabusListPage extends ConsumerWidget {
         classroomId: result.classroomId,
       );
       ref.invalidate(syllabiListProvider);
+      _loadClassroomNames();
       if (!context.mounted) return;
       context.go('/teacher/syllabi/${created.id}');
     } catch (e) {
@@ -163,8 +242,10 @@ class _StatsRow extends StatelessWidget {
 }
 
 class _SyllabusCard extends StatelessWidget {
-  const _SyllabusCard({required this.syllabus});
+  const _SyllabusCard({required this.syllabus, required this.classroomName, required this.onDelete});
   final Syllabus syllabus;
+  final String? classroomName;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -200,12 +281,12 @@ class _SyllabusCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      syllabus.description?.isNotEmpty == true
-                          ? syllabus.description!
-                          : 'No description',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      classroomName != null
+                          ? 'Class: $classroomName'
+                          : 'No classroom assigned',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: classroomName != null ? OseeTheme.textSecondary : OseeTheme.danger,
+                      ),
                     ),
                     const SizedBox(height: Spacing.xs),
                     Wrap(
@@ -227,6 +308,11 @@ class _SyllabusCard extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, size: 20, color: OseeTheme.danger),
+                onPressed: onDelete,
+                tooltip: 'Delete syllabus',
               ),
               const Icon(
                 Icons.chevron_right_rounded,
