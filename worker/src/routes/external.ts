@@ -77,3 +77,96 @@ externalRoutes.get('/teacher-syllabus/:teacher_id', async (c) => {
     return c.json({ error: { code: 'FAILED', message: (err as Error).message } }, 500);
   }
 });
+
+/** GET /api/external/student-deep-links/:student_id — EduBot gets deep-links to practice platforms (Task 16.3).
+ *
+ * Returns the URLs of all OSEE practice platforms tailored to the student's
+ * target_exam + current syllabus items. EduBot uses these to deep-link the
+ * student directly into the relevant practice set.
+ */
+externalRoutes.get('/student-deep-links/:student_id', async (c) => {
+  const studentId = c.req.param('student_id');
+  const { getSupabase } = await import('../services/supabase');
+  const supabase = getSupabase(c.env);
+
+  // Get student profile
+  const { data: student } = await supabase
+    .from('unified_profiles')
+    .select('id, target_exam, current_level')
+    .eq('id', studentId)
+    .maybeSingle();
+  if (!student) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Student not found' } }, 404);
+  }
+  const s = student as Record<string, unknown>;
+  const targetExam = (s.target_exam as string) ?? 'GENERAL';
+
+  // Get student's active syllabus items
+  const { data: enrollments } = await supabase
+    .from('classroom_enrollments')
+    .select('classroom:classrooms!classroom_enrollments_classroom_id_fkey (id)')
+    .eq('student_id', studentId)
+    .eq('is_active', true);
+  const classroomIds = ((enrollments ?? []) as Array<Record<string, unknown>>).map((e) => {
+    const c = e.classroom as Record<string, unknown>;
+    return c.id as string;
+  });
+
+  let syllabusItems: Array<Record<string, unknown>> = [];
+  if (classroomIds.length > 0) {
+    const { data: syllabi } = await supabase
+      .from('syllabi')
+      .select('id')
+      .in('classroom_id', classroomIds)
+      .eq('is_published', true);
+    const syllabusIds = ((syllabi ?? []) as Array<Record<string, unknown>>).map((s) => s.id as string);
+    if (syllabusIds.length > 0) {
+      const { data: items } = await supabase
+        .from('syllabus_items')
+        .select('id, title, source_type, source_platform_url, item_type, section')
+        .in('syllabus_id', syllabusIds)
+        .order('sort_order', { ascending: true })
+        .limit(20);
+      syllabusItems = (items ?? []) as Array<Record<string, unknown>>;
+    }
+  }
+
+  // Base platform URLs
+  const platformUrls: Record<string, string> = {
+    TOEFL_IBT: 'https://ibt.osee.co.id',
+    TOEFL_ITP: 'https://test.osee.co.id',
+    IELTS: 'https://ielts.osee.co.id',
+    TOEIC: 'https://toeic.osee.co.id',
+    GENERAL: 'https://test.osee.co.id',
+  };
+
+  // Build deep-links from syllabus items (use source_platform_url if set)
+  type DeepLink = { title: string; url: string; type: string; section: string | null };
+  const deepLinks: DeepLink[] = [];
+  for (const item of syllabusItems) {
+    const url = item.source_platform_url as string | null;
+    if (!url) continue;
+    deepLinks.push({
+      title: item.title as string,
+      url,
+      type: item.item_type as string,
+      section: (item.section as string) ?? null,
+    });
+  }
+
+  return c.json({
+    student_id: studentId,
+    target_exam: targetExam,
+    current_level: (s.current_level as string) ?? null,
+    platform_home: platformUrls[targetExam] ?? platformUrls.GENERAL,
+    practice_platforms: {
+      ibt: 'https://ibt.osee.co.id',
+      itp: 'https://test.osee.co.id',
+      ielts: 'https://ielts.osee.co.id',
+      toeic: 'https://toeic.osee.co.id',
+      edubot: 'https://t.me/osee_edubot',
+      osee_booking: 'https://osee.co.id',
+    },
+    syllabus_deep_links: deepLinks,
+  });
+});

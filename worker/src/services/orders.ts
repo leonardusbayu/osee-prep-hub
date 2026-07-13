@@ -211,9 +211,48 @@ export async function fulfillOrder(env: Env, orderId: string): Promise<void> {
       (order as Record<string, unknown>).order_type === 'book_for_student' &&
       (itemType === 'official_toefl' || itemType === 'official_toeic')
     ) {
-      // TODO: Task 15.10 will implement booking bridge
-      // For now, mark as pending booking
-      console.log(`Booking needed for order ${orderId}, item ${itemId}, student ${assignedStudentId}`);
+      try {
+        // Look up the assigned student
+        const studentId = assignedStudentId as string | undefined;
+        if (studentId) {
+          const { data: student } = await supabase
+            .from('unified_profiles')
+            .select('id, display_name, email')
+            .eq('id', studentId)
+            .maybeSingle();
+          const s = (student as Record<string, unknown> | null) ?? {};
+
+          // Call booking bridge
+          const { createBooking } = await import('./booking-bridge');
+          const booking = await createBooking(env, {
+            order_item_id: itemId,
+            student_id: studentId,
+            student_name: (s.display_name as string) ?? '',
+            student_email: (s.email as string) ?? '',
+            test_type: itemType as 'official_toefl' | 'official_toeic',
+          });
+          console.log(`Booking created: ${booking.booking_id} (status: ${booking.status})`);
+
+          await supabase
+            .from('order_items')
+            .update({
+              fulfillment_status: booking.status === 'confirmed' ? 'booking_confirmed' : 'pending',
+              external_booking_id: booking.booking_id,
+            })
+            .eq('id', itemId);
+        } else {
+          await supabase
+            .from('order_items')
+            .update({ fulfillment_status: 'pending_assignment' })
+            .eq('id', itemId);
+        }
+      } catch (err) {
+        console.error(`Booking bridge failed for item ${itemId}:`, err);
+        await supabase
+          .from('order_items')
+          .update({ fulfillment_status: 'booking_failed' })
+          .eq('id', itemId);
+      }
     }
 
     // For self_purchase: grant access directly

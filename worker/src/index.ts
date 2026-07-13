@@ -16,6 +16,8 @@ import { classRoutes } from './routes/classes';
 import { externalRoutes } from './routes/external';
 import { ambassadorRoutes } from './routes/ambassador';
 import { adminRoutes } from './routes/admin';
+import { platformRoutes } from './routes/platform';
+import { brandingRoutes } from './routes/branding';
 import type { Env, ContextVars } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -45,6 +47,8 @@ app.route('/api/classes', classRoutes);
 app.route('/api/external', externalRoutes);
 app.route('/api/ambassador', ambassadorRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/platform', platformRoutes);
+app.route('/api/branding', brandingRoutes);
 
 // Root
 app.get('/', (c) => {

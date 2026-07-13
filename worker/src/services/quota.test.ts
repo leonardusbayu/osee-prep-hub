@@ -22,24 +22,75 @@ describe('quota service', () => {
   });
 
   describe('getQuotaLimit', () => {
-    it('returns -1 (unlimited) for admin', () => {
-      expect(getQuotaLimit('admin')).toBe(-1);
+    function teacherMock(tier: string, earnedBonus = 0) {
+      return mockFrom.mockImplementation((table: string) => {
+        if (table === 'teacher_profiles') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(async () => ({ data: { tier, tier_expires_at: null }, error: null })),
+              })),
+            })),
+          };
+        }
+        if (table === 'ai_quota_usage') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  maybeSingle: vi.fn(async () => ({
+                    data: { earned_bonus: earnedBonus },
+                    error: null,
+                  })),
+                })),
+              })),
+            })),
+          };
+        }
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              gte: vi.fn(async () => ({ count: 0, error: null })),
+            })),
+          })),
+        };
+      });
+    }
+
+    it('returns -1 (unlimited) for admin', async () => {
+      expect(await getQuotaLimit(mockEnv, 'admin', 'user-1', 'grading')).toBe(-1);
     });
 
-    it('returns -1 (unlimited) for partner', () => {
-      expect(getQuotaLimit('partner')).toBe(-1);
+    it('returns -1 (unlimited) for partner', async () => {
+      expect(await getQuotaLimit(mockEnv, 'partner', 'user-1', 'grading')).toBe(-1);
     });
 
-    it('returns 50 for teacher (free tier default)', () => {
-      expect(getQuotaLimit('teacher')).toBe(50);
+    it('returns 50 for teacher on free tier (no pro subscription, no bonus)', async () => {
+      teacherMock('free');
+      expect(await getQuotaLimit(mockEnv, 'teacher', 'user-1', 'grading')).toBe(50);
     });
 
-    it('returns 50 for student', () => {
-      expect(getQuotaLimit('student')).toBe(50);
+    it('returns -1 for teacher on pro tier', async () => {
+      teacherMock('pro');
+      expect(await getQuotaLimit(mockEnv, 'teacher', 'user-1', 'grading')).toBe(-1);
     });
 
-    it('adds bonus credits to teacher quota', () => {
-      expect(getQuotaLimit('teacher', 10)).toBe(60);
+    it('returns 50 for student', async () => {
+      expect(await getQuotaLimit(mockEnv, 'student', 'user-1', 'grading')).toBe(50);
+    });
+
+    it('returns 10 for student generation quota', async () => {
+      expect(await getQuotaLimit(mockEnv, 'student', 'user-1', 'generation')).toBe(10);
+    });
+
+    it('adds bonus credits (passed) to teacher free-tier quota', async () => {
+      teacherMock('free');
+      expect(await getQuotaLimit(mockEnv, 'teacher', 'user-1', 'grading', 10)).toBe(60);
+    });
+
+    it('reads earned_bonus from DB when no bonus passed', async () => {
+      teacherMock('free', 30);
+      expect(await getQuotaLimit(mockEnv, 'teacher', 'user-1', 'grading')).toBe(80);
     });
   });
 
@@ -85,15 +136,45 @@ describe('quota service', () => {
   });
 
   describe('checkQuota', () => {
-    it('allows request when under limit', async () => {
-      mockFrom.mockReturnValue({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            gte: vi.fn(async () => ({ count: 10, error: null })),
+    // Shared mock that returns free-tier teacher profile + grading usage count.
+    function freeTeacherMock(count: number, earnedBonus = 0) {
+      return mockFrom.mockImplementation((table: string) => {
+        if (table === 'teacher_profiles') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(async () => ({ data: { tier: 'free' }, error: null })),
+              })),
+            })),
+          };
+        }
+        if (table === 'ai_quota_usage') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  maybeSingle: vi.fn(async () => ({
+                    data: { earned_bonus: earnedBonus },
+                    error: null,
+                  })),
+                })),
+              })),
+            })),
+          };
+        }
+        // ai_grading_queue
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              gte: vi.fn(async () => ({ count, error: null })),
+            })),
           })),
-        })),
+        };
       });
+    }
 
+    it('allows request when under limit', async () => {
+      freeTeacherMock(10);
       const status = await checkQuota(mockEnv, 'user-1', 'teacher', 'grading');
       expect(status.used).toBe(10);
       expect(status.limit).toBe(50);
@@ -101,17 +182,17 @@ describe('quota service', () => {
     });
 
     it('throws when quota exceeded', async () => {
-      mockFrom.mockReturnValue({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            gte: vi.fn(async () => ({ count: 50, error: null })),
-          })),
-        })),
-      });
-
+      freeTeacherMock(50);
       await expect(checkQuota(mockEnv, 'user-1', 'teacher', 'grading')).rejects.toThrow(
         /Quota exceeded/
       );
+    });
+
+    it('adds earned bonus to limit', async () => {
+      freeTeacherMock(10, 20);
+      const status = await checkQuota(mockEnv, 'user-1', 'teacher', 'grading');
+      expect(status.limit).toBe(70); // 50 base + 20 bonus
+      expect(status.remaining).toBe(60);
     });
 
     it('never throws for admin (unlimited)', async () => {
@@ -143,32 +224,60 @@ describe('quota service', () => {
   });
 
   describe('getQuotaStatus', () => {
-    it('returns 0 remaining when quota exceeded (instead of throwing)', async () => {
-      mockFrom.mockReturnValue({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            gte: vi.fn(async () => ({ count: 50, error: null })),
+    function freeTeacherMock(count: number, earnedBonus = 0) {
+      return mockFrom.mockImplementation((table: string) => {
+        if (table === 'teacher_profiles') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(async () => ({ data: { tier: 'free' }, error: null })),
+              })),
+            })),
+          };
+        }
+        if (table === 'ai_quota_usage') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  maybeSingle: vi.fn(async () => ({
+                    data: { earned_bonus: earnedBonus },
+                    error: null,
+                  })),
+                })),
+              })),
+            })),
+          };
+        }
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              gte: vi.fn(async () => ({ count, error: null })),
+            })),
           })),
-        })),
+        };
       });
+    }
 
+    it('returns 0 remaining when quota exceeded (instead of throwing)', async () => {
+      freeTeacherMock(50);
       const status = await getQuotaStatus(mockEnv, 'user-1', 'teacher', 'grading');
       expect(status.remaining).toBe(0);
       expect(status.used).toBe(50);
     });
 
     it('returns proper status when under limit', async () => {
-      mockFrom.mockReturnValue({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            gte: vi.fn(async () => ({ count: 5, error: null })),
-          })),
-        })),
-      });
-
+      freeTeacherMock(5);
       const status = await getQuotaStatus(mockEnv, 'user-1', 'teacher', 'grading');
       expect(status.remaining).toBe(45);
       expect(status.used).toBe(5);
+    });
+
+    it('includes earned bonus in remaining', async () => {
+      freeTeacherMock(5, 30);
+      const status = await getQuotaStatus(mockEnv, 'user-1', 'teacher', 'grading');
+      expect(status.limit).toBe(80);
+      expect(status.remaining).toBe(75);
     });
   });
 });

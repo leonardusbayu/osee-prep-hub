@@ -5,11 +5,16 @@ import {
   createClassroom,
   getClassroomsByTeacher,
   getClassroomDetail,
+  addStudentsToClassroom,
 } from '../services/classroom';
 import {
   generateStudentReport,
   generateClassroomReport,
 } from '../services/reports';
+import {
+  generateStudentReportHtml,
+  generateClassroomReportHtml,
+} from '../services/pdf';
 import {
   createSyllabus,
   listSyllabi,
@@ -19,6 +24,8 @@ import {
   addSyllabusItem,
 } from '../services/syllabus';
 import { getPricingForRole } from '../services/pricing';
+import { getSupabase } from '../services/supabase';
+import { cache } from '../middleware/cache';
 
 export const teacherRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -60,7 +67,7 @@ teacherRoutes.post('/classrooms', async (c) => {
 });
 
 /** GET /api/teacher/classrooms — list teacher's classrooms */
-teacherRoutes.get('/classrooms', async (c) => {
+teacherRoutes.get('/classrooms', cache({ ttl: 30 }), async (c) => {
   const user = getAuthedUser(c);
   try {
     const classrooms = await getClassroomsByTeacher(c.env, user.id);
@@ -84,19 +91,117 @@ teacherRoutes.get('/classrooms/:id', async (c) => {
   }
 });
 
-// ---------- Dashboard endpoint (placeholder — full impl in Task 2.1) ----------
+/** POST /api/teacher/classrooms/:id/students — manually add students via email */
+teacherRoutes.post('/classrooms/:id/students', async (c) => {
+  const user = getAuthedUser(c);
+  const classroomId = c.req.param('id');
+  let body: { student_emails?: string[] };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!Array.isArray(body.student_emails) || body.student_emails.length === 0) {
+    return c.json(
+      { error: { code: 'INVALID_INPUT', message: 'student_emails (array) required' } },
+      400
+    );
+  }
+  try {
+    const result = await addStudentsToClassroom(c.env, user.id, classroomId, body.student_emails);
+    return c.json(result, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Add failed';
+    const status = message.includes('not found') ? 404 : 400;
+    return c.json({ error: { code: 'ADD_FAILED', message } }, status);
+  }
+});
+
+// ---------- Dashboard endpoint ----------
 
 /** GET /api/teacher/dashboard — stats overview */
-teacherRoutes.get('/dashboard', async (c) => {
+teacherRoutes.get('/dashboard', cache({ ttl: 30 }), async (c) => {
   const user = getAuthedUser(c);
-  return c.json({
-    user: { id: user.id, name: user.display_name, role: user.role },
-    classrooms_count: 0,
-    total_students: 0,
-    commission_this_month: 0,
-    ai_quota_remaining: 0,
-    note: 'Full dashboard stats — Task 2.1 (Flutter UI)',
-  });
+  const supabase = getSupabase(c.env);
+
+  try {
+    // Get teacher's classrooms
+    const classrooms = await getClassroomsByTeacher(c.env, user.id);
+    const classroomIds = classrooms.map((cr) => cr.id);
+
+    // Count active enrolled students across all classrooms
+    let totalStudents = 0;
+    if (classroomIds.length > 0) {
+      const { count } = await supabase
+        .from('classroom_enrollments')
+        .select('id', { count: 'exact', head: true })
+        .in('classroom_id', classroomIds)
+        .eq('is_active', true);
+      totalStudents = count ?? 0;
+    }
+
+    // Commission this month
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const { data: commissionRows } = await supabase
+      .from('commission_ledger')
+      .select('amount_idr')
+      .eq('teacher_id', user.id)
+      .gte('created_at', monthStart);
+    const commissionThisMonth = (commissionRows ?? []).reduce(
+      (sum, r) => sum + Number((r as Record<string, unknown>).amount_idr ?? 0),
+      0
+    );
+
+    // AI quota remaining (grading)
+    let aiQuotaRemaining = 0;
+    try {
+      const { data: q } = await supabase
+        .from('ai_quota_usage')
+        .select('used_count, max_count, earned_bonus')
+        .eq('user_id', user.id)
+        .eq('quota_type', 'grading')
+        .maybeSingle();
+      const qr = (q as Record<string, unknown> | null) ?? {};
+      const used = (qr.used_count as number) ?? 0;
+      const max = (qr.max_count as number) ?? 50;
+      const bonus = (qr.earned_bonus as number) ?? 0;
+      aiQuotaRemaining = Math.max(0, max + bonus - used);
+    } catch {
+      // ignore — keep default 0
+    }
+
+    // Recent activity (last 5 webhook events involving this teacher's students)
+    let recentActivity: Array<Record<string, unknown>> = [];
+    try {
+      const { data: activityRows } = await supabase
+        .from('commission_ledger')
+        .select('id, action, amount_idr, status, created_at')
+        .eq('teacher_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      recentActivity = (activityRows ?? []) as Array<Record<string, unknown>>;
+    } catch {
+      // ignore
+    }
+
+    return c.json({
+      user: { id: user.id, name: user.display_name, role: user.role },
+      classrooms_count: classrooms.length,
+      total_students: totalStudents,
+      commission_this_month: commissionThisMonth,
+      ai_quota_remaining: aiQuotaRemaining,
+      recent_activity: recentActivity,
+    });
+  } catch (err) {
+    return c.json({
+      user: { id: user.id, name: user.display_name, role: user.role },
+      classrooms_count: 0,
+      total_students: 0,
+      commission_this_month: 0,
+      ai_quota_remaining: 0,
+      recent_activity: [],
+      error: { code: 'FETCH_FAILED', message: (err as Error).message },
+    });
+  }
 });
 
 // ---------- Report endpoints (Task 8.1, 9.1) ----------
@@ -121,6 +226,36 @@ teacherRoutes.get('/classrooms/:id/report', async (c) => {
   try {
     const report = await generateClassroomReport(c.env, user.id, classroomId);
     return c.json(report);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Report failed';
+    return c.json({ error: { code: 'REPORT_FAILED', message } }, 404);
+  }
+});
+
+/** GET /api/teacher/students/:id/report/html — printable HTML student report (Task 8.2) */
+teacherRoutes.get('/students/:id/report/html', async (c) => {
+  const user = getAuthedUser(c);
+  const studentId = c.req.param('id');
+  try {
+    const { html, filename } = await generateStudentReportHtml(c.env, user.id, studentId);
+    c.header('Content-Type', 'text/html; charset=utf-8');
+    c.header('Content-Disposition', `inline; filename="${filename}"`);
+    return c.body(html);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Report failed';
+    return c.json({ error: { code: 'REPORT_FAILED', message } }, 404);
+  }
+});
+
+/** GET /api/teacher/classrooms/:id/report/html — printable HTML classroom report (Task 9.2) */
+teacherRoutes.get('/classrooms/:id/report/html', async (c) => {
+  const user = getAuthedUser(c);
+  const classroomId = c.req.param('id');
+  try {
+    const { html, filename } = await generateClassroomReportHtml(c.env, user.id, classroomId);
+    c.header('Content-Type', 'text/html; charset=utf-8');
+    c.header('Content-Disposition', `inline; filename="${filename}"`);
+    return c.body(html);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Report failed';
     return c.json({ error: { code: 'REPORT_FAILED', message } }, 404);
@@ -221,7 +356,7 @@ teacherRoutes.post('/syllabi/:id/items', async (c) => {
 });
 
 /** GET /api/teacher/pricing — pricing for the calling teacher's role */
-teacherRoutes.get('/pricing', async (c) => {
+teacherRoutes.get('/pricing', cache({ ttl: 300 }), async (c) => {
   const user = getAuthedUser(c);
   try {
     const pricing = await getPricingForRole(c.env, user.role);

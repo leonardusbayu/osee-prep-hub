@@ -148,6 +148,16 @@ authRoutes.post('/register', async (c) => {
     });
   }
 
+  // Award quota bonus to referring teacher (Task 12.4) — +5 generation credits
+  if (referredBy) {
+    try {
+      const { awardQuotaBonus } = await import('../services/quota');
+      await awardQuotaBonus(c.env, referredBy, 'student_registered');
+    } catch (err) {
+      console.error('Failed to award quota bonus on referral:', err);
+    }
+  }
+
   // Issue JWT
   const token = await signJwt(c.env, {
     sub: newUser.id,
@@ -337,6 +347,79 @@ authRoutes.post('/refresh', async (c) => {
 
     c.header('Set-Cookie', buildAuthCookie(newToken));
     return c.json({ jwt: newToken });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid token';
+    return c.json({ error: { code: 'INVALID_TOKEN', message } }, 401);
+  }
+});
+
+// ---------- Link Telegram (Task 16.1) ----------
+
+authRoutes.post('/link-telegram', async (c) => {
+  let body: { telegram_id?: string; osee_token?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' } }, 400);
+  }
+
+  if (!body.telegram_id || typeof body.telegram_id !== 'string') {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'telegram_id required' } }, 400);
+  }
+
+  // Verify the osee_token (JWT) — links Telegram to the authenticated user
+  let token = body.osee_token;
+  if (!token) {
+    const authHeader = c.req.header('Authorization');
+    if (authHeader) {
+      const match = /^Bearer\s+(.+)$/i.exec(authHeader);
+      if (match) token = match[1].trim();
+    }
+  }
+  if (!token) {
+    const cookieHeader = c.req.header('Cookie');
+    if (cookieHeader) {
+      for (const part of cookieHeader.split(';')) {
+        const [name, ...valueParts] = part.trim().split('=');
+        if (name === COOKIE_NAME) {
+          token = valueParts.join('=').trim();
+          break;
+        }
+      }
+    }
+  }
+
+  if (!token) {
+    return c.json({ error: { code: 'NO_TOKEN', message: 'osee_token required' } }, 401);
+  }
+
+  try {
+    const payload = await verifyJwt(c.env, token);
+    const supabase = getSupabase(c.env);
+
+    // Check telegram_id not already linked to another user
+    const { data: existingTg } = await supabase
+      .from('unified_profiles')
+      .select('id')
+      .eq('telegram_id', body.telegram_id)
+      .neq('id', payload.sub)
+      .maybeSingle();
+    if (existingTg) {
+      return c.json(
+        { error: { code: 'TELEGRAM_LINKED', message: 'Telegram ID already linked to another account' } },
+        409
+      );
+    }
+
+    const { error } = await supabase
+      .from('unified_profiles')
+      .update({ telegram_id: body.telegram_id, updated_at: new Date().toISOString() })
+      .eq('id', payload.sub);
+
+    if (error) {
+      return c.json({ error: { code: 'LINK_FAILED', message: error.message } }, 500);
+    }
+    return c.json({ success: true, user_id: payload.sub, telegram_id: body.telegram_id });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Invalid token';
     return c.json({ error: { code: 'INVALID_TOKEN', message } }, 401);

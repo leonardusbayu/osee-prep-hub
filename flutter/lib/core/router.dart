@@ -8,14 +8,28 @@ import '../features/auth/pages/register_page.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/landing/pages/landing_page.dart';
 import '../features/student/pages/student_dashboard_page.dart';
+import '../features/student/pages/student_progress_page.dart';
+import '../features/student/pages/readiness_page.dart';
+import '../features/student/pages/video_lessons_page.dart';
+import '../features/student/pages/live_classes_page.dart';
+import '../features/student/pages/cross_exam_page.dart';
+import '../features/student/pages/book_test_page.dart';
 import '../features/teacher/pages/teacher_dashboard_page.dart';
+import '../features/teacher/pages/classrooms_page.dart';
+import '../features/teacher/pages/classroom_detail_page.dart';
 import '../features/teacher/pages/order_page.dart';
 import '../features/teacher/pages/ai_grader_page.dart';
 import '../features/teacher/pages/material_generator_page.dart';
+import '../features/teacher/pages/earnings_page.dart';
+import '../features/teacher/pages/student_reports_page.dart';
+import '../features/teacher/pages/classroom_report_page.dart';
+import '../features/teacher/pages/settings_page.dart';
+import '../features/teacher/pages/upgrade_page.dart';
 import '../features/syllabus/pages/syllabus_list_page.dart';
 import '../features/syllabus/pages/syllabus_builder_page.dart';
 import '../features/partner/pages/partner_dashboard_page.dart';
 import '../features/ambassador/pages/ambassador_dashboard_page.dart';
+import '../features/ambassador/pages/ambassador_recruitment_page.dart';
 
 /// App router — go_router with role-based auth guards (Task 1.8).
 ///
@@ -31,14 +45,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       // In go_router v14 hash-mode, `state.path` is empty for hash routes.
       // Use `state.uri.path` which is the reliable cross-mode source of truth.
       final path = state.uri.path.isEmpty ? (state.path ?? '/') : state.uri.path;
-      final isAuthRoute = path == '/login' || path == '/register' || path.startsWith('/r/');
+      final isAuthRoute = path == '/login' || path == '/register' || path.startsWith('/r/') || path == '/ambassador/join';
 
-      // Unauthenticated → /login (except auth routes)
+      // Unauthenticated → /login (except auth routes + public ambassador recruitment)
       if (!auth.isAuthenticated && !isAuthRoute) {
         return '/login';
       }
       // Authenticated on auth route → dashboard
-      if (auth.isAuthenticated && isAuthRoute) {
+      if (auth.isAuthenticated && isAuthRoute && path != '/ambassador/join') {
         return _dashboardForRole(auth.user!.role);
       }
       // Role mismatch — redirect to own dashboard
@@ -70,9 +84,29 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/teacher/syllabi/:id',
         builder: (c, s) => SyllabusBuilderPage(syllabusId: s.pathParameters['id']!),
       ),
+      GoRoute(path: '/teacher/classrooms', builder: (c, s) => const ClassroomsPage()),
+      GoRoute(
+        path: '/teacher/classrooms/:id',
+        builder: (c, s) => ClassroomDetailPage(classroomId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/teacher/classrooms/:id/report',
+        builder: (c, s) => ClassroomReportPage(classroomId: s.pathParameters['id']!),
+      ),
+      GoRoute(path: '/teacher/commission', builder: (c, s) => const EarningsPage()),
+      GoRoute(path: '/teacher/reports', builder: (c, s) => const StudentReportsPage()),
+      GoRoute(path: '/teacher/settings', builder: (c, s) => const SettingsPage()),
+      GoRoute(path: '/teacher/upgrade', builder: (c, s) => const UpgradePage()),
       GoRoute(path: '/student', builder: (c, s) => const StudentDashboardPage()),
+      GoRoute(path: '/student/progress', builder: (c, s) => const StudentProgressPage()),
+      GoRoute(path: '/student/readiness', builder: (c, s) => const ReadinessPage()),
+      GoRoute(path: '/student/videos', builder: (c, s) => const VideoLessonsPage()),
+      GoRoute(path: '/student/classes', builder: (c, s) => const LiveClassesPage()),
+      GoRoute(path: '/student/cross-exam', builder: (c, s) => const CrossExamPage()),
+      GoRoute(path: '/student/book-test', builder: (c, s) => const BookTestPage()),
       GoRoute(path: '/partner', builder: (c, s) => const PartnerDashboardPage()),
       GoRoute(path: '/ambassador', builder: (c, s) => const AmbassadorDashboardPage()),
+      GoRoute(path: '/ambassador/join', builder: (c, s) => const AmbassadorRecruitmentPage()),
       GoRoute(
         path: '/admin',
         builder: (c, s) => Scaffold(

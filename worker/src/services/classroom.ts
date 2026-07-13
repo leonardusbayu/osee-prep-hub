@@ -248,3 +248,115 @@ export async function getStudentClassrooms(
     };
   });
 }
+
+/**
+ * Teacher manually adds students to a classroom by email.
+ * Task 2.x — POST /api/teacher/classroom/:id/students.
+ *
+ * Behavior:
+ * - For each email, find the unified_profile.
+ * - If student exists → enroll them.
+ * - If student doesn't exist → return them in `not_found` list (teacher must
+ *   invite them via referral code first).
+ * - Already-enrolled students are skipped (returned in `already_enrolled`).
+ */
+export async function addStudentsToClassroom(
+  env: Env,
+  teacherId: string,
+  classroomId: string,
+  studentEmails: string[]
+): Promise<{
+  enrolled: Array<{ email: string; name: string }>;
+  already_enrolled: string[];
+  not_found: string[];
+}> {
+  const supabase = getSupabase(env);
+
+  // Verify classroom belongs to teacher
+  const { data: classroom } = await supabase
+    .from('classrooms')
+    .select('id, max_students, is_active')
+    .eq('id', classroomId)
+    .eq('teacher_id', teacherId)
+    .maybeSingle();
+  if (!classroom) {
+    throw new Error('Classroom not found or not owned by teacher');
+  }
+  const cr = classroom as Record<string, unknown>;
+  if (!cr.is_active) {
+    throw new Error('Classroom is not active');
+  }
+
+  // Check current enrollment count
+  const { count } = await supabase
+    .from('classroom_enrollments')
+    .select('id', { count: 'exact', head: true })
+    .eq('classroom_id', classroomId)
+    .eq('is_active', true);
+  const max = (cr.max_students as number) ?? 50;
+  const currentCount = count ?? 0;
+
+  const enrolled: Array<{ email: string; name: string }> = [];
+  const alreadyEnrolled: string[] = [];
+  const notFound: string[] = [];
+
+  for (const rawEmail of studentEmails) {
+    const email = rawEmail.trim().toLowerCase();
+    if (!email) continue;
+
+    // Find student profile
+    const { data: student } = await supabase
+      .from('unified_profiles')
+      .select('id, email, display_name, role')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (!student) {
+      notFound.push(email);
+      continue;
+    }
+    const s = student as Record<string, unknown>;
+
+    // Check if already enrolled
+    const { data: existing } = await supabase
+      .from('classroom_enrollments')
+      .select('id')
+      .eq('classroom_id', classroomId)
+      .eq('student_id', s.id as string)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (existing) {
+      alreadyEnrolled.push(email);
+      continue;
+    }
+
+    // Check capacity
+    if (enrolled.length + currentCount >= max) {
+      throw new Error(`Classroom is full (max ${max} students)`);
+    }
+
+    // Enroll
+    const { error: enrollErr } = await supabase.from('classroom_enrollments').insert({
+      classroom_id: classroomId,
+      student_id: s.id as string,
+      enrolled_via: 'manual',
+      is_active: true,
+    });
+    if (enrollErr) {
+      // Unique constraint = already enrolled (treat as already_enrolled)
+      if (enrollErr.code === '23505') {
+        alreadyEnrolled.push(email);
+      } else {
+        throw new Error(`Failed to enroll ${email}: ${enrollErr.message}`);
+      }
+      continue;
+    }
+    enrolled.push({ email, name: s.display_name as string });
+  }
+
+  return {
+    enrolled,
+    already_enrolled: alreadyEnrolled,
+    not_found: notFound,
+  };
+}

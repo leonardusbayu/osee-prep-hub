@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
+import '../../../core/responsive.dart';
 
 /// Teacher dashboard — Task 2.1.
 ///
@@ -98,7 +99,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
+            crossAxisCount: Responsive.statGridColumns(context),
             childAspectRatio: 1.5,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
@@ -162,6 +163,21 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                 avatar: const Icon(Icons.payments_outlined),
                 onPressed: () => context.push('/teacher/commission'),
               ),
+              ActionChip(
+                label: const Text('Reports'),
+                avatar: const Icon(Icons.picture_as_pdf_outlined),
+                onPressed: () => context.push('/teacher/reports'),
+              ),
+              ActionChip(
+                label: const Text('Settings'),
+                avatar: const Icon(Icons.settings_outlined),
+                onPressed: () => context.push('/teacher/settings'),
+              ),
+              ActionChip(
+                label: const Text('Upgrade'),
+                avatar: const Icon(Icons.star_outline),
+                onPressed: () => context.push('/teacher/upgrade'),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -187,8 +203,9 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
               return Card(
                 child: ListTile(
                   leading: const Icon(Icons.notifications_outlined),
-                  title: Text(a['event_type'] as String? ?? 'Event'),
-                  subtitle: Text(a['timestamp'] as String? ?? ''),
+                  title: Text(a['action'] as String? ?? 'Event'),
+                  subtitle: Text('Rp ${a['amount_idr'] ?? 0} · ${a['status'] ?? ''}\n${a['created_at'] as String? ?? ''}'),
+                  isThreeLine: true,
                 ),
               );
             }),

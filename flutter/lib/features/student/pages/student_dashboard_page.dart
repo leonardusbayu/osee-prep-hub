@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
+import '../../../core/responsive.dart';
 
 /// Student dashboard page — Task 11.1.
 class StudentDashboardPage extends ConsumerStatefulWidget {
@@ -62,9 +64,27 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
         const SizedBox(height: 16),
         Text('Recent Progress', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
-        _ProgressCard(progress: progress),
-        const SizedBox(height: 16),
-        Text('My Classes', style: Theme.of(context).textTheme.titleLarge),
+          _ProgressCard(progress: progress),
+          const SizedBox(height: 16),
+          // Quick navigation grid
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: Responsive.statGridColumns(context),
+            childAspectRatio: 1,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            children: [
+              _NavTile(Icons.trending_up, 'Progress', '/student/progress'),
+              _NavTile(Icons.verified, 'Readiness', '/student/readiness'),
+              _NavTile(Icons.video_library, 'Videos', '/student/videos'),
+              _NavTile(Icons.videocam, 'Live Class', '/student/classes'),
+              _NavTile(Icons.compare_arrows, 'Cross-Exam', '/student/cross-exam'),
+              _NavTile(Icons.event, 'Book Test', '/student/book-test'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text('My Classes', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         if (classrooms.isEmpty)
           Card(
@@ -91,18 +111,37 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
               leading: const Icon(Icons.verified, color: Colors.green, size: 32),
               title: const Text('Ready for the official test?'),
               subtitle: const Text('Book your TOEFL or TOEIC at OSEE test center'),
-              trailing: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Booking flow — Task 11.6 follow-up')),
-                  );
-                },
-                child: const Text('Book'),
-              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('/student/book-test'),
             ),
           ),
         ],
       ],
+    );
+  }
+}
+
+class _NavTile extends StatelessWidget {
+  const _NavTile(this.icon, this.label, this.route);
+  final IconData icon;
+  final String label;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => context.go(route),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 12), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
     );
   }
 }

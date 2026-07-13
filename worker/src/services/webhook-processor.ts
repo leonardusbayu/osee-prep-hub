@@ -2,6 +2,7 @@ import type { Env } from '../types';
 import { getSupabase } from './supabase';
 import { updateStudentProgress } from './student-progress';
 import { recordCommission } from './commission';
+import { awardQuotaBonus } from './quota';
 
 /**
  * Webhook event processing pipeline.
@@ -108,22 +109,30 @@ async function processSingleEvent(env: Env, event: WebhookEventRow): Promise<voi
         payload: event.payload,
       });
       // Also check for commission trigger (first practice = Rp 10k)
-      await recordCommission(env, {
+      const commissionRec1 = await recordCommissionAndReturnTeacher(env, {
         user_id: userId,
         event_type: event.event_type,
         platform: event.platform,
         payload: event.payload,
       });
+      // Award quota bonus to teacher (Task 12.4) — +5 generation credits
+      if (commissionRec1) {
+        await awardQuotaBonus(env, commissionRec1, 'test_completed').catch(() => {});
+      }
       break;
 
     case 'test_booked':
       // Booking triggers commission (Rp 50k to teacher)
-      await recordCommission(env, {
+      const commissionRec2 = await recordCommissionAndReturnTeacher(env, {
         user_id: userId,
         event_type: 'test_booked',
         platform: event.platform,
         payload: event.payload,
       });
+      // Award quota bonus — +10 generation credits for official booking
+      if (commissionRec2) {
+        await awardQuotaBonus(env, commissionRec2, 'official_booking').catch(() => {});
+      }
       break;
 
     case 'booking_confirmed':
@@ -135,6 +144,19 @@ async function processSingleEvent(env: Env, event: WebhookEventRow): Promise<voi
       // EduBot session — no commission, no progress update needed
       break;
 
+    case 'premium_subscribed':
+      // EduBot premium subscription — commission + quota bonus
+      const commissionRec3 = await recordCommissionAndReturnTeacher(env, {
+        user_id: userId,
+        event_type: 'premium_subscribed',
+        platform: event.platform,
+        payload: event.payload,
+      });
+      if (commissionRec3) {
+        await awardQuotaBonus(env, commissionRec3, 'premium_subscribed').catch(() => {});
+      }
+      break;
+
     default:
       // Unknown event type — log warning but don't fail
       console.warn(`Unknown webhook event_type: ${event.event_type}`);
@@ -143,6 +165,31 @@ async function processSingleEvent(env: Env, event: WebhookEventRow): Promise<voi
 
   // Mark as successfully processed
   await markProcessed(supabase, event.id, null);
+}
+
+/**
+ * Record commission and return the teacher_id who earned it (or null if no
+ * referring teacher). Wraps recordCommission with a lookup.
+ */
+async function recordCommissionAndReturnTeacher(
+  env: Env,
+  input: { user_id: string; event_type: string; platform: string; payload: Record<string, unknown> }
+): Promise<string | null> {
+  // Find the student's referring teacher
+  const supabase = getSupabase(env);
+  const { data: student } = await supabase
+    .from('unified_profiles')
+    .select('referred_by')
+    .eq('id', input.user_id)
+    .maybeSingle();
+  const teacherId = (student as Record<string, unknown> | null)?.referred_by as string | null;
+  if (!teacherId) return null;
+
+  // Record commission (idempotent)
+  await recordCommission(env, input).catch((err) => {
+    console.error('recordCommission failed:', err);
+  });
+  return teacherId;
 }
 
 /** Mark a webhook event as processed. error_message is null on success. */

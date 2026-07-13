@@ -48,9 +48,13 @@ export async function recordCommission(env: Env, input: CommissionInput): Promis
 
   const teacherId = student.referred_by as string;
 
-  // Check if teacher is an ambassador (2x rate)
-  // TODO: Check teacher_profiles.is_ambassador once that column exists (Task 12.5)
-  const isAmbassador = false;
+  // Check if teacher is an ambassador (2x rate) — Task 12.5
+  const { data: teacherProfile } = await supabase
+    .from('teacher_profiles')
+    .select('is_ambassador')
+    .eq('user_id', teacherId)
+    .maybeSingle();
+  const isAmbassador = Boolean((teacherProfile as Record<string, unknown> | null)?.is_ambassador);
   const multiplier = isAmbassador ? 2 : 1;
 
   // Determine commission type + amount based on event_type

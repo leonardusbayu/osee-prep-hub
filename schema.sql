@@ -193,6 +193,21 @@ CREATE TABLE syllabus_items (
 CREATE INDEX idx_syllabus_items_syllabus ON syllabus_items(syllabus_id);
 CREATE INDEX idx_syllabus_items_order ON syllabus_items(syllabus_id, sort_order);
 
+-- Per-student syllabus item progress (Task 11.2)
+CREATE TABLE syllabus_item_progress (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  syllabus_item_id UUID NOT NULL REFERENCES syllabus_items(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'not_started' CHECK (status IN ('not_started', 'started', 'completed')),
+  score DECIMAL,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  UNIQUE(syllabus_item_id, student_id)
+);
+
+CREATE INDEX idx_sip_item ON syllabus_item_progress(syllabus_item_id);
+CREATE INDEX idx_sip_student ON syllabus_item_progress(student_id);
+
 -- ============================================================
 -- 5. REFERRAL + COMMISSION SYSTEM
 -- ============================================================
@@ -279,6 +294,23 @@ CREATE TABLE commission_ledger (
 
 CREATE INDEX idx_commission_teacher ON commission_ledger(teacher_id);
 CREATE INDEX idx_commission_status ON commission_ledger(status);
+
+-- Commission payout requests (teacher withdrawal requests)
+CREATE TABLE commission_payouts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  teacher_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  amount DECIMAL NOT NULL,
+  method TEXT CHECK (method IN ('bank_transfer', 'gopay', 'ovo', 'dana')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'paid', 'rejected', 'cancelled')),
+  reference TEXT,  -- payout reference / bank transfer ref
+  notes TEXT,
+  requested_at TIMESTAMPTZ DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  paid_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_payout_teacher ON commission_payouts(teacher_id);
+CREATE INDEX idx_payout_status ON commission_payouts(status);
 
 -- ============================================================
 -- 6. AI QUOTA SYSTEM
@@ -953,7 +985,7 @@ CREATE TABLE order_items (
   unit_price INTEGER NOT NULL CHECK (unit_price >= 0),  -- snapshot of price at order time
   assigned_student_id UUID REFERENCES unified_profiles(id),  -- for bulk_purchase / book_for_student
   fulfillment_status TEXT DEFAULT 'pending' CHECK (fulfillment_status IN (
-    'pending','voucher_generated','booking_confirmed','fulfilled','failed'
+    'pending','voucher_generated','booking_confirmed','pending_booking','pending_assignment','booking_failed','fulfilled','failed'
   )),
   external_booking_id TEXT,  -- for official tests: osee.co.id booking ID
   created_at TIMESTAMPTZ DEFAULT NOW()

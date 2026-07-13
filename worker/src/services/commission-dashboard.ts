@@ -90,7 +90,12 @@ export async function getCommissionStats(env: Env, teacherId: string): Promise<C
 }
 
 /** Request a payout (move pending commission to payout_paid status). */
-export async function requestPayout(env: Env, teacherId: string, amount: number): Promise<{ payout_id: string }> {
+export async function requestPayout(
+  env: Env,
+  teacherId: string,
+  amount: number,
+  method: string = 'bank_transfer'
+): Promise<{ payout_id: string }> {
   const supabase = getSupabase(env);
   if (amount <= 0) throw new Error('Amount must be positive');
 
@@ -106,6 +111,7 @@ export async function requestPayout(env: Env, teacherId: string, amount: number)
     .insert({
       teacher_id: teacherId,
       amount,
+      method,
       status: 'pending',
       requested_at: new Date().toISOString(),
     })
@@ -117,4 +123,21 @@ export async function requestPayout(env: Env, teacherId: string, amount: number)
   }
 
   return { payout_id: data.id as string };
+}
+
+/** List payout history for a teacher (Task 12.3). */
+export async function listPayouts(
+  env: Env,
+  teacherId: string
+): Promise<Array<Record<string, unknown>>> {
+  const supabase = getSupabase(env);
+  const { data, error } = await supabase
+    .from('commission_payouts')
+    .select('id, amount, method, status, reference, notes, requested_at, processed_at, paid_at')
+    .eq('teacher_id', teacherId)
+    .order('requested_at', { ascending: false })
+    .limit(50);
+
+  if (error) throw new Error(`Failed to fetch payouts: ${error.message}`);
+  return (data ?? []) as Array<Record<string, unknown>>;
 }

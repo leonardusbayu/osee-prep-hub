@@ -2,13 +2,14 @@ import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { listVideoCourses, getCourse, trackProgress } from '../services/video';
+import { cache } from '../middleware/cache';
 
 export const videoRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
 videoRoutes.use('*', requireAuth());
 
 /** GET /api/videos/courses — list video courses */
-videoRoutes.get('/courses', async (c) => {
+videoRoutes.get('/courses', cache({ ttl: 120, varyByUser: false }), async (c) => {
   try {
     const courses = await listVideoCourses(c.env);
     return c.json({ courses });

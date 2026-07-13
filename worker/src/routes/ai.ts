@@ -185,3 +185,107 @@ aiRoutes.post('/grade-speaking', async (c) => {
     return c.json({ error: { code: 'SPEAKING_FAILED', message } }, 500);
   }
 });
+
+/** POST /api/ai/rag/upload — teacher uploads custom material to knowledge base */
+aiRoutes.post('/rag/upload', async (c) => {
+  const user = getAuthedUser(c);
+  let body: {
+    title?: string;
+    source?: string;
+    category?: string;
+    content?: string;
+    cefr_level?: string;
+    metadata?: Record<string, unknown>;
+  };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.title || !body.source || !body.category || !body.content) {
+    return c.json(
+      { error: { code: 'INVALID_INPUT', message: 'title, source, category, content required' } },
+      400
+    );
+  }
+
+  const { getSupabase } = await import('../services/supabase');
+  const supabase = getSupabase(c.env);
+
+  const { data, error } = await supabase
+    .from('knowledge_base_documents')
+    .insert({
+      title: body.title,
+      source: body.source,
+      category: body.category,
+      content: body.content,
+      cefr_level: body.cefr_level ?? null,
+      metadata: body.metadata ?? {},
+      uploaded_by: user.id,
+      is_active: true,
+    })
+    .select()
+    .single();
+  if (error || !data) {
+    return c.json({ error: { code: 'INSERT_FAILED', message: error?.message ?? 'unknown' } }, 500);
+  }
+  const docId = (data as Record<string, unknown>).id as string;
+
+  // Chunk + embed via OpenAI (best-effort — non-blocking on failure)
+  const chunks = chunkText(body.content, 500, 50);
+  let embedded = 0;
+  for (let i = 0; i < chunks.length; i++) {
+    const embedding = await getEmbedding(c.env, chunks[i]);
+    if (embedding) {
+      const { error: embError } = await supabase.from('knowledge_base_embeddings').insert({
+        document_id: docId,
+        chunk_index: i,
+        chunk_text: chunks[i],
+        embedding,
+      });
+      if (!embError) embedded++;
+    }
+  }
+  await supabase
+    .from('knowledge_base_documents')
+    .update({ content_chunk_count: chunks.length })
+    .eq('id', docId);
+
+  return c.json({ document_id: docId, chunks: chunks.length, embedded, success: true }, 201);
+});
+
+// ---------- Helpers ----------
+
+function chunkText(text: string, maxTokens: number, overlap: number): string[] {
+  const paragraphs = text.split(/\n\n+/);
+  const chunks: string[] = [];
+  let current = '';
+  for (const para of paragraphs) {
+    const estTokens = Math.ceil((current + para).length / 4);
+    if (estTokens > maxTokens && current) {
+      chunks.push(current);
+      const words = current.split(' ');
+      current = words.slice(-overlap).join(' ') + '\n\n' + para;
+    } else {
+      current = current ? current + '\n\n' + para : para;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+async function getEmbedding(env: Env, text: string): Promise<number[] | null> {
+  try {
+    const res = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({ model: 'text-embedding-3-small', input: text }),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data: Array<{ embedding: number[] }> };
+    return json.data[0]?.embedding ?? null;
+  } catch {
+    return null;
+  }
+}

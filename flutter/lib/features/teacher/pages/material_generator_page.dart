@@ -185,11 +185,7 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
             ],
             const SizedBox(height: 16),
             FilledButton.tonalIcon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Add to syllabus — flow in Task 6.5 follow-up')),
-                );
-              },
+              onPressed: _addToSyllabus,
               icon: const Icon(Icons.add),
               label: const Text('Add to Syllabus'),
             ),
@@ -197,5 +193,84 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _addToSyllabus() async {
+    if (_generated == null) return;
+    try {
+      final dio = ApiClient.create();
+      // Fetch teacher's syllabi
+      final r = await dio.get('/teacher/syllabi');
+      final syllabi = (r.data as Map)['syllabi'] as List? ?? [];
+      if (syllabi.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No syllabi yet. Create one first.')),
+          );
+        }
+        return;
+      }
+
+      // Show dialog to pick a syllabus
+      final selectedSyllabus = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Choose Syllabus'),
+          content: SizedBox(
+            width: 300,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final s in syllabi)
+                  ListTile(
+                    leading: const Icon(Icons.view_kanban),
+                    title: Text((s as Map)['name'] as String? ?? ''),
+                    subtitle: Text('${s['target_exam'] ?? '—'}'),
+                    onTap: () => Navigator.pop(ctx, s as Map<String, dynamic>),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ],
+        ),
+      );
+
+      if (selectedSyllabus == null) return;
+      final syllabusId = selectedSyllabus['id'] as String;
+
+      // Get next sort order (count existing items)
+      final itemsR = await dio.get('/teacher/syllabi/$syllabusId');
+      final itemsList = ((itemsR.data as Map)['items'] as List?) ?? [];
+
+      // Build syllabus item from generated content
+      final g = _generated!;
+      final content = g['content'] as Map<String, dynamic>? ?? {};
+      final title = (content['title'] as String?) ?? _topicController.text.trim();
+      final itemType = _type == 'mock_test' ? 'mock_test' : _type;
+      final payload = {
+        'source_type': 'ai_generated',
+        'title': title,
+        'description': 'AI-generated $_type for $_exam ($_level)',
+        'item_type': itemType,
+        'section': _type,
+        'difficulty': _level,
+        'sort_order': itemsList.length,
+        'ai_generated_content': content,
+      };
+
+      await dio.post('/teacher/syllabi/$syllabusId/items', data: payload);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Added to syllabus ✓')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -40,6 +41,40 @@ class _AmbassadorDashboardPageState extends ConsumerState<AmbassadorDashboardPag
       appBar: AppBar(
         title: const Text('Ambassador Dashboard'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            tooltip: 'Generate proposal',
+            onPressed: () {
+              final url = 'https://osee-prep-hub-worker.edubot-leonardus.workers.dev'
+                  '/api/ambassador/proposal';
+              Clipboard.setData(ClipboardData(text: url));
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Teacher Proposal'),
+                  content: SizedBox(
+                    width: 400,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Open this URL in your browser (logged in) to view/print/share the proposal:'),
+                        const SizedBox(height: 8),
+                        SelectableText(url, style: const TextStyle(fontSize: 12, color: Colors.blue)),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Clipboard.setData(ClipboardData(text: url)),
+                      child: const Text('Copy'),
+                    ),
+                    FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+                  ],
+                ),
+              );
+            },
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
       ),
