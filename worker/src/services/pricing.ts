@@ -110,3 +110,21 @@ export async function listAllPricing(env: Env): Promise<Array<Record<string, unk
   if (error) throw new Error(`List pricing failed: ${error.message}`);
   return (data ?? []) as Array<Record<string, unknown>>;
 }
+
+/** Admin: deactivate a pricing entry (soft-delete via is_active=false). */
+export async function deactivatePrice(
+  env: Env,
+  itemType: ItemType,
+  role: UserRole
+): Promise<boolean> {
+  const supabase = getSupabase(env);
+  const { data, error } = await supabase
+    .from('pricing_config')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq('item_type', itemType)
+    .eq('role', role)
+    .select('id')
+    .maybeSingle();
+  if (error) throw new Error(`Deactivate price failed: ${error.message}`);
+  return Boolean(data);
+}

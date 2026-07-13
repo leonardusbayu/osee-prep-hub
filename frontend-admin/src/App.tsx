@@ -1,31 +1,72 @@
 import { Routes, Route, NavLink } from 'react-router-dom';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Dashboard } from './pages/Dashboard';
 import { Users } from './pages/Users';
 import { Content } from './pages/Content';
 import { Commission } from './pages/Commission';
 import { Analytics } from './pages/Analytics';
-import { adminLogin, adminLogout } from './api/client';
+import { Pricing } from './pages/Pricing';
+import { Ambassadors } from './pages/Ambassadors';
+import { Teachers } from './pages/Teachers';
+import { Students } from './pages/Students';
+import { adminLogin, adminLogout, setUnauthorizedHandler, apiFetch } from './api/client';
 
 const navItems = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/users', label: 'Users' },
-  { to: '/content', label: 'Content' },
+  { to: '/teachers', label: 'Teachers' },
+  { to: '/students', label: 'Students' },
+  { to: '/pricing', label: 'Pricing' },
+  { to: '/content', label: 'Knowledge Base' },
   { to: '/commission', label: 'Commission' },
+  { to: '/ambassadors', label: 'Ambassadors' },
   { to: '/analytics', label: 'Analytics' },
 ];
 
 export function App() {
   const [isAuthed, setIsAuthed] = useState(() => Boolean(localStorage.getItem('osee_admin_token')));
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Register global 401 handler — clear token + redirect to login
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      adminLogout();
+      setIsAuthed(false);
+    });
+  }, []);
+
+  // Validate token on mount — if invalid/expired, force login
+  useEffect(() => {
+    if (!isAuthed) {
+      setAuthChecked(true);
+      return;
+    }
+    apiFetch<{ valid: boolean }>('/auth/verify')
+      .then((res) => {
+        if (res.error || res.data?.valid === false) {
+          adminLogout();
+          setIsAuthed(false);
+        }
+      })
+      .finally(() => setAuthChecked(true));
+  }, [isAuthed]);
+
+  if (!authChecked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50">
+        <p className="text-gray-500">Checking session...</p>
+      </main>
+    );
+  }
 
   if (!isAuthed) {
     return <LoginScreen onLogin={() => setIsAuthed(true)} />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-64 bg-osee-700 text-white p-4 flex-shrink-0">
+      <aside className="w-64 flex-shrink-0 bg-osee-700 p-4 text-white">
         <div className="mb-6 flex items-center justify-between gap-3">
           <h1 className="text-xl font-bold">OSEE Admin</h1>
           <button
@@ -46,7 +87,7 @@ export function App() {
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `block px-3 py-2 rounded ${
+                `block rounded px-3 py-2 text-sm ${
                   isActive ? 'bg-osee-600 text-white' : 'text-osee-50 hover:bg-osee-600'
                 }`
               }
@@ -58,26 +99,43 @@ export function App() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-6 overflow-x-auto">
+      <main className="flex-1 overflow-x-auto p-6">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/teachers" element={<Teachers />} />
+          <Route path="/students" element={<Students />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/content" element={<Content />} />
           <Route path="/commission" element={<Commission />} />
+          <Route path="/ambassadors" element={<Ambassadors />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
     </div>
   );
 }
 
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
-  const [email, setEmail] = useState('admin@test.com');
+function NotFound(): JSX.Element {
+  return (
+    <div className="text-center">
+      <h1 className="text-3xl font-bold text-gray-700">404</h1>
+      <p className="mt-2 text-gray-500">Page not found.</p>
+      <a href="/" className="mt-4 inline-block text-osee-700 underline">
+        Go to Dashboard
+      </a>
+    </div>
+  );
+}
+
+function LoginScreen({ onLogin }: { onLogin: () => void }): JSX.Element {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setLoading(true);
     setError(null);
@@ -91,7 +149,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-6 shadow">
         <h1 className="text-2xl font-bold text-gray-900">OSEE Admin</h1>
         <div className="mt-6 space-y-4">
@@ -102,6 +160,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               type="email"
+              placeholder="admin@osee.co.id"
               required
             />
           </label>

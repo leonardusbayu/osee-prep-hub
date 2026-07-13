@@ -19,6 +19,8 @@ import { adminRoutes } from './routes/admin';
 import { platformRoutes } from './routes/platform';
 import { brandingRoutes } from './routes/branding';
 import type { Env, ContextVars } from './types';
+import { getPricingForRole } from './services/pricing';
+import { optionalAuth } from './middleware/auth';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -29,6 +31,14 @@ app.use('*', cors());
 // Health check
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Public pricing endpoint (no auth required, falls back to student role)
+app.get('/api/pricing', optionalAuth(), async (c) => {
+  const user = c.get('user');
+  const role = user?.role ?? 'student';
+  const pricing = await getPricingForRole(c.env, role as never);
+  return c.json({ pricing, role });
 });
 
 // Routes

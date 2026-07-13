@@ -30,6 +30,7 @@ import '../features/syllabus/pages/syllabus_builder_page.dart';
 import '../features/partner/pages/partner_dashboard_page.dart';
 import '../features/ambassador/pages/ambassador_dashboard_page.dart';
 import '../features/ambassador/pages/ambassador_recruitment_page.dart';
+import '../features/admin/pages/admin_page.dart';
 
 /// App router — go_router with role-based auth guards (Task 1.8).
 ///
@@ -109,10 +110,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/ambassador/join', builder: (c, s) => const AmbassadorRecruitmentPage()),
       GoRoute(
         path: '/admin',
-        builder: (c, s) => Scaffold(
-          appBar: AppBar(title: const Text('Admin')),
-          body: const Center(child: Text('Admin — use frontend-admin')),
-        ),
+        builder: (c, s) => const AdminPage(),
       ),
     ],
     errorBuilder: (c, s) => Scaffold(body: Center(child: Text('Not found: ${s.path}'))),
