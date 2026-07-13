@@ -41,7 +41,7 @@ export function App() {
       setAuthChecked(true);
       return;
     }
-    apiFetch<{ valid: boolean }>('/auth/verify')
+    apiFetch<{ valid: boolean }>('/auth/verify', { method: 'POST' })
       .then((res) => {
         if (res.error || res.data?.valid === false) {
           adminLogout();
