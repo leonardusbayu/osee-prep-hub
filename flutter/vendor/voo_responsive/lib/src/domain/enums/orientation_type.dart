@@ -1,0 +1,1 @@
+enum OrientationType { portrait, landscape }

@@ -3,6 +3,11 @@ SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_ANON_KEY=xxx
 SUPABASE_SERVICE_KEY=xxx
 
+# PostgreSQL connection string for one-off CLI tasks such as:
+# psql "$DATABASE_URL" -f schema.sql
+# This is not read by the Worker runtime.
+DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
+
 # JWT
 JWT_SECRET=xxx
 JWT_EXPIRY=7d

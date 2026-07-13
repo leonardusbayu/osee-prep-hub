@@ -15,6 +15,7 @@ import { videoRoutes } from './routes/video';
 import { classRoutes } from './routes/classes';
 import { externalRoutes } from './routes/external';
 import { ambassadorRoutes } from './routes/ambassador';
+import { adminRoutes } from './routes/admin';
 import type { Env, ContextVars } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -43,6 +44,7 @@ app.route('/api/videos', videoRoutes);
 app.route('/api/classes', classRoutes);
 app.route('/api/external', externalRoutes);
 app.route('/api/ambassador', ambassadorRoutes);
+app.route('/api/admin', adminRoutes);
 
 // Root
 app.get('/', (c) => {

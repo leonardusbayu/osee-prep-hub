@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
 import { setPrice, listAllPricing } from '../services/pricing';
+import { getSupabase } from '../services/supabase';
 
 export const adminRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -46,12 +47,70 @@ adminRoutes.post('/pricing', async (c) => {
 
 /** GET /api/admin/stats — platform-wide stats (placeholder for Task 18.4) */
 adminRoutes.get('/stats', async (c) => {
-  return c.json({
-    total_users: 0,
-    active_teachers: 0,
-    total_revenue: 0,
-    commission_paid: 0,
-    ai_usage: 0,
-    note: 'Full analytics — Task 18.4',
-  });
+  try {
+    const supabase = getSupabase(c.env);
+    const [
+      users,
+      teachers,
+      revenue,
+      commissionPaid,
+      aiUsage,
+    ] = await Promise.all([
+      supabase.from('unified_profiles').select('id', { count: 'exact', head: true }),
+      supabase
+        .from('unified_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'teacher'),
+      supabase
+        .from('orders')
+        .select('total_amount')
+        .in('status', ['paid', 'fulfilled']),
+      supabase
+        .from('commission_ledger')
+        .select('amount_idr')
+        .eq('status', 'paid'),
+      supabase
+        .from('ai_quota_usage')
+        .select('used_count'),
+    ]);
+
+    const totalRevenue = (revenue.data ?? []).reduce(
+      (sum, row) => sum + Number((row as { total_amount?: number }).total_amount ?? 0),
+      0
+    );
+    const totalCommissionPaid = (commissionPaid.data ?? []).reduce(
+      (sum, row) => sum + Number((row as { amount_idr?: number }).amount_idr ?? 0),
+      0
+    );
+    const totalAiUsage = (aiUsage.data ?? []).reduce(
+      (sum, row) => sum + Number((row as { used_count?: number }).used_count ?? 0),
+      0
+    );
+
+    return c.json({
+      total_users: users.count ?? 0,
+      active_teachers: teachers.count ?? 0,
+      total_revenue: totalRevenue,
+      commission_paid: totalCommissionPaid,
+      ai_usage: totalAiUsage,
+    });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** GET /api/admin/users — list recent users */
+adminRoutes.get('/users', async (c) => {
+  try {
+    const supabase = getSupabase(c.env);
+    const { data, error } = await supabase
+      .from('unified_profiles')
+      .select('id,email,display_name,role,created_at')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    return c.json({ users: data ?? [] });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
 });

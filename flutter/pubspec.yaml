@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.12.2
+  sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -37,6 +37,10 @@ dev_dependencies:
   # Model codegen
   build_runner: ^2.4.11
   json_serializable: ^6.8.0
+
+dependency_overrides:
+  voo_responsive:
+    path: vendor/voo_responsive
 
 flutter:
   uses-material-design: true

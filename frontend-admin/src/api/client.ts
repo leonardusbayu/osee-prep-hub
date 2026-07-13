@@ -7,6 +7,8 @@ export interface ApiResult<T> {
 
 /** Get auth token from cookie (set by worker via domain=.osee.co.id). */
 function getToken(): string | null {
+  const stored = window.localStorage.getItem('osee_admin_token');
+  if (stored) return stored;
   const match = document.cookie.match(/osee_token=([^;]+)/);
   return match ? match[1] : null;
 }
@@ -41,4 +43,19 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
       },
     };
   }
+}
+
+export async function adminLogin(email: string, password: string): Promise<ApiResult<{ jwt: string }>> {
+  const result = await apiFetch<{ jwt: string }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  if (result.data?.jwt) {
+    window.localStorage.setItem('osee_admin_token', result.data.jwt);
+  }
+  return result;
+}
+
+export function adminLogout() {
+  window.localStorage.removeItem('osee_admin_token');
 }

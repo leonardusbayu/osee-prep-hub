@@ -30,12 +30,22 @@ export function isAllowedOrigin(origin: string | undefined | null): boolean {
   }
 }
 
+function isLocalDevelopmentOrigin(origin: string | undefined | null): boolean {
+  if (!origin) return false;
+  try {
+    const url = new URL(origin);
+    return url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export const cors = () => {
   return async (c: Context<{ Bindings: Env; Variables: ContextVars }>, next: () => Promise<void>): Promise<Response | void> => {
     const origin = c.req.header('Origin');
 
     // If no Origin header, skip CORS (same-origin or non-browser)
-    if (origin && isAllowedOrigin(origin)) {
+    if (origin && (isAllowedOrigin(origin) || (c.env.ENVIRONMENT === 'development' && isLocalDevelopmentOrigin(origin)))) {
       // Set CORS headers on ALL responses, including preflight
       c.header('Access-Control-Allow-Origin', origin);
       c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

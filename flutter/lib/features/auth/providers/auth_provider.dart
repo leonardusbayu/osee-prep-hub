@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api_client.dart';
 import '../models/user.dart';
 
-const String _apiUrl = 'https://osee-prep-hub-worker.edubot-leonardus.workers.dev/api';
+String get _apiUrl => kDebugMode
+    ? 'http://localhost:8787/api'
+    : 'https://osee-prep-hub-worker.edubot-leonardus.workers.dev/api';
 
 class AuthState {
   const AuthState({this.user, this.token, this.isLoading = false, this.error});

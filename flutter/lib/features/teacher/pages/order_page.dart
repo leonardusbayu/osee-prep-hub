@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
-import '../models/dashboard_stats.dart';
 
 /// Teacher order page — Task 15.7.
 ///
@@ -20,7 +19,9 @@ class _OrderPageState extends ConsumerState<OrderPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic>? _pricing;
+  final Map<String, int> _cart = {};
   bool _isLoading = true;
+  bool _isPlacingOrder = false;
   String? _error;
 
   @override
@@ -44,13 +45,14 @@ class _OrderPageState extends ConsumerState<OrderPage>
     try {
       final dio = ApiClient.create();
       final response = await dio.get('/teacher/pricing');
+      final data = response.data as Map<String, dynamic>?;
       setState(() {
-        _pricing = response.data as Map<String, dynamic>?;
+        _pricing = data?['pricing'] as Map<String, dynamic>? ?? {};
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _error = 'Failed to load pricing';
+        _error = 'Failed to load pricing: $e';
         _isLoading = false;
       });
     }
@@ -96,6 +98,10 @@ class _OrderPageState extends ConsumerState<OrderPage>
           Text(_orderTypeDescription(orderType),
               style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 16),
+          if (_cart.isNotEmpty) ...[
+            _buildCartSummary(),
+            const SizedBox(height: 16),
+          ],
           _buildItemCard('mock_itp', 'Mock Test — ITP', 'TOEFL ITP practice simulations', Icons.assignment),
           _buildItemCard('mock_ibt', 'Mock Test — iBT', 'TOEFL iBT practice simulations', Icons.assignment),
           _buildItemCard('mock_ielts', 'Mock Test — IELTS', 'IELTS practice simulations', Icons.assignment),
@@ -105,11 +111,11 @@ class _OrderPageState extends ConsumerState<OrderPage>
           _buildItemCard('official_toeic', 'Official TOEIC Test', 'ETS-certified TOEIC test at OSEE test center', Icons.verified),
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: _pricing == null
+            onPressed: _pricing == null || _cart.isEmpty || _isPlacingOrder
                 ? null
                 : () => _showOrderSummary(context, orderType),
             icon: const Icon(Icons.shopping_cart),
-            label: const Text('Review & Place Order'),
+            label: Text(_isPlacingOrder ? 'Placing Order...' : 'Review & Place Order'),
           ),
         ],
       ),
@@ -118,6 +124,7 @@ class _OrderPageState extends ConsumerState<OrderPage>
 
   Widget _buildItemCard(String itemType, String name, String description, IconData icon) {
     final price = _pricing?[itemType];
+    final formattedPrice = price is num ? 'Rp ${price.toStringAsFixed(0)} / unit' : 'Price not set';
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: Padding(
@@ -134,7 +141,7 @@ class _OrderPageState extends ConsumerState<OrderPage>
                   Text(description, style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 4),
                   Text(
-                    price != null ? 'Rp ${(price as int).toStringAsFixed(0)} / unit' : 'Loading...',
+                    formattedPrice,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
@@ -145,12 +152,86 @@ class _OrderPageState extends ConsumerState<OrderPage>
             ),
             TextButton(
               onPressed: () {
-                // Add 1 to cart, shown in summary
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Added $name to cart')),
-                );
+                setState(() {
+                  _cart[itemType] = (_cart[itemType] ?? 0) + 1;
+                });
               },
               child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCartSummary() {
+    final entries = _cart.entries.toList();
+    final total = entries.fold<int>(0, (sum, entry) {
+      final price = _pricing?[entry.key];
+      return sum + ((price is num ? price.toInt() : 0) * entry.value);
+    });
+
+    return Card(
+      color: Theme.of(context).colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.shopping_cart_checkout),
+                const SizedBox(width: 8),
+                Text('Selected Items', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => setState(() => _cart.clear()),
+                  child: const Text('Clear'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...entries.map((entry) {
+              final price = _pricing?[entry.key];
+              final subtotal = (price is num ? price.toInt() : 0) * entry.value;
+              return Row(
+                children: [
+                  Expanded(child: Text(_itemLabel(entry.key))),
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline),
+                    onPressed: () {
+                      setState(() {
+                        final next = entry.value - 1;
+                        if (next <= 0) {
+                          _cart.remove(entry.key);
+                        } else {
+                          _cart[entry.key] = next;
+                        }
+                      });
+                    },
+                  ),
+                  Text('${entry.value}'),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline),
+                    onPressed: () => setState(() => _cart[entry.key] = entry.value + 1),
+                  ),
+                  SizedBox(
+                    width: 110,
+                    child: Text(
+                      _formatRupiah(subtotal),
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              );
+            }),
+            const Divider(),
+            Row(
+              children: [
+                const Expanded(child: Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
+                Text(_formatRupiah(total), style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
             ),
           ],
         ),
@@ -173,9 +254,100 @@ class _OrderPageState extends ConsumerState<OrderPage>
     }
   }
 
-  void _showOrderSummary(BuildContext context, String orderType) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$orderType order — full checkout flow in Task 15.7 follow-up')),
+  Future<void> _showOrderSummary(BuildContext context, String orderType) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Place order?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_orderTypeDescription(orderType)),
+            const SizedBox(height: 16),
+            ..._cart.entries.map((entry) => Text('${_itemLabel(entry.key)} x ${entry.value}')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Place Order')),
+        ],
+      ),
     );
+    if (confirmed != true) return;
+
+    setState(() => _isPlacingOrder = true);
+    try {
+      final dio = ApiClient.create();
+      final orderResponse = await dio.post('/orders', data: {
+        'order_type': orderType,
+        'items': _cart.entries
+            .map((entry) => {
+                  'item_type': entry.key,
+                  'quantity': entry.value,
+                })
+            .toList(),
+      });
+      final orderId = orderResponse.data['id'] as String;
+      final paymentResponse = await dio.post('/orders/$orderId/pay', data: {
+        'payment_method': 'mock',
+      });
+      if (!mounted) return;
+      setState(() {
+        _cart.clear();
+        _isPlacingOrder = false;
+      });
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Order Created'),
+          content: Text(
+            'Payment ref: ${paymentResponse.data['payment_ref']}\n'
+            'Amount: ${_formatRupiah((paymentResponse.data['amount'] as num).toInt())}',
+          ),
+          actions: [
+            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isPlacingOrder = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Order failed: $e')),
+      );
+    }
+  }
+
+  String _itemLabel(String itemType) {
+    switch (itemType) {
+      case 'mock_itp':
+        return 'Mock Test — ITP';
+      case 'mock_ibt':
+        return 'Mock Test — iBT';
+      case 'mock_ielts':
+        return 'Mock Test — IELTS';
+      case 'mock_toeic':
+        return 'Mock Test — TOEIC';
+      case 'tutor_bot_premium':
+        return 'Tutor Bot Premium';
+      case 'official_toefl':
+        return 'Official TOEFL Test';
+      case 'official_toeic':
+        return 'Official TOEIC Test';
+      default:
+        return itemType;
+    }
+  }
+
+  String _formatRupiah(int value) {
+    final digits = value.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      final remaining = digits.length - i;
+      buffer.write(digits[i]);
+      if (remaining > 1 && remaining % 3 == 1) buffer.write('.');
+    }
+    return 'Rp $buffer';
   }
 }
