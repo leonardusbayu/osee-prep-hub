@@ -272,10 +272,10 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
   }
 
   void _removeItem(int col, int idx) {
-    setState(() {
-      _columns[col].removeAt(idx);
-      _isDirty = true;
-    });
+    _columns[col].removeAt(idx);
+    _isDirty = true;
+    _kanbanController.setLanes(_buildLanes());
+    setState(() {});
   }
 
   void _renameItem(int col, int idx) {
@@ -299,6 +299,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                   _columns[col][idx] = current.copyWith(title: v);
                   _isDirty = true;
                 });
+                _kanbanController.setLanes(_buildLanes());
               }
               Navigator.pop(ctx);
             },
