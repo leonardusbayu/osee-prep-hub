@@ -583,7 +583,19 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
 
     return Container(
       color: OseeTheme.paper,
-      child: VooKanbanBoard<SyllabusItem>(
+      child: DragTarget<CatalogEntry>(
+        onAcceptWithDetails: (details) {
+          // Determine target column based on horizontal position
+          final renderBox = context.findRenderObject() as RenderBox?;
+          if (renderBox == null) return;
+          final localX = details.offset.dx - renderBox.localToGlobal(Offset.zero).dx;
+          final boardWidth = renderBox.size.width;
+          final colWidth = boardWidth / _columns.length;
+          final targetCol = (localX / colWidth).floor().clamp(0, _columns.length - 1);
+          _onCatalogDrop(details.data, targetCol);
+        },
+        builder: (context, candidate, rejected) {
+          return VooKanbanBoard<SyllabusItem>(
         lanes: lanes,
         controller: _kanbanController,
         config: const KanbanConfig(
@@ -629,6 +641,8 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
             _drawerCol = col;
             _drawerIdx = card.index;
           });
+        },
+      );
         },
       ),
     );
