@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Readiness gauge page — Task 11.4.
 class ReadinessPage extends StatefulWidget {
@@ -39,9 +40,9 @@ class _ReadinessPageState extends State<ReadinessPage> {
         IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
       ]),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : _buildContent(_data ?? {}),
     );
   }

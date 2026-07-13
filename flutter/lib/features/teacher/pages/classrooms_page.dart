@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Teacher Classrooms page — Task 2.x.
 class ClassroomsPage extends StatefulWidget {
@@ -106,18 +107,9 @@ class _ClassroomsPageState extends State<ClassroomsPage> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(_error!),
-                      const SizedBox(height: 12),
-                      FilledButton(onPressed: _load, child: const Text('Retry')),
-                    ],
-                  ),
-                )
+              ? ErrorState(message: _error!, onRetry: _load)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: (_classrooms?.isEmpty ?? true)

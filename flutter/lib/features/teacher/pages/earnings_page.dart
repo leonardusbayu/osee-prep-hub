@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Teacher Earnings/Commission dashboard page — Task 12.1.
 class EarningsPage extends StatefulWidget {
@@ -113,9 +114,9 @@ class _EarningsPageState extends State<EarningsPage> {
         onPressed: _requestPayout,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(

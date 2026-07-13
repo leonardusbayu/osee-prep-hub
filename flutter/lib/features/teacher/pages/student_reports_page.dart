@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Student reports list page — Task 8.x.
 /// Lists students across the teacher's classrooms and links to detailed reports.
@@ -73,9 +74,9 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
         IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
       ]),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(

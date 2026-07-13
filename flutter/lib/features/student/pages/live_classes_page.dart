@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Upcoming live classes page (student) — Task 14.2.
 class LiveClassesPage extends StatefulWidget {
@@ -58,9 +59,9 @@ class _LiveClassesPageState extends State<LiveClassesPage> {
         IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
       ]),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: (_classes?.isEmpty ?? true)

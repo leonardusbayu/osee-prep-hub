@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Video lessons library page (student) — Task 13.x.
 class VideoLessonsPage extends StatefulWidget {
@@ -42,9 +43,9 @@ class _VideoLessonsPageState extends State<VideoLessonsPage> {
         IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
       ]),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: (_courses?.isEmpty ?? true)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Student Progress page — Task 11.3.
 class StudentProgressPage extends StatefulWidget {
@@ -42,9 +43,9 @@ class _StudentProgressPageState extends State<StudentProgressPage> {
         IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
       ]),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : _buildContent(_progress ?? {}),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Classroom report page with weakness heatmap — Task 9.3.
 ///
@@ -46,9 +47,9 @@ class _ClassroomReportPageState extends State<ClassroomReportPage> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : _buildContent(_report ?? {}),
     );
   }

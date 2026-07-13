@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Classroom detail page — Task 2.x.
 class ClassroomDetailPage extends StatefulWidget {
@@ -141,9 +142,9 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : _buildContent(_classroom ?? {}),
     );
   }

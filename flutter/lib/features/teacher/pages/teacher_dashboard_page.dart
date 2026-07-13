@@ -5,12 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api_client.dart';
 import '../../../core/responsive.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Teacher dashboard — Task 2.1.
-///
-/// Shows: total students, active classrooms, commission this month,
-/// AI credits remaining, recent activity feed, order section link,
-/// voucher stats.
 class TeacherDashboardPage extends ConsumerStatefulWidget {
   const TeacherDashboardPage({super.key});
 
@@ -30,10 +27,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
   }
 
   Future<void> _loadDashboard() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    setState(() { _isLoading = true; _error = null; });
     try {
       final dio = ApiClient.create();
       final response = await dio.get('/teacher/dashboard');
@@ -42,242 +36,209 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = 'Failed to load dashboard';
-        _isLoading = false;
-      });
+      setState(() { _error = 'Failed to load dashboard'; _isLoading = false; });
     }
+  }
+
+  Future<void> _logout() async {
+    await ref.read(authProvider.notifier).logout();
+    if (context.mounted) context.go('/login');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Teacher Dashboard'),
+        title: const Text('Dashboard'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadDashboard,
-            tooltip: 'Refresh',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) context.go('/login');
-            },
-            tooltip: 'Logout',
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadDashboard, tooltip: 'Refresh'),
+          IconButton(icon: const Icon(Icons.logout), onPressed: _logout, tooltip: 'Logout'),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(_error!),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: _loadDashboard,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : _buildStatsGrid(),
+              ? ErrorState(message: _error!, onRetry: _loadDashboard)
+              : RefreshIndicator(
+                  onRefresh: _loadDashboard,
+                  child: _buildContent(),
+                ),
     );
   }
 
-  Widget _buildStatsGrid() {
+  Widget _buildContent() {
     final stats = _stats ?? {};
-    return RefreshIndicator(
-      onRefresh: _loadDashboard,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Stats cards
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: Responsive.statGridColumns(context),
-            childAspectRatio: 1.5,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            children: [
-              _StatCard(
-                icon: Icons.groups,
-                label: 'Total Students',
-                value: '${stats['total_students'] ?? 0}',
-                color: Colors.blue,
-              ),
-              _StatCard(
-                icon: Icons.class_,
-                label: 'Classrooms',
-                value: '${stats['classrooms_count'] ?? 0}',
-                color: Colors.green,
-              ),
-              _StatCard(
-                icon: Icons.payments,
-                label: 'Commission (Month)',
-                value: 'Rp ${stats['commission_this_month'] ?? 0}',
-                color: Colors.orange,
-              ),
-              _StatCard(
-                icon: Icons.auto_awesome,
-                label: 'AI Credits Left',
-                value: '${stats['ai_quota_remaining'] ?? 0}',
-                color: Colors.purple,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+    final user = stats['user'] as Map<String, dynamic>? ?? {};
 
-          // Quick actions
-          Text('Quick Actions', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            children: [
-              ActionChip(
-                label: const Text('Syllabi'),
-                avatar: const Icon(Icons.view_kanban_outlined),
-                onPressed: () => context.push('/teacher/syllabi'),
-              ),
-              ActionChip(
-                label: const Text('Classrooms'),
-                avatar: const Icon(Icons.class_outlined),
-                onPressed: () => context.push('/teacher/classrooms'),
-              ),
-              ActionChip(
-                label: const Text('AI Grader'),
-                avatar: const Icon(Icons.edit_note),
-                onPressed: () => context.push('/teacher/ai-grader'),
-              ),
-              ActionChip(
-                label: const Text('Order Tests'),
-                avatar: const Icon(Icons.shopping_cart_outlined),
-                onPressed: () => context.push('/teacher/orders'),
-              ),
-              ActionChip(
-                label: const Text('Commission'),
-                avatar: const Icon(Icons.payments_outlined),
-                onPressed: () => context.push('/teacher/commission'),
-              ),
-              ActionChip(
-                label: const Text('Reports'),
-                avatar: const Icon(Icons.picture_as_pdf_outlined),
-                onPressed: () => context.push('/teacher/reports'),
-              ),
-              ActionChip(
-                label: const Text('Settings'),
-                avatar: const Icon(Icons.settings_outlined),
-                onPressed: () => context.push('/teacher/settings'),
-              ),
-              ActionChip(
-                label: const Text('Upgrade'),
-                avatar: const Icon(Icons.star_outline),
-                onPressed: () => context.push('/teacher/upgrade'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+    return ListView(
+      padding: const EdgeInsets.all(Spacing.md),
+      children: [
+        // Greeting header
+        _GreetingHeader(name: user['name'] as String?),
+        const SizedBox(height: Spacing.lg),
 
-          // Recent activity
-          Text('Recent Activity', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          if ((stats['recent_activity'] as List?)?.isEmpty ?? true)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'No recent activity yet',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
-                ),
-              ),
-            )
-          else
-            ...(stats['recent_activity'] as List).take(5).map((activity) {
-              final a = activity as Map<String, dynamic>;
-              return Card(
-                child: ListTile(
-                  leading: const Icon(Icons.notifications_outlined),
-                  title: Text(a['action'] as String? ?? 'Event'),
-                  subtitle: Text('Rp ${a['amount_idr'] ?? 0} · ${a['status'] ?? ''}\n${a['created_at'] as String? ?? ''}'),
-                  isThreeLine: true,
-                ),
-              );
-            }),
+        // Stats grid
+        SectionHeader(title: 'Overview'),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: Responsive.statGridColumns(context),
+          childAspectRatio: 1.4,
+          crossAxisSpacing: Spacing.sm,
+          mainAxisSpacing: Spacing.sm,
+          children: [
+            StatCard(icon: Icons.groups, label: 'Students', value: '${stats['total_students'] ?? 0}', color: const Color(0xFF6B8E7F)),
+            StatCard(icon: Icons.class_, label: 'Classrooms', value: '${stats['classrooms_count'] ?? 0}', color: const Color(0xFF1A1A2E)),
+            StatCard(icon: Icons.payments, label: 'Commission', value: 'Rp ${_formatNum(stats['commission_this_month'] ?? 0)}', color: const Color(0xFFC9A96E)),
+            StatCard(icon: Icons.auto_awesome, label: 'AI Credits', value: '${stats['ai_quota_remaining'] ?? 0}', color: const Color(0xFFE63946)),
+          ],
+        ),
+        const SizedBox(height: Spacing.lg),
 
-          // Order section quick link
-          const SizedBox(height: 24),
-          Card(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            child: ListTile(
-              leading: const Icon(Icons.shopping_cart, size: 32),
-              title: const Text('Order Tests & Vouchers'),
-              subtitle: const Text('Buy mock tests, official tests, and Tutor Bot premium at teacher rates'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/teacher/orders'),
-            ),
+        // Quick actions
+        SectionHeader(title: 'Quick Actions'),
+        _ActionGrid(),
+        const SizedBox(height: Spacing.lg),
+
+        // Recent activity
+        SectionHeader(title: 'Recent Activity'),
+        _ActivityList(activities: stats['recent_activity'] as List? ?? []),
+      ],
+    );
+  }
+
+  String _formatNum(dynamic n) {
+    final i = int.tryParse('$n') ?? 0;
+    if (i >= 1000000) return '${(i / 1000000).toStringAsFixed(1)}M';
+    if (i >= 1000) return '${(i / 1000).toStringAsFixed(0)}k';
+    return '$i';
+  }
+}
+
+class _GreetingHeader extends StatelessWidget {
+  const _GreetingHeader({this.name});
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 11 ? 'Good morning' : hour < 15 ? 'Good afternoon' : 'Good evening';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$greeting,',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).hintColor,
           ),
-        ],
-      ),
+        ),
+        Text(
+          name ?? 'Teacher',
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+class _ActionGrid extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final actions = [
+      _Action(Icons.view_kanban_outlined, 'Syllabi', '/teacher/syllabi'),
+      _Action(Icons.class_outlined, 'Classrooms', '/teacher/classrooms'),
+      _Action(Icons.edit_note, 'AI Grader', '/teacher/ai-grader'),
+      _Action(Icons.auto_awesome_outlined, 'Generator', '/teacher/generator'),
+      _Action(Icons.shopping_cart_outlined, 'Orders', '/teacher/orders'),
+      _Action(Icons.payments_outlined, 'Earnings', '/teacher/commission'),
+      _Action(Icons.picture_as_pdf_outlined, 'Reports', '/teacher/reports'),
+      _Action(Icons.star_outline, 'Upgrade', '/teacher/upgrade'),
+    ];
 
+    return Wrap(
+      spacing: Spacing.sm,
+      runSpacing: Spacing.sm,
+      children: actions.map((a) => _ActionChip(action: a)).toList(),
+    );
+  }
+}
+
+class _Action {
   final IconData icon;
   final String label;
-  final String value;
-  final Color color;
+  final String route;
+  const _Action(this.icon, this.label, this.route);
+}
+
+class _ActionChip extends StatelessWidget {
+  const _ActionChip({required this.action});
+  final _Action action;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.bodySmall,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-            ),
-          ],
-        ),
-      ),
+    return ActionChip(
+      label: Text(action.label),
+      avatar: Icon(action.icon, size: 18),
+      onPressed: () => context.push(action.route),
     );
+  }
+}
+
+class _ActivityList extends StatelessWidget {
+  const _ActivityList({required this.activities});
+  final List activities;
+
+  @override
+  Widget build(BuildContext context) {
+    if (activities.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.md),
+          child: Text(
+            'No recent activity yet',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).hintColor,
+            ),
+          ),
+        ),
+      );
+    }
+    return Column(
+      children: activities.take(5).map((activity) {
+        final a = activity as Map<String, dynamic>;
+        return Card(
+          margin: const EdgeInsets.only(bottom: Spacing.xs),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.xs),
+            leading: Icon(
+              a['status'] == 'paid' ? Icons.check_circle : Icons.hourglass_top,
+              color: a['status'] == 'paid' ? const Color(0xFF6B8E7F) : const Color(0xFFC9A96E),
+              size: 20,
+            ),
+            title: Text(
+              (a['action'] as String? ?? 'Event').replaceAll('_', ' ').split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' '),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 14),
+            ),
+            subtitle: Text(
+              'Rp ${a['amount_idr'] ?? 0} · ${a['status'] ?? ''}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            trailing: Text(
+              _formatDate(a['created_at'] as String?),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  String _formatDate(String? iso) {
+    if (iso == null) return '';
+    final d = DateTime.tryParse(iso);
+    if (d == null) return '';
+    return '${d.day}/${d.month}';
   }
 }

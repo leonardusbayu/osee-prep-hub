@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Teacher settings + branding page — Task 15.1.
 class SettingsPage extends StatefulWidget {
@@ -102,9 +103,9 @@ class _SettingsPageState extends State<SettingsPage> {
         IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
       ]),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [

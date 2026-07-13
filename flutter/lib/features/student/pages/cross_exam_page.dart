@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Cross-exam score map page — Task 11.5.
 class CrossExamPage extends StatefulWidget {
@@ -39,9 +40,9 @@ class _CrossExamPageState extends State<CrossExamPage> {
         IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
       ]),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : _buildContent(_data ?? {}),
     );
   }

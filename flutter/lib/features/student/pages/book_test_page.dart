@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:js' as js;
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Book official test page — Task 11.6.
 class BookTestPage extends StatefulWidget {
@@ -54,9 +55,9 @@ class _BookTestPageState extends State<BookTestPage> {
         IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
       ]),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [

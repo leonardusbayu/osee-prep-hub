@@ -66,12 +66,15 @@ export function App() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-osee-700 p-4 text-white">
+      <aside className="w-64 flex-shrink-0 bg-osee-600 p-4 text-osee-50">
         <div className="mb-6 flex items-center justify-between gap-3">
-          <h1 className="text-xl font-bold">OSEE Admin</h1>
+          <div>
+            <h1 className="font-serif text-2xl font-bold text-white">OSEE</h1>
+            <p className="text-xs text-osee-100/60">Admin Panel</p>
+          </div>
           <button
             type="button"
-            className="rounded bg-osee-600 px-2 py-1 text-xs text-white hover:bg-osee-500"
+            className="rounded bg-osee-800 px-2 py-1 text-xs text-white hover:bg-osee-800/80"
             onClick={() => {
               adminLogout();
               setIsAuthed(false);
@@ -87,8 +90,8 @@ export function App() {
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `block rounded px-3 py-2 text-sm ${
-                  isActive ? 'bg-osee-600 text-white' : 'text-osee-50 hover:bg-osee-600'
+                `block rounded px-3 py-2 text-sm transition-colors ${
+                  isActive ? 'bg-osee-800 text-white' : 'text-osee-50/80 hover:bg-osee-800/50 hover:text-white'
                 }`
               }
             >
@@ -149,14 +152,17 @@ function LoginScreen({ onLogin }: { onLogin: () => void }): JSX.Element {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-6 shadow">
-        <h1 className="text-2xl font-bold text-gray-900">OSEE Admin</h1>
-        <div className="mt-6 space-y-4">
+    <main className="flex min-h-screen items-center justify-center bg-osee-50 p-6">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-lg">
+        <div className="mb-6 text-center">
+          <h1 className="font-serif text-3xl font-bold text-osee-600">OSEE</h1>
+          <p className="text-sm text-gray-500">Admin Panel</p>
+        </div>
+        <div className="space-y-4">
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Email</span>
             <input
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 transition-colors focus:border-osee-600 focus:outline-none"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               type="email"
@@ -167,7 +173,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }): JSX.Element {
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Password</span>
             <input
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 transition-colors focus:border-osee-600 focus:outline-none"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               type="password"
@@ -177,7 +183,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }): JSX.Element {
         </div>
         {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
         <button
-          className="mt-6 w-full rounded bg-osee-700 px-4 py-2 font-semibold text-white hover:bg-osee-600 disabled:opacity-60"
+          className="mt-6 w-full rounded bg-osee-600 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-osee-800 disabled:opacity-60"
           disabled={loading}
           type="submit"
         >

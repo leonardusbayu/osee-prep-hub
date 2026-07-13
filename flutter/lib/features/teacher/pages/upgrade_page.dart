@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Upgrade to Pro / Institution tier page — Task 15.2, 15.3.
 class UpgradePage extends StatefulWidget {
@@ -53,7 +54,7 @@ class _UpgradePageState extends State<UpgradePage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Upgrade')),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [

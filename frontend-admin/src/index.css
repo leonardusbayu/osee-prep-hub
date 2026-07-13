@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Professional admin theme — aligned with Flutter OseeTheme */
+body {
+  @apply bg-osee-50 text-osee-600;
+  font-family: 'Helvetica', 'Arial', sans-serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Georgia', serif;
+}
+
+/* Sidebar */
+aside {
+  background: #1a1a2e;
+}
+
+/* Tables */
+table {
+  @apply text-sm;
+}
+
+th {
+  @apply font-semibold uppercase tracking-wide text-gray-500;
+}
+
+/* Cards */
+.card {
+  @apply rounded-lg bg-white shadow-sm;
+}
+
+/* Buttons */
+.btn-primary {
+  @apply rounded bg-osee-600 px-4 py-2 font-semibold text-white hover:bg-osee-800 disabled:opacity-50;
+}

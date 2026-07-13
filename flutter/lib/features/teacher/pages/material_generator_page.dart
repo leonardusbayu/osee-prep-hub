@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// AI Material Generator page — Task 6.3.
 ///
@@ -128,7 +129,7 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
 
               if (_isGenerating) ...[
                 const SizedBox(height: 24),
-                const Center(child: CircularProgressIndicator()),
+                const LoadingState(),
               ],
 
               if (_generated != null) ...[

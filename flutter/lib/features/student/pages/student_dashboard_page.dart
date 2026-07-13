@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
-import '../../../core/responsive.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../shared/widgets/ui_components.dart';
 
-/// Student dashboard page — Task 11.1.
+/// Student dashboard — Task 11.1.
 class StudentDashboardPage extends ConsumerStatefulWidget {
   const StudentDashboardPage({super.key});
 
@@ -36,27 +36,25 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
     }
   }
 
+  Future<void> _logout() async {
+    await ref.read(authProvider.notifier).logout();
+    if (context.mounted) context.go('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Learning'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) context.go('/login');
-            },
-            tooltip: 'Logout',
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load, tooltip: 'Refresh'),
+          IconButton(icon: const Icon(Icons.logout), onPressed: _logout, tooltip: 'Logout'),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : RefreshIndicator(onRefresh: _load, child: _buildContent(_dashboard ?? {})),
     );
   }
@@ -67,90 +65,45 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
     final readiness = d['readiness'] as int? ?? 0;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(Spacing.md),
       children: [
+        // Readiness gauge
         _ReadinessCard(readiness: readiness),
-        const SizedBox(height: 16),
-        Text('Recent Progress', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-          _ProgressCard(progress: progress),
-          const SizedBox(height: 16),
-          // Quick navigation grid
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: Responsive.statGridColumns(context),
-            childAspectRatio: 1,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            children: [
-              _NavTile(Icons.trending_up, 'Progress', '/student/progress'),
-              _NavTile(Icons.verified, 'Readiness', '/student/readiness'),
-              _NavTile(Icons.video_library, 'Videos', '/student/videos'),
-              _NavTile(Icons.videocam, 'Live Class', '/student/classes'),
-              _NavTile(Icons.compare_arrows, 'Cross-Exam', '/student/cross-exam'),
-              _NavTile(Icons.event, 'Book Test', '/student/book-test'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text('My Classes', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
+        const SizedBox(height: Spacing.lg),
+
+        // Quick navigation
+        SectionHeader(title: 'Navigate'),
+        _NavGrid(),
+        const SizedBox(height: Spacing.lg),
+
+        // Recent progress
+        SectionHeader(title: 'Recent Progress'),
+        _ProgressCard(progress: progress),
+        const SizedBox(height: Spacing.lg),
+
+        // My classes
+        SectionHeader(title: 'My Classes'),
         if (classrooms.isEmpty)
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('No classes yet — join one with a code from your teacher',
-                  style: Theme.of(context).textTheme.bodyMedium),
+              padding: const EdgeInsets.all(Spacing.md),
+              child: Text(
+                'No classes yet — join one with a code from your teacher',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).hintColor,
+                ),
+              ),
             ),
           )
         else
-          ...classrooms.map((c) => Card(
-                child: ListTile(
-                  leading: const Icon(Icons.class_),
-                  title: Text((c as Map<String, dynamic>)['name'] as String? ?? ''),
-                  subtitle: Text('Teacher: ${c['teacher_name'] as String? ?? ''}'),
-                  trailing: const Icon(Icons.chevron_right),
-                ),
-              )),
+          ...classrooms.map((c) => _ClassroomTile(c as Map<String, dynamic>)),
+
+        // Book test CTA
         if (readiness > 80) ...[
-          const SizedBox(height: 16),
-          Card(
-            color: Colors.green.shade100,
-            child: ListTile(
-              leading: const Icon(Icons.verified, color: Colors.green, size: 32),
-              title: const Text('Ready for the official test?'),
-              subtitle: const Text('Book your TOEFL or TOEIC at OSEE test center'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.go('/student/book-test'),
-            ),
-          ),
+          const SizedBox(height: Spacing.lg),
+          _BookTestCTA(onTap: () => context.go('/student/book-test')),
         ],
       ],
-    );
-  }
-}
-
-class _NavTile extends StatelessWidget {
-  const _NavTile(this.icon, this.label, this.route);
-  final IconData icon;
-  final String label;
-  final String route;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => context.go(route),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 12), textAlign: TextAlign.center),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -162,26 +115,118 @@ class _ReadinessCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = readiness > 80
-        ? Colors.green
+        ? const Color(0xFF6B8E7F)
         : readiness > 50
-            ? Colors.orange
-            : Colors.red;
+            ? const Color(0xFFC9A96E)
+            : const Color(0xFFE63946);
+    final label = readiness > 80 ? 'Ready' : readiness > 50 ? 'Almost Ready' : 'Preparing';
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+        padding: const EdgeInsets.all(Spacing.lg),
+        child: Row(
           children: [
-            const Text('Readiness', style: TextStyle(fontSize: 14, color: Colors.grey)),
-            const SizedBox(height: 8),
-            Text('$readiness%',
-                style: TextStyle(fontSize: 64, fontWeight: FontWeight.bold, color: color)),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: readiness / 100,
-              minHeight: 12,
-              color: color,
-              backgroundColor: Colors.grey.shade200,
+            // Circular progress
+            SizedBox(
+              width: 80,
+              height: 80,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value: readiness / 100,
+                    strokeWidth: 6,
+                    color: color,
+                    backgroundColor: Theme.of(context).dividerColor,
+                  ),
+                  Text(
+                    '$readiness%',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: Spacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Readiness', style: Theme.of(context).textTheme.labelSmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    readiness > 80
+                        ? 'You\'re ready to book your official test!'
+                        : 'Keep practicing to improve your score',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavGrid extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      _NavItem(Icons.trending_up, 'Progress', '/student/progress'),
+      _NavItem(Icons.verified, 'Readiness', '/student/readiness'),
+      _NavItem(Icons.video_library, 'Videos', '/student/videos'),
+      _NavItem(Icons.videocam, 'Live', '/student/classes'),
+      _NavItem(Icons.compare_arrows, 'Cross-Exam', '/student/cross-exam'),
+      _NavItem(Icons.event, 'Book Test', '/student/book-test'),
+    ];
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      childAspectRatio: 1.1,
+      crossAxisSpacing: Spacing.sm,
+      mainAxisSpacing: Spacing.sm,
+      children: items.map((i) => _NavTile(item: i)).toList(),
+    );
+  }
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+  final String route;
+  const _NavItem(this.icon, this.label, this.route);
+}
+
+class _NavTile extends StatelessWidget {
+  const _NavTile({required this.item});
+  final _NavItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(2),
+        onTap: () => context.go(item.route),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(item.icon, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: Spacing.xs),
+            Text(item.label, style: Theme.of(context).textTheme.labelSmall),
           ],
         ),
       ),
@@ -195,37 +240,81 @@ class _ProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ibt = progress['ibt_latest_score'] as int?;
-    final itp = progress['itp_latest_score'] as int?;
-    final ielts = progress['ielts_latest_band'] as num?;
-    final toeic = progress['toeic_latest_score'] as int?;
+    final ibt = progress['ibt_latest_score'];
+    final itp = progress['itp_latest_score'];
+    final ielts = progress['ielts_latest_band'];
+    final toeic = progress['toeic_latest_score'];
     final count = progress['total_practice_count'] as int? ?? 0;
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('$count total practice sessions', style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 12),
-            _row('TOEFL iBT', ibt?.toString() ?? '—'),
-            _row('TOEFL ITP', itp?.toString() ?? '—'),
-            _row('IELTS band', ielts?.toString() ?? '—'),
-            _row('TOEIC', toeic?.toString() ?? '—'),
+            const SizedBox(height: Spacing.sm),
+            const Divider(),
+            InfoRow(label: 'TOEFL iBT', value: ibt?.toString() ?? '—'),
+            InfoRow(label: 'TOEFL ITP', value: itp?.toString() ?? '—'),
+            InfoRow(label: 'IELTS Band', value: ielts?.toString() ?? '—'),
+            InfoRow(label: 'TOEIC', value: toeic?.toString() ?? '—'),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _row(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(child: Text(label)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
+class _ClassroomTile extends StatelessWidget {
+  const _ClassroomTile(this.c);
+  final Map<String, dynamic> c;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: Spacing.xs),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.xs),
+        leading: const Icon(Icons.class_, color: Color(0xFF6B8E7F)),
+        title: Text(c['name'] as String? ?? '', style: Theme.of(context).textTheme.bodyLarge),
+        subtitle: Text('Teacher: ${c['teacher_name'] as String? ?? ''}', style: Theme.of(context).textTheme.bodySmall),
+        trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+}
+
+class _BookTestCTA extends StatelessWidget {
+  const _BookTestCTA({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: const Color(0xFF6B8E7F).withValues(alpha: 0.1),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(2),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.md),
+          child: Row(
+            children: [
+              const Icon(Icons.verified, color: Color(0xFF6B8E7F), size: 32),
+              const SizedBox(width: Spacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Ready for the official test?', style: Theme.of(context).textTheme.titleMedium),
+                    Text('Book your TOEFL or TOEIC at OSEE test center', style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF6B8E7F)),
+            ],
+          ),
+        ),
       ),
     );
   }

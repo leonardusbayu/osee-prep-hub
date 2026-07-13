@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:js' as js;
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 import '../../auth/providers/auth_provider.dart';
 
 /// Admin page (Flutter) — Task 18.4.
@@ -113,7 +114,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
           const Text('Quick Stats', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           if (_isLoading)
-            const Center(child: CircularProgressIndicator())
+            const LoadingState()
           else if (_error != null)
             Card(
               child: Padding(

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
+import '../../../shared/widgets/ui_components.dart';
 import '../../auth/providers/auth_provider.dart';
 
 /// Ambassador dashboard — Task 17.2.
@@ -88,9 +89,9 @@ class _AmbassadorDashboardPageState extends ConsumerState<AmbassadorDashboardPag
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState()
           : _error != null
-              ? Center(child: Text(_error!))
+              ? ErrorState(message: _error!, onRetry: _load)
               : _body(_stats ?? {}),
     );
   }
