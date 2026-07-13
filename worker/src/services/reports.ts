@@ -42,27 +42,21 @@ export async function generateStudentReport(
   const supabase = getSupabase(env);
 
   // Verify the teacher owns this student (via classroom enrollment)
-  const { data: enrollment } = await supabase
+  const { data: enrollments } = await supabase
     .from('classroom_enrollments')
     .select(`
-      id,
       classroom:classrooms!classroom_enrollments_classroom_id_fkey (
         teacher_id
       )
     `)
     .eq('student_id', studentId)
-    .eq('is_active', true)
-    .maybeSingle();
+    .eq('is_active', true);
 
   // Check if any enrollment belongs to this teacher
-  const teacherOwnsStudent = Array.isArray(enrollment)
-    ? enrollment.some((e: Record<string, unknown>) => {
-        const classroom = e.classroom as Record<string, unknown>;
-        return classroom?.teacher_id === teacherId;
-      })
-    : (enrollment as Record<string, unknown> | null)?.classroom
-        ? ((enrollment as Record<string, unknown>).classroom as Record<string, unknown>)?.teacher_id === teacherId
-        : false;
+  const teacherOwnsStudent = (enrollments ?? []).some((e: Record<string, unknown>) => {
+    const classroom = e.classroom as Record<string, unknown>;
+    return classroom?.teacher_id === teacherId;
+  });
 
   if (!teacherOwnsStudent && teacherId !== studentId) {
     throw new Error('Not authorized to view this student');
