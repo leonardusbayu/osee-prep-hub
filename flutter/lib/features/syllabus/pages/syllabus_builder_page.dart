@@ -112,10 +112,41 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
       unlockedAt: null,
       labelIds: autoLabel,
     );
-    setState(() {
-      _columns[targetCol].add(newItem);
-      _isDirty = true;
-    });
+    _columns[targetCol].add(newItem);
+    _isDirty = true;
+
+    // Rebuild lanes + sync controller
+    final lanes = _buildLanes();
+    _kanbanController.setLanes(lanes);
+    setState(() {});
+  }
+
+  /// Build KanbanLane list from _columns (shared between board + controller sync).
+  List<KanbanLane<SyllabusItem>> _buildLanes() {
+    final widths = <double>[320, 280, 360, 280, 320, 280, 360, 240, 320, 280, 360, 280];
+    final lanes = <KanbanLane<SyllabusItem>>[];
+    for (var c = 0; c < _columns.length; c++) {
+      final w = widths[c % widths.length];
+      final totalMin = _columns[c].fold<int>(0, (a, i) => a + (i.estimatedMinutes ?? 0));
+      lanes.add(
+        KanbanLane<SyllabusItem>(
+          id: c.toString(),
+          title: 'Week ${c + 1}',
+          subtitle: _columns[c].isEmpty ? '—' : '${_columns[c].length} · ${totalMin}m',
+          cards: [
+            for (var i = 0; i < _columns[c].length; i++)
+              KanbanCard<SyllabusItem>(
+                id: _columns[c][i].id,
+                data: _columns[c][i],
+                laneId: c.toString(),
+                index: i,
+              ),
+          ],
+          metadata: {'width': w, 'columnIndex': c},
+        ),
+      );
+    }
+    return lanes;
   }
 
   /// Show dialog to pick a material from the catalog and add to a lane.
@@ -171,8 +202,14 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                             subtitle: Text('${entry.itemType} · ${entry.difficulty ?? '—'}', style: const TextStyle(fontSize: 12)),
                             trailing: const Icon(Icons.add_circle_outline, size: 20),
                             onTap: () {
-                              _onCatalogDrop(entry, targetCol);
                               Navigator.pop(ctx);
+                              _onCatalogDrop(entry, targetCol);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  duration: const Duration(seconds: 1),
+                                  content: Text('Added: ${entry.title}'),
+                                ),
+                              );
                             },
                           );
                         },
@@ -545,48 +582,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
   }
 
   Widget _buildBoardArea() {
-    // Asymmetric lane widths — alternate wide / medium / narrow for editorial feel.
-    final widths = <double>[
-      320,
-      280,
-      360,
-      280,
-      320,
-      280,
-      360,
-      240,
-      320,
-      280,
-      360,
-      280,
-    ];
-    final lanes = <KanbanLane<SyllabusItem>>[];
-    for (var c = 0; c < _columns.length; c++) {
-      final w = widths[c % widths.length];
-      final totalMin = _columns[c].fold<int>(
-        0,
-        (a, i) => a + (i.estimatedMinutes ?? 0),
-      );
-      lanes.add(
-        KanbanLane<SyllabusItem>(
-          id: c.toString(),
-          title: 'Week ${c + 1}',
-          subtitle: _columns[c].isEmpty
-              ? '—'
-              : '${_columns[c].length} · ${totalMin}m',
-          cards: [
-            for (var i = 0; i < _columns[c].length; i++)
-              KanbanCard<SyllabusItem>(
-                id: _columns[c][i].id,
-                data: _columns[c][i],
-                laneId: c.toString(),
-                index: i,
-              ),
-          ],
-          metadata: {'width': w, 'columnIndex': c},
-        ),
-      );
-    }
+    final lanes = _buildLanes();
 
     return Container(
       color: OseeTheme.paper,
