@@ -66,6 +66,8 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
         final col = _columnForSection(item.section);
         _columns[col].add(item);
       }
+      // Sync controller dengan data yang baru di-load
+      _kanbanController.setLanes(_buildLanes());
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) setState(() => _error = 'Failed to load syllabus: $e');
@@ -586,13 +588,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
 
     return Container(
       color: OseeTheme.paper,
-      child: DragTarget<CatalogEntry>(
-        onAccept: (entry) {
-          // Drop ke column pertama (default) — user bisa reorder setelahnya
-          _onCatalogDrop(entry, 0);
-        },
-        builder: (context, candidate, rejected) {
-          return VooKanbanBoard<SyllabusItem>(
+      child: VooKanbanBoard<SyllabusItem>(
         lanes: lanes,
         controller: _kanbanController,
         config: const KanbanConfig(
@@ -638,8 +634,6 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
             _drawerCol = col;
             _drawerIdx = card.index;
           });
-        },
-      );
         },
       ),
     );
@@ -706,9 +700,9 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  'Drag any item into a week column to assign it.',
-                  style: TextStyle(
+                  Text(
+                    'Tap any item to add it to Week 1.',
+                    style: TextStyle(
                     fontFamily: 'Georgia',
                     fontStyle: FontStyle.italic,
                     fontSize: 11,
@@ -777,7 +771,11 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                 final pad = i.isEven ? 12.0 : 8.0;
                 return Padding(
                   padding: EdgeInsets.symmetric(vertical: pad / 2),
-                  child: _MagazineCatalogCard(entry: filtered[i], index: i + 1),
+                  child: _MagazineCatalogCard(
+                    entry: filtered[i],
+                    index: i + 1,
+                    onTap: () => _onCatalogDrop(filtered[i], 0),
+                  ),
                 );
               },
             ),
@@ -1240,9 +1238,10 @@ class _MagazineEmptyLane extends StatelessWidget {
 /// Magazine-styled catalog card — asymmetric padding, rotated index number,
 /// serif title, sans caption, gold rule.
 class _MagazineCatalogCard extends StatelessWidget {
-  const _MagazineCatalogCard({required this.entry, required this.index});
+  const _MagazineCatalogCard({required this.entry, required this.index, this.onTap});
   final CatalogEntry entry;
   final int index;
+  final VoidCallback? onTap;
 
   IconData _iconFor(String src) {
     switch (src) {
@@ -1268,14 +1267,9 @@ class _MagazineCatalogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Draggable<CatalogEntry>(
-      data: entry,
-      feedback: Material(
-        elevation: 6,
-        borderRadius: BorderRadius.circular(2),
-        child: SizedBox(width: 260, child: _buildInner(emitShadow: true)),
-      ),
-      childWhenDragging: Opacity(opacity: 0.35, child: _buildInner()),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(2),
       child: _buildInner(),
     );
   }
