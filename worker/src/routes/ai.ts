@@ -102,6 +102,22 @@ aiRoutes.get('/grading/history', async (c) => {
   }
 });
 
+/** GET /api/ai/generation/:id — poll generation job status + result (blueprint line 1373) */
+aiRoutes.get('/generation/:id', async (c) => {
+  const user = getAuthedUser(c);
+  const supabase = (await import('../services/supabase')).getSupabase(c.env);
+  const { data, error } = await supabase
+    .from('ai_generation_queue')
+    .select('*')
+    .eq('id', c.req.param('id'))
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (error || !data) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Generation job not found' } }, 404);
+  }
+  return c.json(data);
+});
+
 /** POST /api/ai/grading/process — process pending grading entries (cron-triggered) */
 aiRoutes.post('/grading/process', async (c) => {
   try {

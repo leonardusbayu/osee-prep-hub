@@ -29,7 +29,7 @@ export async function getCommissionStats(env: Env, teacherId: string): Promise<C
 
   const { data: entries } = await supabase
     .from('commission_ledger')
-    .select('id, commission_type, amount, status, created_at, student_id')
+    .select('id, action, amount_idr, status, created_at, student_id')
     .eq('teacher_id', teacherId)
     .order('created_at', { ascending: false })
     .limit(100);
@@ -45,9 +45,9 @@ export async function getCommissionStats(env: Env, teacherId: string): Promise<C
   const byType: Record<string, number> = {};
 
   for (const r of rows) {
-    const amount = r.amount as number;
+    const amount = r.amount_idr as number;
     const status = r.status as string;
-    const type = r.commission_type as string;
+    const type = r.action as string;
     const createdAt = new Date(r.created_at as string);
 
     totalEarned += amount;
@@ -80,8 +80,8 @@ export async function getCommissionStats(env: Env, teacherId: string): Promise<C
     by_type: byType,
     recent_entries: rows.slice(0, 20).map((r) => ({
       id: r.id as string,
-      type: r.commission_type as string,
-      amount: r.amount as number,
+      type: r.action as string,
+      amount: r.amount_idr as number,
       status: r.status as string,
       student_name: studentMap[r.student_id as string] ?? null,
       created_at: r.created_at as string,

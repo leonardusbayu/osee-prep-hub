@@ -67,7 +67,7 @@ export async function recordCommission(env: Env, input: CommissionInput): Promis
       .from('commission_ledger')
       .select('id')
       .eq('student_id', input.user_id)
-      .eq('commission_type', 'first_practice')
+      .eq('action', 'first_practice')
       .maybeSingle();
     if (existing) {
       return; // Already paid — idempotency
@@ -87,15 +87,15 @@ export async function recordCommission(env: Env, input: CommissionInput): Promis
 
   const finalAmount = baseAmount * multiplier;
 
-  // Insert commission entry
+  // Insert commission entry — schema columns: action, amount_idr, reference_id, notes
   const { error } = await supabase.from('commission_ledger').insert({
     teacher_id: teacherId,
     student_id: input.user_id,
-    commission_type: commissionType,
-    amount: finalAmount,
+    action: commissionType,
+    amount_idr: finalAmount,
     status: 'pending',
-    reference_event_type: input.event_type,
-    reference_platform: input.platform,
+    reference_id: input.platform,  // platform sebagai reference awal
+    notes: `${input.event_type} from ${input.platform}`,
     created_at: new Date().toISOString(),
   });
 

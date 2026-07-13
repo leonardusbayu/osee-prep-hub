@@ -41,7 +41,7 @@ export async function getAmbassadorStats(env: Env, userId: string): Promise<Amba
     .from('commission_ledger')
     .select('amount, created_at')
     .eq('teacher_id', userId)
-    .eq('commission_type', 'ambassador_bonus');
+    .eq('action', 'ambassador_bonus');
 
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);

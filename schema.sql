@@ -571,6 +571,37 @@ CREATE TABLE student_progress_unified (
 
 CREATE INDEX idx_progress_student ON student_progress_unified(student_id);
 
+-- Per-practice history row (audit trail of all practice/test attempts)
+CREATE TABLE student_progress_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  student_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,  -- 'ibt' | 'itp' | 'ielts' | 'toeic' | 'booking' | 'edubot'
+  exam_type TEXT,
+  section TEXT,
+  score DECIMAL,
+  completed_at TIMESTAMPTZ DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}'
+);
+
+CREATE INDEX idx_history_student ON student_progress_history(student_id);
+CREATE INDEX idx_history_completed ON student_progress_history(completed_at);
+
+-- ============================================================
+-- 10b. PLATFORM LINKS (deep links to practice platforms per exam type)
+-- ============================================================
+
+CREATE TABLE platform_links (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  platform TEXT NOT NULL,        -- 'ibt' | 'itp' | 'ielts' | 'toeic' | 'edubot' | 'osee'
+  exam_type TEXT NOT NULL,        -- 'TOEFL_IBT' | 'TOEFL_ITP' | 'IELTS' | 'TOEIC' | 'GENERAL'
+  url TEXT NOT NULL,
+  label TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_platform_links_exam ON platform_links(exam_type);
+
 -- ============================================================
 -- 11. CROSS-EXAM SCORE MAP
 -- ============================================================
@@ -1071,7 +1102,17 @@ RETURNS TABLE (
     e.metadata,
     1 - (e.embedding <=> query_embedding) AS similarity
   FROM knowledge_base_embeddings e
-  WHERE e.metadata @> filter
+  JOIN knowledge_base_documents d ON d.id = e.document_id
+  WHERE d.is_active = TRUE
+    -- Apply filters: support both chunk metadata (e.metadata @> filter) AND document-level filters
+    AND (
+      e.metadata @> filter
+      OR (
+        (filter->>'category' IS NULL OR d.category = (filter->>'category'))
+        AND (filter->>'cefr_level' IS NULL OR d.cefr_level = (filter->>'cefr_level'))
+        AND (filter->>'tier' IS NULL OR (d.metadata->>'tier') = (filter->>'tier'))
+      )
+    )
   ORDER BY e.embedding <=> query_embedding
   LIMIT match_count;
 $$ LANGUAGE SQL;

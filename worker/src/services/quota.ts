@@ -26,15 +26,17 @@ export interface QuotaStatus {
 
 export type QuotaType = 'grading' | 'generation' | 'speaking';
 
-/** Check if a teacher has an active Pro/Institution subscription. */
+/** Check if a teacher has an active Pro/Institution subscription OR is an ambassador (Appendix B). */
 async function isTeacherPro(env: Env, userId: string): Promise<boolean> {
   const supabase = getSupabase(env);
   const { data } = await supabase
     .from('teacher_profiles')
-    .select('tier, tier_expires_at')
+    .select('tier, tier_expires_at, is_ambassador')
     .eq('user_id', userId)
     .maybeSingle();
   const p = (data as Record<string, unknown> | null) ?? {};
+  // Ambassadors get unlimited AI (blueprint Appendix B line 2915)
+  if (p.is_ambassador === true) return true;
   const tier = (p.tier as string) ?? 'free';
   if (tier === 'free') return false;
   // Check not expired

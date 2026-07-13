@@ -170,3 +170,18 @@ export async function addSyllabusItem(
   if (error || !data) throw new Error(`Add item failed: ${error?.message}`);
   return data as SyllabusItem;
 }
+
+/** Delete a syllabus item (blueprint line 1327). */
+export async function deleteSyllabusItem(
+  env: Env,
+  syllabusId: string,
+  itemId: string
+): Promise<void> {
+  const supabase = getSupabase(env);
+  const { error } = await supabase
+    .from('syllabus_items')
+    .delete()
+    .eq('id', itemId)
+    .eq('syllabus_id', syllabusId);
+  if (error) throw new Error(`Delete item failed: ${error.message}`);
+}

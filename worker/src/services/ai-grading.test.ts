@@ -61,7 +61,7 @@ describe('ai-grading service', () => {
     expect(result.band).toBe('6.5');
     expect(result.criteria_scores).toHaveLength(2);
     expect(result.improvements).toHaveLength(2);
-    expect(result.rag_context_used).toBe(1);
+    expect(result.rag_context_used).toBe(2);  // rubric + error patterns = 2 RAG calls
   });
 
   it('throws on empty essay', async () => {
@@ -103,9 +103,9 @@ describe('ai-grading service', () => {
   });
 
   it('proceeds even if RAG search fails (graceful degradation)', async () => {
-    // Re-mock RAG search to throw
+    // Re-mock RAG search to throw on both calls (rubric + error patterns)
     const ragSearch = (await import('../services/rag-search')).searchDocuments as ReturnType<typeof vi.fn>;
-    ragSearch.mockImplementationOnce(async () => {
+    ragSearch.mockImplementation(async () => {
       throw new Error('RAG unavailable');
     });
 

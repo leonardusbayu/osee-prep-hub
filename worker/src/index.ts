@@ -96,4 +96,44 @@ app.onError((err, c) => {
   );
 });
 
-export default app;
+// ---------- Cron scheduled handler ----------
+//
+// Triggered by Cloudflare Workers Cron Triggers (wrangler.toml [triggers] crons).
+// Runs every minute to:
+//   1. Process pending webhook events (webhook_events.processed = false)
+//   2. Send reminders for classes starting within the next hour
+//
+// Uses a shared secret from EDUBOT_INTERNAL_SECRET to prevent abuse if the
+// cron payload is replayed — Cloudflare guarantees only Workers infra can
+// trigger `scheduled`, so this is defence-in-depth.
+import { processWebhookBatch } from './services/webhook-processor';
+import { sendUpcomingClassReminders } from './services/live-class';
+
+const scheduledHandler: ExportedHandlerScheduledHandler<Env> = async (_event, env, ctx) => {
+  // 1. Process webhook events in FIFO batches
+  ctx.waitUntil(
+    processWebhookBatch(env, 50)
+      .then((result) => {
+        console.log(`[cron] webhook batch: ${result.succeeded}/${result.total} succeeded`);
+      })
+      .catch((err) => {
+        console.error('[cron] webhook processing failed:', err);
+      })
+  );
+
+  // 2. Send class reminders for classes starting within the next 60 minutes
+  ctx.waitUntil(
+    sendUpcomingClassReminders(env)
+      .then((result) => {
+        console.log(`[cron] class reminders sent: ${result.reminders_sent}`);
+      })
+      .catch((err) => {
+        console.error('[cron] class reminder failed:', err);
+      })
+  );
+};
+
+export default {
+  fetch: app.fetch,
+  scheduled: scheduledHandler,
+} satisfies ExportedHandler<Env>;

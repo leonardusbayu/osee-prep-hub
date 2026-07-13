@@ -22,6 +22,7 @@ import {
   listSyllabusItems,
   batchSaveSyllabusItems,
   addSyllabusItem,
+  deleteSyllabusItem,
 } from '../services/syllabus';
 import { getPricingForRole } from '../services/pricing';
 import { getSupabase } from '../services/supabase';
@@ -363,5 +364,60 @@ teacherRoutes.get('/pricing', cache({ ttl: 300 }), async (c) => {
     return c.json({ pricing });
   } catch (err) {
     return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** DELETE /api/teacher/syllabi/:id/items/:itemId — delete syllabus item (blueprint line 1327) */
+teacherRoutes.delete('/syllabi/:id/items/:itemId', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  const itemId = c.req.param('itemId');
+  const syllabus = await getSyllabus(c.env, user.id, syllabusId);
+  if (!syllabus) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Syllabus not found' } }, 404);
+  }
+  try {
+    await deleteSyllabusItem(c.env, syllabusId, itemId);
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: { code: 'DELETE_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** GET /api/teacher/referral-code — get teacher's referral code + usage stats (blueprint line 1309) */
+teacherRoutes.get('/referral-code', async (c) => {
+  const user = getAuthedUser(c);
+  const supabase = getSupabase(c.env);
+  const { data: profile, error } = await supabase
+    .from('teacher_profiles')
+    .select('referral_code, referral_code_active, total_students, total_earnings_idr')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (error || !profile) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Teacher profile not found' } }, 404);
+  }
+  const p = profile as Record<string, unknown>;
+  // Count actual referral uses
+  const { count } = await supabase
+    .from('unified_profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('referred_by', user.id);
+  return c.json({
+    code: p.referral_code,
+    active: p.referral_code_active ?? true,
+    total_uses: count ?? 0,
+    total_earnings: p.total_earnings_idr ?? 0,
+  });
+});
+
+/** GET /api/teacher/classrooms/:id/students — list students in a classroom (blueprint line 1306) */
+teacherRoutes.get('/classrooms/:id/students', async (c) => {
+  const user = getAuthedUser(c);
+  const classroomId = c.req.param('id');
+  try {
+    const detail = await getClassroomDetail(c.env, user.id, classroomId);
+    return c.json({ students: detail.students });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 404);
   }
 });

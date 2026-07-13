@@ -270,6 +270,36 @@ adminRoutes.get('/ambassadors', async (c) => {
   });
 });
 
+/** POST /api/admin/ambassadors/promote — promote a teacher to ambassador (auto-set Pro tier for life, Appendix B line 2920) */
+adminRoutes.post('/ambassadors/promote', async (c) => {
+  let body: { teacher_id?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.teacher_id) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'teacher_id required' } }, 400);
+  }
+  const supabase = getSupabase(c.env);
+  const now = new Date().toISOString();
+  // Set is_ambassador + auto-upgrade tier to Pro for life (tier_expires_at = NULL = never expires)
+  const { data, error } = await supabase
+    .from('teacher_profiles')
+    .update({
+      is_ambassador: true,
+      ambassador_recruited_at: now,
+      tier: 'pro',
+      tier_expires_at: null,  // for life
+      updated_at: now,
+    })
+    .eq('user_id', body.teacher_id)
+    .select()
+    .maybeSingle();
+  if (error || !data) {
+    return c.json({ error: { code: 'PROMOTE_FAILED', message: error?.message ?? 'teacher not found' } }, 500);
+  }
+  return c.json({ success: true, ambassador: data });
+});
+
 // ---------- Knowledge base ----------
 
 /** GET /api/admin/knowledge-base/documents — list KB documents (filter by ?category=&active=) */

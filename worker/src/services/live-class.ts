@@ -169,3 +169,45 @@ export async function sendUpcomingClassReminders(env: Env): Promise<{ reminders_
   }
   return { reminders_sent: totalSent };
 }
+/** Send post-class recording notification to Telegram channel (blueprint line 2462). */
+export async function sendClassRecordingNotification(
+  env: Env,
+  classId: string,
+  recordingUrl: string
+): Promise<{ sent: number }> {
+  const supabase = getSupabase(env);
+  const { data: cls } = await supabase
+    .from('live_classes')
+    .select('title, teacher_name, scheduled_at')
+    .eq('id', classId)
+    .maybeSingle();
+  if (!cls) return { sent: 0 };
+  const c = cls as Record<string, unknown>;
+  const text =
+    `🎬 *Live Class Recording Available*\n\n` +
+    `*${c.title as string}*\n` +
+    `👨‍🏫 ${c.teacher_name as string ?? 'OSEE Instructor'}\n\n` +
+    `🔗 Recording:\n${recordingUrl}`;
+
+  let sent = 0;
+  if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHANNEL_ID) {
+    try {
+      const res = await fetch(
+        `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: env.TELEGRAM_CHANNEL_ID,
+            text,
+            parse_mode: 'Markdown',
+          }),
+        }
+      );
+      if (res.ok) sent++;
+    } catch (err) {
+      console.error('Telegram recording notification failed:', err);
+    }
+  }
+  return { sent };
+}

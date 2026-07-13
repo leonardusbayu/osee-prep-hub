@@ -47,27 +47,49 @@ export async function gradeWriting(env: Env, input: GradeWritingInput): Promise<
     throw new Error('rubric and examType required');
   }
 
-  // RAG search for relevant rubric/assessment criteria
-  const ragQuery = `${input.examType} ${input.rubric} writing assessment criteria ${input.level ?? ''}`;
-  const ragResults = await searchDocuments(env, ragQuery, {
-    matchCount: 5,
-    filter: { tier: '1' },
-  }).catch((err) => {
-    console.warn('RAG search failed, proceeding without context:', err);
-    return [];
-  });
+  // RAG search #1: rubric + assessment criteria (category: rubrics)
+  const rubricQuery = `${input.examType} ${input.rubric} writing assessment criteria rubric ${input.level ?? ''}`;
+  const rubricResults = await searchDocuments(env, rubricQuery, {
+    matchCount: 3,
+    filter: { tier: '1', category: 'rubrics' },
+  }).catch(() => []);
 
-  // Build prompt with RAG context
-  const ragContext = ragResults
-    .map((r) => `- ${r.chunk_text.slice(0, 500)}`)
-    .join('\n');
+  // RAG search #2: Indonesian error patterns (category: error_patterns)
+  const errorQuery = `Indonesian learner English writing common errors grammar mistakes`;
+  const errorResults = await searchDocuments(env, errorQuery, {
+    matchCount: 3,
+    filter: { tier: '1', category: 'error_patterns' },
+  }).catch(() => []);
+
+  // Fallback: if category filter returns nothing, search without category
+  const allRagResults = [...rubricResults, ...errorResults];
+  let ragResults = allRagResults;
+  if (allRagResults.length === 0) {
+    const fallbackQuery = `${input.examType} ${input.rubric} writing assessment ${input.level ?? ''}`;
+    ragResults = await searchDocuments(env, fallbackQuery, {
+      matchCount: 5,
+      filter: { tier: '1' },
+    }).catch(() => []);
+  }
+
+  // Build prompt with RAG context (rubric + error patterns separated)
+  const rubricContext = rubricResults.map((r) => r.chunk_text.slice(0, 500)).join('\n');
+  const errorContext = errorResults.map((r) => r.chunk_text.slice(0, 500)).join('\n');
+  const fallbackContext = (ragResults !== allRagResults ? ragResults : []).map((r) => r.chunk_text.slice(0, 500)).join('\n');
 
   const systemPrompt = `You are an expert English language assessor for ${input.examType}.
 Rubric: ${input.rubric}
 Target CEFR level: ${input.level ?? 'B2'}
 
-Reference assessment criteria:
-${ragContext || '(no RAG context available — use standard assessment criteria)'}
+---OFFICIAL RUBRIC---
+${rubricContext || fallbackContext || '(no rubric context — use standard criteria)'}
+---END RUBRIC---
+
+---INDONESIAN LEARNER ERROR PATTERNS---
+${errorContext || '(no error pattern context — use general ESL knowledge)'}
+---END ERROR PATTERNS---
+
+Watch specifically for the Indonesian L1 interference errors listed above when grading.
 
 Evaluate the essay and return JSON with this exact structure:
 {
