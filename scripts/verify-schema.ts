@@ -4,43 +4,55 @@
  * Usage:
  *   DATABASE_URL=postgresql://... npx tsx scripts/verify-schema.ts
  *
- * Or with Supabase CLI:
- *   npx tsx scripts/verify-schema.ts --supabase-url=... --supabase-key=...
+ * Or with psql directly:
+ *   psql "$DATABASE_URL" -c "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;"
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-// Expected tables from blueprint Section 4 + order system extension
+// Expected tables — matches schema.sql exactly
 const EXPECTED_TABLES = [
   // Core
   'unified_profiles',
   'teacher_profiles',
-  'student_profiles',
-  'referral_codes',
   'classrooms',
   'classroom_enrollments',
   'syllabi',
   'syllabus_items',
-  // AI
-  'ai_grading_queue',
-  'ai_generation_queue',
-  'documents',
-  // Commission
+  'syllabus_item_progress',
+  // Referral + commission
+  'teacher_referrals',
+  'commission_rates',
   'commission_ledger',
   'commission_payouts',
-  'ambassador_teachers',
-  // Webhooks + progress
-  'webhook_events',
+  // AI quota
+  'ai_quota_usage',
+  'ai_quota_limits',
+  // Knowledge base (RAG)
+  'knowledge_base_documents',
+  'knowledge_base_embeddings',
+  // AI queues
+  'ai_grading_queue',
+  'ai_generation_queue',
+  // Progress
   'student_progress_unified',
-  // Video + classes
+  'student_progress_history',
+  'platform_links',
+  // Cross-exam
+  'cross_exam_score_map',
+  // Video
   'video_courses',
   'video_lessons',
   'video_progress',
+  // Live classes
   'live_classes',
   'class_registrations',
-  // Branding
-  'branding_config',
-  // Order system (Task 1.1 addition)
+  // Webhooks
+  'webhook_events',
+  // Subscriptions + branding
+  'teacher_subscriptions',
+  'branding_configs',
+  // Order system
   'pricing_config',
   'orders',
   'order_items',
@@ -58,9 +70,6 @@ interface VerifyResult {
 }
 
 async function fetchTables(databaseUrl: string): Promise<string[]> {
-  // Use fetch to query Supabase REST API if URL is a Supabase URL,
-  // otherwise fall back to pg-style query (requires pg package).
-  // For simplicity, this script uses Supabase's REST API.
   const url = new URL(databaseUrl);
   throw new Error(
     `Direct database query not implemented. Use one of:\n` +
@@ -78,9 +87,6 @@ async function main(): Promise<void> {
     console.error('To verify schema:');
     console.error('  1. Set DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres');
     console.error('  2. Run: npx tsx scripts/verify-schema.ts');
-    console.error('');
-    console.error('Or verify manually via Supabase SQL editor:');
-    console.error('  SELECT tablename FROM pg_tables WHERE schemaname=\'public\' ORDER BY tablename;');
     console.error('');
     console.error(`Expected tables (${EXPECTED_TABLES.length}):`);
     for (const t of EXPECTED_TABLES) {

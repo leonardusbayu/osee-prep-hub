@@ -857,6 +857,37 @@ ALTER TABLE teacher_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE branding_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_quota_usage ENABLE ROW LEVEL SECURITY;
 
+-- Enable RLS on additional tables (security hardening)
+ALTER TABLE syllabus_item_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE commission_payouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE commission_rates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE student_progress_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE video_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE class_registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE webhook_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pricing_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cross_exam_score_map ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_base_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_base_embeddings ENABLE ROW LEVEL SECURITY;
+
+-- Default deny for sensitive tables (access via service key only)
+CREATE POLICY syllabus_item_progress_student_select ON syllabus_item_progress
+  FOR SELECT USING (auth.uid() = student_id);
+CREATE POLICY commission_payouts_teacher_select ON commission_payouts
+  FOR SELECT USING (auth.uid() = teacher_id);
+CREATE POLICY video_progress_user_select ON video_progress
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY class_registrations_user_select ON class_registrations
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY orders_user_select ON orders
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY vouchers_select ON vouchers
+  FOR SELECT USING (TRUE);  -- vouchers are validated by code, not by owner
+
 -- Profiles: users can only see/update their own profile
 CREATE POLICY profiles_self_select ON unified_profiles
   FOR SELECT USING (auth.uid() = id OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin');
