@@ -46,6 +46,7 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
   }
 
   Future<void> _viewStudentReport(String studentId, String studentName) async {
+    if (studentId.isEmpty) return;
     try {
       final dio = ApiClient.create();
       final r = await dio.get('/teacher/students/$studentId/report');
@@ -108,9 +109,16 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        final msg = e.toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              msg.contains('404')
+                ? 'No report available for this student yet'
+                : 'Failed to load report',
+            ),
+          ),
+        );
       }
     }
   }
@@ -320,12 +328,16 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.person),
-                title: Text((s as Map)['display_name'] as String? ?? ''),
-                subtitle: Text((s)['email'] as String? ?? ''),
+                title: Text(
+                  ((s as Map)['student'] as Map?)?['display_name'] as String? ?? '',
+                ),
+                subtitle: Text(
+                  (s['student'] as Map?)?['email'] as String? ?? '',
+                ),
                 trailing: const Icon(Icons.picture_as_pdf),
                 onTap: () => _viewStudentReport(
-                  s['id'] as String,
-                  s['display_name'] as String? ?? 'Student',
+                  (s['student'] as Map?)?['id'] as String? ?? '',
+                  (s['student'] as Map?)?['display_name'] as String? ?? 'Student',
                 ),
               ),
             ),
