@@ -25,6 +25,8 @@ import {
   batchSaveSyllabusItems,
   addSyllabusItem,
   deleteSyllabusItem,
+  deleteSyllabus,
+  togglePublishSyllabus,
 } from '../services/syllabus';
 import { getPricingForRole } from '../services/pricing';
 import { getSupabase } from '../services/supabase';
@@ -466,5 +468,33 @@ teacherRoutes.get('/classrooms/:id/students', async (c) => {
     return c.json({ students: detail.students });
   } catch (err) {
     return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 404);
+  }
+});
+
+/** DELETE /api/teacher/syllabi/:id — delete entire syllabus */
+teacherRoutes.delete('/syllabi/:id', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  try {
+    await deleteSyllabus(c.env, user.id, syllabusId);
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: { code: 'DELETE_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** POST /api/teacher/syllabi/:id/publish — publish/unpublish syllabus */
+teacherRoutes.post('/syllabi/:id/publish', async (c) => {
+  const user = getAuthedUser(c);
+  const syllabusId = c.req.param('id');
+  let body: { published?: boolean };
+  try { body = await c.req.json(); } catch {
+    body = {};
+  }
+  try {
+    await togglePublishSyllabus(c.env, user.id, syllabusId, body.published ?? true);
+    return c.json({ success: true, published: body.published ?? true });
+  } catch (err) {
+    return c.json({ error: { code: 'PUBLISH_FAILED', message: (err as Error).message } }, 500);
   }
 });

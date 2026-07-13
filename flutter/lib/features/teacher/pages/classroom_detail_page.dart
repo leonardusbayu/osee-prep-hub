@@ -115,6 +115,80 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
     }
   }
 
+  Future<void> _addStudents() async {
+    final controller = TextEditingController();
+    final emails = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Students'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter student emails (comma-separated):',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Student emails',
+                hintText: 'a@x.com, b@y.com',
+                prefixIcon: Icon(Icons.alternate_email),
+              ),
+              keyboardType: TextInputType.emailAddress,
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    if (emails == null || emails.isEmpty) return;
+
+    final list = emails
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (list.isEmpty) return;
+
+    try {
+      final dio = ApiClient.create();
+      final r = await dio.post(
+        '/teacher/classrooms/${widget.classroomId}/students',
+        data: {'student_emails': list},
+      );
+      if (!mounted) return;
+      final data = r.data as Map<String, dynamic>? ?? {};
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Enrolled: ${data['enrolled'] ?? 0}, '
+            'Already: ${data['already_enrolled'] ?? 0}, '
+            'Not found: ${data['not_found'] ?? 0}',
+          ),
+        ),
+      );
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
   Future<void> _openClassroomReport() async {
     final url =
         'https://osee-prep-hub-worker.edubot-leonardus.workers.dev'
@@ -162,6 +236,11 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
       appBar: AppBar(
         title: Text(_classroom?['name'] as String? ?? 'Classroom'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add_rounded),
+            tooltip: 'Add students',
+            onPressed: _addStudents,
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
           IconButton(
             icon: const Icon(Icons.grid_on),

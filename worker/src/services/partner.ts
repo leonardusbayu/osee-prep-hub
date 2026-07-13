@@ -36,11 +36,20 @@ export async function getPartnerDashboard(env: Env, partnerId: string): Promise<
   const teacherIds = (teachers ?? []).map((t: Record<string, unknown>) => t.id as string);
   let totalStudents = 0;
   if (teacherIds.length > 0) {
-    const { count } = await supabase
-      .from('classroom_enrollments')
-      .select('id', { count: 'exact', head: true })
-      .in('student_id', teacherIds);
-    totalStudents = count ?? 0;
+    // Count students enrolled in classrooms owned by these teachers
+    const { data: classroomIds } = await supabase
+      .from('classrooms')
+      .select('id')
+      .in('teacher_id', teacherIds);
+    const cIds = (classroomIds ?? []).map((c: Record<string, unknown>) => c.id as string);
+    if (cIds.length > 0) {
+      const { count } = await supabase
+        .from('classroom_enrollments')
+        .select('id', { count: 'exact', head: true })
+        .in('classroom_id', cIds)
+        .eq('is_active', true);
+      totalStudents = count ?? 0;
+    }
   }
 
   // Get orders by partner

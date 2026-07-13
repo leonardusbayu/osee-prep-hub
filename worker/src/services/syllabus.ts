@@ -185,3 +185,40 @@ export async function deleteSyllabusItem(
     .eq('syllabus_id', syllabusId);
   if (error) throw new Error(`Delete item failed: ${error.message}`);
 }
+
+/** Delete an entire syllabus (all items + syllabus row). */
+export async function deleteSyllabus(
+  env: Env,
+  teacherId: string,
+  syllabusId: string
+): Promise<void> {
+  const supabase = getSupabase(env);
+  // Verify ownership
+  const { data: syl } = await supabase
+    .from('syllabi')
+    .select('id')
+    .eq('id', syllabusId)
+    .eq('teacher_id', teacherId)
+    .maybeSingle();
+  if (!syl) throw new Error('Syllabus not found or not owned by teacher');
+
+  // Delete (cascade will remove items)
+  const { error } = await supabase.from('syllabi').delete().eq('id', syllabusId);
+  if (error) throw new Error(`Delete syllabus failed: ${error.message}`);
+}
+
+/** Publish/unpublish a syllabus (toggle is_published). */
+export async function togglePublishSyllabus(
+  env: Env,
+  teacherId: string,
+  syllabusId: string,
+  published: boolean
+): Promise<void> {
+  const supabase = getSupabase(env);
+  const { error } = await supabase
+    .from('syllabi')
+    .update({ is_published: published, updated_at: new Date().toISOString() })
+    .eq('id', syllabusId)
+    .eq('teacher_id', teacherId);
+  if (error) throw new Error(`Publish toggle failed: ${error.message}`);
+}

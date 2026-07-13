@@ -229,6 +229,72 @@ adminRoutes.post('/commission-rates', async (c) => {
 
 // ---------- Ambassadors (with recruited_count) ----------
 
+/** GET /api/admin/payouts — list all payout requests (for approval) */
+adminRoutes.get('/payouts', async (c) => {
+  const supabase = getSupabase(c.env);
+  const status = c.req.query('status') ?? 'pending';
+  const { data, error } = await supabase
+    .from('commission_payouts')
+    .select(`
+      id, teacher_id, amount, method, status, reference, notes,
+      requested_at, processed_at, paid_at,
+      teacher:unified_profiles!commission_payouts_teacher_id_fkey (display_name, email)
+    `)
+    .eq('status', status)
+    .order('requested_at', { ascending: false })
+    .limit(100);
+  if (error) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: error.message } }, 500);
+  }
+  return c.json({ payouts: data ?? [] });
+});
+
+/** POST /api/admin/payouts/:id/approve — approve payout (mark as paid) */
+adminRoutes.post('/payouts/:id/approve', async (c) => {
+  const supabase = getSupabase(c.env);
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('commission_payouts')
+    .update({ status: 'paid', processed_at: now, paid_at: now })
+    .eq('id', c.req.param('id'))
+    .eq('status', 'pending')  // only approve pending payouts
+    .select('id, teacher_id, amount')
+    .maybeSingle();
+  if (error || !data) {
+    return c.json({ error: { code: 'UPDATE_FAILED', message: error?.message ?? 'payout not found or not pending' } }, 500);
+  }
+
+  // Also update commission_ledger entries for this teacher — mark as paid
+  const row = data as Record<string, unknown>;
+  await supabase
+    .from('commission_ledger')
+    .update({ status: 'paid', paid_at: now })
+    .eq('teacher_id', row.teacher_id as string)
+    .eq('status', 'pending');
+
+  return c.json({ success: true, payout_id: row.id });
+});
+
+/** POST /api/admin/payouts/:id/reject — reject payout */
+adminRoutes.post('/payouts/:id/reject', async (c) => {
+  let body: { notes?: string };
+  try { body = await c.req.json().catch(() => ({})); } catch {
+    body = {};
+  }
+  const supabase = getSupabase(c.env);
+  const { error } = await supabase
+    .from('commission_payouts')
+    .update({ status: 'rejected', processed_at: new Date().toISOString(), notes: body.notes ?? 'Rejected by admin' })
+    .eq('id', c.req.param('id'))
+    .eq('status', 'pending');
+  if (error) {
+    return c.json({ error: { code: 'UPDATE_FAILED', message: error.message } }, 500);
+  }
+  return c.json({ success: true });
+});
+
+// ---------- Ambassadors (with recruited_count) ----------
+
 /** GET /api/admin/ambassadors — list ambassadors with recruited_count (blueprint:1549) */
 adminRoutes.get('/ambassadors', async (c) => {
   const supabase = getSupabase(c.env);

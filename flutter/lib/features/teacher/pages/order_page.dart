@@ -24,6 +24,9 @@ class _OrderPageState extends ConsumerState<OrderPage>
   bool _isLoading = true;
   bool _isPlacingOrder = false;
   String? _error;
+  String? _assignedStudentId;
+  List<Map<String, dynamic>> _students = [];
+  bool _isLoadingStudents = false;
 
   @override
   void initState() {
@@ -102,6 +105,32 @@ class _OrderPageState extends ConsumerState<OrderPage>
             icon: _orderTypeIcon(orderType),
           ),
           const SizedBox(height: Spacing.lg),
+          if (orderType == 'book_for_student') ...[
+            SurfaceCard(
+              padding: const EdgeInsets.all(Spacing.md),
+              child: Row(
+                children: [
+                  const Icon(Icons.person, color: OseeTheme.primary),
+                  const SizedBox(width: Spacing.sm),
+                  Expanded(
+                    child: Text(
+                      _assignedStudentId == null
+                          ? 'No student assigned'
+                          : 'Assigned: ${_students.firstWhere((s) => s['id'] == _assignedStudentId, orElse: () => {'display_name': 'Student'})['display_name']}',
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _pickStudent,
+                    icon: const Icon(Icons.person_search, size: 18),
+                    label: Text(
+                      _assignedStudentId == null ? 'Pick' : 'Change',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: Spacing.lg),
+          ],
           if (_cart.isNotEmpty) ...[
             _buildCartSummary(),
             const SizedBox(height: Spacing.lg),
@@ -151,7 +180,11 @@ class _OrderPageState extends ConsumerState<OrderPage>
           ),
           const SizedBox(height: Spacing.lg),
           FilledButton.icon(
-            onPressed: _pricing == null || _cart.isEmpty || _isPlacingOrder
+            onPressed: _pricing == null ||
+                    _cart.isEmpty ||
+                    _isPlacingOrder ||
+                    (orderType == 'book_for_student' &&
+                        _assignedStudentId == null)
                 ? null
                 : () => _showOrderSummary(context, orderType),
             icon: const Icon(Icons.shopping_cart),
@@ -358,6 +391,115 @@ class _OrderPageState extends ConsumerState<OrderPage>
     }
   }
 
+  static const _paymentMethods = [
+    ('BCVA', 'Bank BCA'),
+    ('BRIVA', 'BRI'),
+    ('QRIS', 'QRIS'),
+    ('OVO', 'OVO'),
+    ('DANA', 'DANA'),
+  ];
+
+  Future<String?> _pickPaymentMethod() async {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Select Payment Method'),
+        content: SizedBox(
+          width: 300,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final m in _paymentMethods)
+                ListTile(
+                  leading: const Icon(Icons.account_balance_wallet_outlined),
+                  title: Text(m.$2),
+                  subtitle: Text(m.$1),
+                  onTap: () => Navigator.pop(ctx, m.$1),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadStudents() async {
+    if (_isLoadingStudents || _students.isNotEmpty) return;
+    setState(() => _isLoadingStudents = true);
+    try {
+      final dio = ApiClient.create();
+      final r = await dio.get('/teacher/classrooms');
+      final classrooms = (r.data as Map)['classrooms'] as List? ?? [];
+      final List<Map<String, dynamic>> all = [];
+      for (final c in classrooms) {
+        final students = (c as Map)['students'] as List? ?? [];
+        for (final s in students) {
+          final sm = s as Map<String, dynamic>;
+          all.add({
+            'id': sm['id'],
+            'display_name': sm['display_name'] ?? '',
+            'email': sm['email'] ?? '',
+            'classroom_name': c['name'] ?? '',
+          });
+        }
+      }
+      setState(() {
+        _students = all;
+        _isLoadingStudents = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingStudents = false);
+    }
+  }
+
+  Future<void> _pickStudent() async {
+    await _loadStudents();
+    final selected = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Assign Student'),
+        content: SizedBox(
+          width: 320,
+          child: _isLoadingStudents
+              ? const Center(child: CircularProgressIndicator())
+              : _students.isEmpty
+              ? const Text('No students found in your classrooms.')
+              : ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final s in _students)
+                      ListTile(
+                        leading: const Icon(Icons.person),
+                        title: Text(s['display_name'] as String),
+                        subtitle: Text(
+                          '${s['email']} • ${s['classroom_name']}',
+                        ),
+                        onTap: () => Navigator.pop(ctx, s),
+                      ),
+                  ],
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (selected != null) {
+      setState(() {
+        _assignedStudentId = selected['id'] as String?;
+      });
+    }
+  }
+
   Future<void> _showOrderSummary(BuildContext context, String orderType) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -396,14 +538,28 @@ class _OrderPageState extends ConsumerState<OrderPage>
         data: {
           'order_type': orderType,
           'items': _cart.entries
-              .map((entry) => {'item_type': entry.key, 'quantity': entry.value})
+              .map((entry) => {
+                'item_type': entry.key,
+                'quantity': entry.value,
+                if (orderType == 'book_for_student' &&
+                    _assignedStudentId != null)
+                  'assigned_student_id': _assignedStudentId,
+              })
               .toList(),
         },
       );
       final orderId = orderResponse.data['id'] as String;
+
+      final paymentMethod = await _pickPaymentMethod();
+      if (paymentMethod == null) {
+        if (!mounted) return;
+        setState(() => _isPlacingOrder = false);
+        return;
+      }
+
       final paymentResponse = await dio.post(
         '/orders/$orderId/pay',
-        data: {'payment_method': 'mock'},
+        data: {'payment_method': paymentMethod},
       );
       if (!mounted) return;
       setState(() {

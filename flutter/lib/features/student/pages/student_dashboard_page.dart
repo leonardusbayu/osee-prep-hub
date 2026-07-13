@@ -47,6 +47,65 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
     }
   }
 
+  Future<void> _joinClass() async {
+    final controller = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Join Class'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the join code from your teacher:',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Join code',
+                hintText: 'ABC123',
+                prefixIcon: Icon(Icons.vpn_key_outlined),
+              ),
+              textCapitalization: TextCapitalization.characters,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Join'),
+          ),
+        ],
+      ),
+    );
+    if (code == null || code.isEmpty) return;
+
+    try {
+      final dio = ApiClient.create();
+      await dio.post(
+        '/student/classrooms/join',
+        data: {'join_code': code},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Joined!')));
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
   Future<void> _logout() async {
     await ref.read(authProvider.notifier).logout();
     if (context.mounted) context.go('/login');
@@ -58,6 +117,11 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
       appBar: AppBar(
         title: const Text('My Learning'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.group_add_rounded),
+            onPressed: _joinClass,
+            tooltip: 'Join class',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _load,

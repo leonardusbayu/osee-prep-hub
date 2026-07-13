@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme.dart';
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/ui_components.dart';
 
@@ -110,6 +111,10 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
                         DropdownMenuItem(
                           value: 'writing',
                           child: Text('Writing Prompt'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'speaking',
+                          child: Text('Speaking Prompt'),
                         ),
                         DropdownMenuItem(
                           value: 'mock_test',
@@ -278,6 +283,50 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
                   )),
             ],
             const SizedBox(height: Spacing.md),
+            if (g['validation_status'] == 'needs_review') ...[
+              Container(
+                padding: const EdgeInsets.all(Spacing.md),
+                decoration: BoxDecoration(
+                  color: OseeTheme.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: OseeTheme.warning.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: OseeTheme.warning,
+                          size: 20,
+                        ),
+                        const SizedBox(width: Spacing.sm),
+                        Text(
+                          'Content needs review',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: OseeTheme.warning,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Spacing.xs),
+                    for (final w in (g['validation_warnings'] as List?) ?? [])
+                      Padding(
+                        padding: const EdgeInsets.only(left: 28, top: 2),
+                        child: Text(
+                          '• $w',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: Spacing.md),
+            ],
             FilledButton.tonalIcon(
               onPressed: _addToSyllabus,
               icon: const Icon(Icons.add),

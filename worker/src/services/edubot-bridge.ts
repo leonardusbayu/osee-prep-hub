@@ -44,21 +44,49 @@ export async function verifyStudent(env: Env, telegramId: string): Promise<Stude
   };
 }
 
-/** Report progress update from EduBot to Hub. */
+/** Report progress update from EduBot to Hub.
+ *  Also updates student_progress_unified (aggregated) + edubot_practice_count. */
 export async function receiveProgress(
   env: Env,
   userId: string,
   update: { activity_type: string; score?: number; topic?: string; metadata?: Record<string, unknown> }
 ): Promise<void> {
   const supabase = getSupabase(env);
+  const now = new Date().toISOString();
+
+  // Insert history row
   await supabase.from('student_progress_history').insert({
     student_id: userId,
     platform: 'edubot',
     exam_type: 'GENERAL',
     section: update.activity_type,
     score: update.score ?? null,
-    completed_at: new Date().toISOString(),
+    completed_at: now,
+    metadata: update.metadata ?? {},
   });
+
+  // Update student_progress_unified — increment edubot_practice_count + update edubot fields
+  const { data: existing } = await supabase
+    .from('student_progress_unified')
+    .select('edubot_practice_count, edubot_xp, edubot_questions_answered, edubot_last_active')
+    .eq('student_id', userId)
+    .maybeSingle();
+
+  const p = (existing as Record<string, unknown> | null) ?? {};
+  const newCount = (p.edubot_practice_count as number ?? 0) + 1;
+  const newXp = (p.edubot_xp as number ?? 0) + (update.score ?? 10);  // award XP
+  const newQuestions = (p.edubot_questions_answered as number ?? 0) + 1;
+
+  await supabase
+    .from('student_progress_unified')
+    .upsert({
+      student_id: userId,
+      edubot_practice_count: newCount,
+      edubot_xp: newXp,
+      edubot_questions_answered: newQuestions,
+      edubot_last_active: now,
+      updated_at: now,
+    }, { onConflict: 'student_id' });
 }
 
 /** Get teacher's syllabus items so EduBot can tutor on those topics. */
