@@ -1,254 +1,284 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// OSEE Prep Hub — Magazine-style editorial theme.
-/// Clean, sophisticated, with strong typography hierarchy.
+/// OSEE Prep Hub — Modern professional theme.
+///
+/// Design language:
+/// - Font: Inter (clean, geometric sans-serif — modern SaaS standard)
+/// - Colors: deep indigo primary, emerald success, amber accent, slate text
+/// - Cards: radius 16, soft shadow, white on light slate background
+/// - Buttons: radius 12, medium weight, letter-spacing 0.5
+/// - Spacing: 8px base grid
 class OseeTheme {
   OseeTheme._();
 
-  // Editorial color palette
-  static const Color ink = Color(0xFF1A1A2E);       // deep navy-black
-  static const Color paper = Color(0xFFF7F5F0);      // warm off-white
-  static const Color accent = Color(0xFFE63946);     // magazine red
-  static const Color gold = Color(0xFFC9A96E);       // muted gold
-  static const Color sage = Color(0xFF6B8E7F);       // sage green
-  static const Color cloud = Color(0xFFE8E6E1);      // light grey
-  static const Color stone = Color(0xFF9B9B9B);      // medium grey
+  // Modern brand palette
+  static const Color primary = Color(0xFF4F46E5);      // indigo-600
+  static const Color primaryLight = Color(0xFF818CF8);  // indigo-400
+  static const Color primaryDark = Color(0xFF3730A3);   // indigo-800
+  static const Color success = Color(0xFF10B981);        // emerald-500
+  static const Color warning = Color(0xFFF59E0B);        // amber-500
+  static const Color danger = Color(0xFFEF4444);         // red-500
+  static const Color accent = Color(0xFFEC4899);         // pink-500
+
+  // Neutrals (slate)
+  static const Color bg = Color(0xFFF8FAFC);             // slate-50
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surfaceVariant = Color(0xFFF1F5F9);  // slate-100
+  static const Color border = Color(0xFFE2E8F0);          // slate-200
+  static const Color textPrimary = Color(0xFF0F172A);     // slate-900
+  static const Color textSecondary = Color(0xFF64748B);   // slate-500
+  static const Color textMuted = Color(0xFF94A3B8);       // slate-400
+
+  // Legacy aliases (backward compatibility with old palette)
+  static const Color paper = bg;
+  static const Color ink = textPrimary;
+  static const Color gold = warning;
+  static const Color stone = textMuted;
+  static const Color sage = success;
+  static const Color cloud = border;
 
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
-      seedColor: accent,
+      seedColor: primary,
       brightness: Brightness.light,
-      primary: accent,
-      secondary: gold,
-      surface: paper,
-      onSurface: ink,
-      error: accent,
+      primary: primary,
+      secondary: accent,
+      surface: surface,
+      onSurface: textPrimary,
+      error: danger,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: paper,
-      fontFamily: 'Georgia',
+      scaffoldBackgroundColor: bg,
 
-      // Magazine-style typography
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 56,
-          fontWeight: FontWeight.w700,
-          color: ink,
-          height: 1.1,
-          letterSpacing: -1.5,
+      // Typography — Inter via Google Fonts
+      textTheme: GoogleFonts.interTextTheme().copyWith(
+        displayLarge: GoogleFonts.inter(
+          fontSize: 48, fontWeight: FontWeight.w800, color: textPrimary,
+          height: 1.1, letterSpacing: -1.0,
         ),
-        displayMedium: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 40,
-          fontWeight: FontWeight.w700,
-          color: ink,
-          height: 1.15,
-          letterSpacing: -0.8,
+        displayMedium: GoogleFonts.inter(
+          fontSize: 36, fontWeight: FontWeight.w700, color: textPrimary,
+          height: 1.15, letterSpacing: -0.5,
         ),
-        displaySmall: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 28,
-          fontWeight: FontWeight.w600,
-          color: ink,
+        displaySmall: GoogleFonts.inter(
+          fontSize: 28, fontWeight: FontWeight.w700, color: textPrimary,
           height: 1.2,
         ),
-        headlineLarge: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: ink,
+        headlineLarge: GoogleFonts.inter(
+          fontSize: 24, fontWeight: FontWeight.w700, color: textPrimary,
           height: 1.3,
         ),
-        headlineMedium: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: ink,
+        headlineMedium: GoogleFonts.inter(
+          fontSize: 20, fontWeight: FontWeight.w600, color: textPrimary,
         ),
-        headlineSmall: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-          color: ink,
+        headlineSmall: GoogleFonts.inter(
+          fontSize: 18, fontWeight: FontWeight.w600, color: textPrimary,
         ),
-        titleLarge: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: ink,
+        titleLarge: GoogleFonts.inter(
+          fontSize: 16, fontWeight: FontWeight.w600, color: textPrimary,
         ),
-        titleMedium: TextStyle(
-          fontFamily: 'Helvetica',
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: ink,
+        titleMedium: GoogleFonts.inter(
+          fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary,
+          letterSpacing: 0.2,
+        ),
+        titleSmall: GoogleFonts.inter(
+          fontSize: 13, fontWeight: FontWeight.w600, color: textSecondary,
           letterSpacing: 0.5,
         ),
-        titleSmall: TextStyle(
-          fontFamily: 'Helvetica',
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: stone,
-          letterSpacing: 1.5,
-        ),
-        bodyLarge: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-          color: ink,
-          height: 1.6,
-        ),
-        bodyMedium: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: ink,
+        bodyLarge: GoogleFonts.inter(
+          fontSize: 16, fontWeight: FontWeight.w400, color: textPrimary,
           height: 1.5,
         ),
-        bodySmall: TextStyle(
-          fontFamily: 'Helvetica',
-          fontSize: 12,
-          fontWeight: FontWeight.w400,
-          color: stone,
+        bodyMedium: GoogleFonts.inter(
+          fontSize: 14, fontWeight: FontWeight.w400, color: textPrimary,
+          height: 1.5,
+        ),
+        bodySmall: GoogleFonts.inter(
+          fontSize: 12, fontWeight: FontWeight.w400, color: textSecondary,
           height: 1.4,
         ),
-        labelLarge: TextStyle(
-          fontFamily: 'Helvetica',
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-          letterSpacing: 1,
+        labelLarge: GoogleFonts.inter(
+          fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white,
+          letterSpacing: 0.5,
         ),
-        labelSmall: TextStyle(
-          fontFamily: 'Helvetica',
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: stone,
-          letterSpacing: 2,
+        labelSmall: GoogleFonts.inter(
+          fontSize: 11, fontWeight: FontWeight.w600, color: textMuted,
+          letterSpacing: 0.8,
         ),
       ),
 
-      // Minimalist app bar
-      appBarTheme: const AppBarTheme(
-        backgroundColor: paper,
-        foregroundColor: ink,
+      // Clean app bar — surface color, subtle border, no elevation
+      appBarTheme: AppBarTheme(
+        backgroundColor: surface,
+        foregroundColor: textPrimary,
         elevation: 0,
+        scrolledUnderElevation: 0.5,
         centerTitle: false,
-        titleTextStyle: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: ink,
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 20, fontWeight: FontWeight.w700, color: textPrimary,
         ),
-        iconTheme: IconThemeData(color: ink),
+        iconTheme: const IconThemeData(color: textPrimary, size: 22),
+        shape: const Border(
+          bottom: BorderSide(color: border, width: 1),
+        ),
       ),
 
-      // Editorial-style cards
+      // Modern cards — radius 16, soft shadow
       cardTheme: CardThemeData(
         elevation: 0,
-        color: Colors.white,
+        color: surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(16),
         ),
         margin: EdgeInsets.zero,
       ),
 
-      // Bold buttons
+      // Buttons — radius 12, medium weight
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: ink,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
-            fontFamily: 'Helvetica',
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
+          textStyle: GoogleFonts.inter(
+            fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.3,
           ),
         ),
       ),
 
-      // Filled buttons — accent red
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: accent,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
-            fontFamily: 'Helvetica',
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
+          textStyle: GoogleFonts.inter(
+            fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.3,
           ),
         ),
       ),
 
-      // Text buttons — underlined like links
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: accent,
-          textStyle: const TextStyle(
-            fontFamily: 'Helvetica',
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            decoration: TextDecoration.underline,
+          foregroundColor: primary,
+          textStyle: GoogleFonts.inter(
+            fontSize: 14, fontWeight: FontWeight.w600,
           ),
         ),
       ),
 
-      // Clean input fields
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primary,
+          side: const BorderSide(color: border, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 14, fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+
+      // Input fields — filled style, radius 12
       inputDecorationTheme: InputDecorationTheme(
-        border: UnderlineInputBorder(
-          borderSide: BorderSide(color: cloud, width: 1),
+        filled: true,
+        fillColor: surfaceVariant,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-        enabledBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: cloud, width: 1),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-        focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: ink, width: 2),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: primary, width: 2),
         ),
-        errorBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: accent, width: 1),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: danger, width: 1.5),
         ),
-        labelStyle: const TextStyle(
-          fontFamily: 'Helvetica',
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: stone,
-          letterSpacing: 1,
+        labelStyle: GoogleFonts.inter(
+          fontSize: 14, fontWeight: FontWeight.w500, color: textSecondary,
         ),
-        hintStyle: TextStyle(
-          fontFamily: 'Georgia',
-          fontSize: 16,
-          color: stone.withOpacity(0.5),
+        hintStyle: GoogleFonts.inter(
+          fontSize: 14, fontWeight: FontWeight.w400, color: textMuted,
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 12),
-        filled: false,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
 
       // Bottom nav
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: paper,
-        selectedItemColor: accent,
-        unselectedItemColor: stone,
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: surface,
+        selectedItemColor: primary,
+        unselectedItemColor: textMuted,
         type: BottomNavigationBarType.fixed,
+        showUnselectedLabels: true,
+        selectedLabelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500),
       ),
 
       // Dividers
       dividerTheme: const DividerThemeData(
-        color: cloud,
+        color: border,
         thickness: 1,
         space: 1,
+      ),
+
+      // Chips
+      chipTheme: ChipThemeData(
+        backgroundColor: surfaceVariant,
+        selectedColor: primary.withValues(alpha: 0.12),
+        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+
+      // Floating action button
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: primary,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+
+      // SnackBar
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: textPrimary,
+        contentTextStyle: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+
+      // Dialog
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary,
+        ),
       ),
     );
   }

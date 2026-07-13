@@ -66,32 +66,37 @@ export function App() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-osee-600 p-4 text-osee-50">
-        <div className="mb-6 flex items-center justify-between gap-3">
+      <aside className="flex w-64 flex-shrink-0 flex-col bg-osee-900 text-white">
+        <div className="flex items-center justify-between p-5">
           <div>
-            <h1 className="font-serif text-2xl font-bold text-white">OSEE</h1>
-            <p className="text-xs text-osee-100/60">Admin Panel</p>
+            <h1 className="text-xl font-extrabold tracking-tight">OSEE</h1>
+            <p className="text-xs text-osee-400">Admin Panel</p>
           </div>
           <button
             type="button"
-            className="rounded bg-osee-800 px-2 py-1 text-xs text-white hover:bg-osee-800/80"
+            className="rounded-lg bg-white/10 p-2 text-xs text-white transition-colors hover:bg-white/20"
             onClick={() => {
               adminLogout();
               setIsAuthed(false);
             }}
+            title="Logout"
           >
-            Logout
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
           </button>
         </div>
-        <nav className="space-y-1">
+        <nav className="flex-1 space-y-0.5 px-3">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `block rounded px-3 py-2 text-sm transition-colors ${
-                  isActive ? 'bg-osee-800 text-white' : 'text-osee-50/80 hover:bg-osee-800/50 hover:text-white'
+                `block rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-osee-600 text-white shadow-lg shadow-osee-600/30'
+                    : 'text-osee-400 hover:bg-white/10 hover:text-white'
                 }`
               }
             >
@@ -99,6 +104,9 @@ export function App() {
             </NavLink>
           ))}
         </nav>
+        <div className="p-4 text-xs text-osee-400/60">
+          OSEE Education Hub<br />v1.0
+        </div>
       </aside>
 
       {/* Main content */}
@@ -153,43 +161,49 @@ function LoginScreen({ onLogin }: { onLogin: () => void }): JSX.Element {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-osee-50 p-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-lg">
-        <div className="mb-6 text-center">
-          <h1 className="font-serif text-3xl font-bold text-osee-600">OSEE</h1>
-          <p className="text-sm text-gray-500">Admin Panel</p>
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-extrabold tracking-tight text-osee-900">OSEE</h1>
+          <p className="mt-1 text-sm font-medium text-osee-400">Admin Panel</p>
         </div>
-        <div className="space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Email</span>
-            <input
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 transition-colors focus:border-osee-600 focus:outline-none"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              type="email"
-              placeholder="admin@osee.co.id"
-              required
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Password</span>
-            <input
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 transition-colors focus:border-osee-600 focus:outline-none"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              required
-            />
-          </label>
-        </div>
-        {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-        <button
-          className="mt-6 w-full rounded bg-osee-600 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-osee-800 disabled:opacity-60"
-          disabled={loading}
-          type="submit"
-        >
-          {loading ? 'Signing in...' : 'Sign in'}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="card p-8">
+          <div className="space-y-5">
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-osee-400">Email</span>
+              <input
+                className="input mt-1.5 w-full"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                placeholder="admin@osee.co.id"
+                required
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-osee-400">Password</span>
+              <input
+                className="input mt-1.5 w-full"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                type="password"
+                placeholder="••••••••"
+                required
+              />
+            </label>
+          </div>
+          {error ? <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p> : null}
+          <button
+            className="btn-primary mt-6 w-full"
+            disabled={loading}
+            type="submit"
+          >
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
+        </form>
+        <p className="mt-6 text-center text-xs text-osee-400">
+          Official ETS Test Center · Since 2014
+        </p>
+      </div>
     </main>
   );
 }

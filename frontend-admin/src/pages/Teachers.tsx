@@ -36,21 +36,22 @@ export function Teachers() {
 
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-bold">Teachers</h2>
-      {error ? <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      <h2 className="mb-1 text-2xl font-extrabold tracking-tight text-osee-900">Teachers</h2>
+      <p className="mb-6 text-sm text-osee-400">Daftar pengajar beserta tier, referral, dan total penghasilan.</p>
+      {error ? <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div> : null}
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
+      <div className="card overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Target</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Tier</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Referral</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Students</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Earnings</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Joined</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Email</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Target</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Tier</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Referral</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">Students</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">Earnings</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Joined</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -68,21 +69,21 @@ export function Teachers() {
               </tr>
             ) : (
               teachers.map((t) => (
-                <tr key={t.id}>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{t.display_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{t.email}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{t.target_exam ?? '—'}</td>
+                <tr key={t.id} className="table-row">
+                  <td className="px-4 py-3 text-sm font-semibold text-osee-900">{t.display_name}</td>
+                  <td className="px-4 py-3 text-sm text-osee-500">{t.email}</td>
+                  <td className="px-4 py-3 text-sm text-osee-500">{t.target_exam ?? '—'}</td>
                   <td className="px-4 py-3 text-sm">
                     <span className={`rounded px-2 py-0.5 text-xs ${tierBadgeClass(t.tier)}`}>
                       {t.tier}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm font-mono text-gray-600">{t.referral_code || '—'}</td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-600">{t.total_students}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-osee-500">{t.referral_code || '—'}</td>
+                  <td className="px-4 py-3 text-right text-sm text-osee-500">{t.total_students}</td>
                   <td className="px-4 py-3 text-right text-sm font-medium">
                     {formatRupiah(t.total_earnings)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-osee-500">
                     {new Date(t.created_at).toLocaleDateString('id-ID')}
                   </td>
                 </tr>
@@ -98,9 +99,9 @@ export function Teachers() {
 function tierBadgeClass(tier: string): string {
   switch (tier) {
     case 'pro':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-indigo-100 text-indigo-700';
     case 'institution':
-      return 'bg-purple-100 text-purple-800';
+      return 'bg-purple-100 text-purple-700';
     default:
       return 'bg-gray-100 text-gray-800';
   }

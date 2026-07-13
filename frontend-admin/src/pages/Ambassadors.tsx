@@ -36,24 +36,24 @@ export function Ambassadors() {
 
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-bold">Ambassadors</h2>
-      <p className="mb-4 text-sm text-gray-600">
+      <h2 className="mb-1 text-2xl font-extrabold tracking-tight text-osee-900">Ambassadors</h2>
+      <p className="mb-6 text-sm text-osee-400">
         OSEE Certified Educators — get unlimited AI, 2x commission, free Pro for life, in exchange
         for recruiting 5 teachers in 3 months + social media posts.
       </p>
-      {error ? <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      {error ? <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div> : null}
 
       {loading ? (
         <p className="text-gray-500">Loading...</p>
       ) : (
-        <div className="overflow-hidden rounded-lg bg-white shadow">
+        <div className="card overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Email</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Recruited</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Since</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Email</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">Recruited</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Since</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -67,18 +67,18 @@ export function Ambassadors() {
                 ambassadors.map((a) => {
                   const profile = a.teacher_profiles?.[0] ?? { ambassador_recruited_at: null };
                   return (
-                    <tr key={a.id}>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    <tr key={a.id} className="table-row">
+                      <td className="px-4 py-3 text-sm font-semibold text-osee-900">
                         {a.display_name}
-                        <span className="ml-2 rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">
+                        <span className="ml-2 rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
                           Certified
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{a.email}</td>
+                      <td className="px-4 py-3 text-sm text-osee-500">{a.email}</td>
                       <td className="px-4 py-3 text-right text-sm font-semibold">
                         {a.recruited_count}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                      <td className="px-4 py-3 text-sm text-osee-500">
                         {profile.ambassador_recruited_at
                           ? new Date(profile.ambassador_recruited_at).toLocaleDateString('id-ID')
                           : '—'}

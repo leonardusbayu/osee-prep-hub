@@ -42,11 +42,14 @@ export function Users() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Users</h2>
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-osee-900">Users</h2>
+          <p className="mb-6 text-sm text-osee-400">Kelola dan cari pengguna berdasarkan peran di platform.</p>
+        </div>
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm"
+          className="input"
         >
           {ROLES.map((r) => (
             <option key={r} value={r}>
@@ -56,16 +59,16 @@ export function Users() {
         </select>
       </div>
 
-      {error ? <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      {error ? <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div> : null}
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
+      <div className="card overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Role</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Created</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Email</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Role</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Created</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -83,15 +86,15 @@ export function Users() {
               </tr>
             ) : (
               users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{user.display_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                <tr key={user.id} className="table-row">
+                  <td className="px-4 py-3 text-sm font-semibold text-osee-900">{user.display_name}</td>
+                  <td className="px-4 py-3 text-sm text-osee-500">{user.email}</td>
+                  <td className="px-4 py-3 text-sm text-osee-500">
                     <span className={`rounded px-2 py-0.5 text-xs ${roleBadgeClass(user.role)}`}>
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-osee-500">
                     {new Date(user.created_at).toLocaleString('id-ID')}
                   </td>
                 </tr>
@@ -107,13 +110,13 @@ export function Users() {
 function roleBadgeClass(role: string): string {
   switch (role) {
     case 'admin':
-      return 'bg-red-100 text-red-800';
+      return 'bg-red-100 text-red-700';
     case 'teacher':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-indigo-100 text-indigo-700';
     case 'partner':
-      return 'bg-purple-100 text-purple-800';
+      return 'bg-purple-100 text-purple-700';
     case 'student':
-      return 'bg-green-100 text-green-800';
+      return 'bg-green-100 text-green-700';
     default:
       return 'bg-gray-100 text-gray-800';
   }

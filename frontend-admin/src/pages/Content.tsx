@@ -114,17 +114,20 @@ export function Content() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Knowledge Base (RAG)</h2>
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-osee-900">Knowledge Base (RAG)</h2>
+          <p className="mb-6 text-sm text-osee-400">Unggah dokumen untuk basis pengetahuan RAG dan lihat daftar dokumen.</p>
+        </div>
         <div className="flex gap-2">
           <button
-            className="rounded bg-osee-700 px-3 py-1.5 text-sm text-white hover:bg-osee-600"
+            className="btn-primary px-3 py-1.5 text-sm"
             onClick={loadDocs}
             disabled={loading}
           >
             {loading ? 'Loading...' : 'Refresh'}
           </button>
           <button
-            className="rounded bg-osee-600 px-3 py-1.5 text-sm text-white hover:bg-osee-500"
+            className="btn-primary px-3 py-1.5 text-sm"
             onClick={() => setShowUpload(!showUpload)}
           >
             {showUpload ? 'Close' : 'Upload'}
@@ -137,7 +140,7 @@ export function Content() {
       {showUpload && (
         <form
           onSubmit={handleUpload}
-          className="mb-6 rounded-lg bg-white p-4 shadow"
+          className="mb-6 card p-5"
         >
           <h3 className="mb-3 text-lg font-semibold">Upload Document</h3>
           <div className="space-y-3">
@@ -146,7 +149,7 @@ export function Content() {
               placeholder="Title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded border px-3 py-2"
+              className="input w-full"
               required
             />
             <input
@@ -154,14 +157,14 @@ export function Content() {
               placeholder="Source (e.g. English Grammar in Use, Murphy)"
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="w-full rounded border px-3 py-2"
+              className="input w-full"
               required
             />
             <div className="flex gap-3">
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="rounded border px-3 py-2"
+                className="input"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -172,7 +175,7 @@ export function Content() {
               <select
                 value={cefr}
                 onChange={(e) => setCefr(e.target.value)}
-                className="rounded border px-3 py-2"
+                className="input"
               >
                 {CEFR_LEVELS.map((l) => (
                   <option key={l} value={l}>
@@ -185,14 +188,14 @@ export function Content() {
               placeholder="Document content (will be chunked + embedded)"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="h-40 w-full rounded border px-3 py-2 font-mono text-sm"
+              className="input h-40 w-full font-mono text-sm"
               required
             />
             {uploadMsg && <p className="text-sm text-blue-600">{uploadMsg}</p>}
             <button
               type="submit"
               disabled={uploading}
-              className="rounded bg-osee-700 px-4 py-2 font-semibold text-white hover:bg-osee-600 disabled:opacity-60"
+              className="btn-primary disabled:opacity-60"
             >
               {uploading ? 'Uploading...' : 'Upload + Embed'}
             </button>

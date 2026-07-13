@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
+import '../../app/theme.dart';
 
-/// OSEE shared UI components — consistent design system across all pages.
+/// OSEE shared UI components — modern professional design system.
 ///
-/// Color palette follows theme.dart (OseeTheme):
-///   ink    = deep navy-black (headings, primary text)
-///   paper  = warm off-white (scaffold bg)
-///   accent = magazine red (CTAs, highlights)
-///   gold   = muted gold (secondary accent)
-///   sage   = sage green (success, positive)
-///   cloud  = light grey (borders, dividers)
-///   stone  = medium grey (captions, secondary)
+/// Design principles:
+/// - Cards: radius 16, subtle shadow, white on slate-50 bg
+/// - Spacing: 8px grid (xs=4, sm=8, md=16, lg=24, xl=32, xxl=48)
+/// - Colors: OseeTheme palette (indigo primary, emerald success, etc.)
+/// - Typography: Inter via theme
 
-// ---------- Spacing constants ----------
+// ---------- Spacing ----------
 
 class Spacing {
   const Spacing._();
@@ -39,7 +37,7 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: Spacing.sm),
+      padding: const EdgeInsets.only(bottom: Spacing.sm + 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -52,6 +50,7 @@ class SectionHeader extends StatelessWidget {
                   title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
+                    fontSize: 18,
                   ),
                 ),
                 if (subtitle != null)
@@ -80,7 +79,7 @@ class StatCard extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.color = const Color(0xFF1A1A2E),
+    this.color = OseeTheme.primary,
     this.trend,
   });
 
@@ -92,40 +91,62 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: OseeTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: OseeTheme.textPrimary.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(Spacing.md),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(icon, size: 18, color: color),
-                const SizedBox(width: Spacing.sm),
-                Expanded(
-                  child: Text(
-                    label.toUpperCase(),
-                    style: Theme.of(context).textTheme.labelSmall,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            // Icon badge
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: color),
             ),
-            const Spacer(),
+            const SizedBox(height: Spacing.sm + 4),
             Text(
               value,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: color,
+                fontWeight: FontWeight.w800,
+                fontSize: 24,
+                color: OseeTheme.textPrimary,
               ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: OseeTheme.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
             if (trend != null)
               Padding(
-                padding: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   trend!,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
           ],
@@ -158,7 +179,15 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 56, color: Theme.of(context).dividerColor),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: OseeTheme.surfaceVariant,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Icon(icon, size: 36, color: OseeTheme.textMuted),
+            ),
             const SizedBox(height: Spacing.md),
             Text(
               title,
@@ -171,7 +200,7 @@ class EmptyState extends StatelessWidget {
                 child: Text(
                   subtitle!,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).hintColor,
+                    color: OseeTheme.textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -206,12 +235,30 @@ class ErrorState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: OseeTheme.danger.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.error_outline, color: OseeTheme.danger, size: 28),
+            ),
             const SizedBox(height: Spacing.md),
-            Text(message, textAlign: TextAlign.center),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: OseeTheme.textSecondary,
+              ),
+            ),
             if (onRetry != null) ...[
               const SizedBox(height: Spacing.md),
-              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Retry'),
+              ),
             ],
           ],
         ),
@@ -232,10 +279,22 @@ class LoadingState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(),
+          const SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: OseeTheme.primary,
+            ),
+          ),
           if (message != null) ...[
             const SizedBox(height: Spacing.md),
-            Text(message!, style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              message!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: OseeTheme.textSecondary,
+              ),
+            ),
           ],
         ],
       ),
@@ -253,14 +312,15 @@ class InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Spacing.xs + 2),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Expanded(
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).hintColor,
+                color: OseeTheme.textSecondary,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -268,42 +328,11 @@ class InfoRow extends StatelessWidget {
             value,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
+              fontSize: 15,
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-// ---------- Page scaffold ----------
-
-/// Standard page scaffold with consistent AppBar + body padding.
-class PageScaffold extends StatelessWidget {
-  const PageScaffold({
-    super.key,
-    required this.title,
-    this.actions = const [],
-    required this.body,
-    this.fab,
-    this.fabExtended,
-  });
-
-  final String title;
-  final List<Widget> actions;
-  final Widget body;
-  final Widget? fab;
-  final Widget? fabExtended;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: actions,
-      ),
-      floatingActionButton: fab ?? fabExtended,
-      body: body,
     );
   }
 }

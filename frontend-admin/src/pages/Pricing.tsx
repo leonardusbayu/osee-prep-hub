@@ -72,17 +72,18 @@ export function Pricing() {
 
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-bold">Pricing</h2>
-      {error ? <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      <h2 className="mb-1 text-2xl font-extrabold tracking-tight text-osee-900">Pricing</h2>
+      <p className="mb-6 text-sm text-osee-400">Atur harga item per peran dan nonaktifkan tarif yang tidak dipakai.</p>
+      {error ? <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div> : null}
 
       {/* Add new pricing */}
-      <div className="mb-6 rounded-lg bg-white p-4 shadow">
+      <div className="mb-6 card p-5">
         <h3 className="mb-3 text-lg font-semibold">Set Price</h3>
         <div className="flex flex-wrap gap-3">
           <select
             value={newItemType}
             onChange={(e) => setNewItemType(e.target.value)}
-            className="rounded border px-3 py-2 text-sm"
+            className="input"
           >
             {ITEM_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -93,7 +94,7 @@ export function Pricing() {
           <select
             value={newRole}
             onChange={(e) => setNewRole(e.target.value)}
-            className="rounded border px-3 py-2 text-sm"
+            className="input"
           >
             {ROLES.map((r) => (
               <option key={r} value={r}>
@@ -106,11 +107,11 @@ export function Pricing() {
             value={newPrice}
             onChange={(e) => setNewPrice(e.target.value)}
             min="0"
-            className="w-32 rounded border px-3 py-2 text-sm"
+            className="input w-32 text-sm"
             placeholder="Price (IDR)"
           />
           <button
-            className="rounded bg-osee-700 px-4 py-2 text-sm font-semibold text-white hover:bg-osee-600 disabled:opacity-50"
+            className="btn-primary text-sm disabled:opacity-50"
             disabled={saving}
             onClick={addPricing}
           >
@@ -123,15 +124,15 @@ export function Pricing() {
       {loading ? (
         <p className="text-gray-500">Loading...</p>
       ) : (
-        <div className="overflow-hidden rounded-lg bg-white shadow">
+        <div className="card overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Item Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Role</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Price (IDR)</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase text-gray-500">Active</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-gray-500">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Item Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Role</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">Price (IDR)</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-osee-400">Active</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-osee-400">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -143,9 +144,9 @@ export function Pricing() {
                 </tr>
               ) : (
                 pricing.map((p) => (
-                  <tr key={p.id}>
-                    <td className="px-4 py-3 text-sm font-mono text-gray-900">{p.item_type}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{p.role}</td>
+                  <tr key={p.id} className="table-row">
+                    <td className="px-4 py-3 text-sm font-mono text-osee-900">{p.item_type}</td>
+                    <td className="px-4 py-3 text-sm text-osee-500">{p.role}</td>
                     <td className="px-4 py-3 text-right text-sm font-medium">{formatRupiah(p.price)}</td>
                     <td className="px-4 py-3 text-center text-sm">
                       <span className={p.is_active ? 'text-green-600' : 'text-gray-400'}>
@@ -154,7 +155,7 @@ export function Pricing() {
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-500"
+                        className="rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
                         onClick={() => deletePricing(p.item_type, p.role)}
                       >
                         Deactivate

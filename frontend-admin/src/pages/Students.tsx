@@ -36,21 +36,22 @@ export function Students() {
 
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-bold">Students</h2>
-      {error ? <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      <h2 className="mb-1 text-2xl font-extrabold tracking-tight text-osee-900">Students</h2>
+      <p className="mb-6 text-sm text-osee-400">Lihat semua siswa, skor terbaru, dan informasi referral.</p>
+      {error ? <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div> : null}
 
-      <div className="overflow-hidden rounded-lg bg-white shadow">
+      <div className="card overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Target</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Level</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">iBT</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">IELTS</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Referred By</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Joined</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Email</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Target</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Level</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">iBT</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">IELTS</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Referred By</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Joined</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -68,17 +69,17 @@ export function Students() {
               </tr>
             ) : (
               students.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.display_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{s.email}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{s.target_exam ?? '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{s.current_level ?? '—'}</td>
+                <tr key={s.id} className="table-row">
+                  <td className="px-4 py-3 text-sm font-semibold text-osee-900">{s.display_name}</td>
+                  <td className="px-4 py-3 text-sm text-osee-500">{s.email}</td>
+                  <td className="px-4 py-3 text-sm text-osee-500">{s.target_exam ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-osee-500">{s.current_level ?? '—'}</td>
                   <td className="px-4 py-3 text-right text-sm">{s.ibt_latest_score ?? '—'}</td>
                   <td className="px-4 py-3 text-right text-sm">{s.ielts_latest_band ?? '—'}</td>
                   <td className="px-4 py-3 text-sm font-mono text-gray-500">
                     {s.referred_by ? s.referred_by.slice(0, 8) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-osee-500">
                     {new Date(s.created_at).toLocaleDateString('id-ID')}
                   </td>
                 </tr>

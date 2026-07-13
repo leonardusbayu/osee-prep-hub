@@ -37,12 +37,13 @@ export function Analytics() {
   }, []);
 
   if (loading) return <p className="text-gray-500">Loading...</p>;
-  if (error) return <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>;
+  if (error) return <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div>;
   if (!data) return null;
 
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-bold">Platform Analytics</h2>
+      <h2 className="mb-1 text-2xl font-extrabold tracking-tight text-osee-900">Platform Analytics</h2>
+      <p className="mb-6 text-sm text-osee-400">Ringkasan statistik pengguna, pendapatan, dan penggunaan AI.</p>
 
       <h3 className="mb-2 text-lg font-semibold">Users</h3>
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -72,9 +73,9 @@ export function Analytics() {
 
 function Card({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-lg bg-white p-4 shadow">
-      <div className="text-sm text-gray-500">{label}</div>
-      <div className="mt-1 text-2xl font-bold">{value}</div>
+    <div className="stat-card">
+      <div className="stat-label">{label}</div>
+      <div className="stat-value">{value}</div>
     </div>
   );
 }

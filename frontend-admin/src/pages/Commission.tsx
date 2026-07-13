@@ -80,8 +80,9 @@ export function Commission() {
 
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-bold">Commission</h2>
-      {error ? <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      <h2 className="mb-1 text-2xl font-extrabold tracking-tight text-osee-900">Commission</h2>
+      <p className="mb-6 text-sm text-osee-400">Ringkasan komisi pengajar dan editor tarif komisi per aksi.</p>
+      {error ? <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div> : null}
 
       {loading ? (
         <p className="text-gray-500">Loading...</p>
@@ -98,26 +99,26 @@ export function Commission() {
 
           {/* Commission rates editor */}
           <h3 className="mb-2 text-lg font-semibold">Commission Rates</h3>
-          <div className="overflow-hidden rounded-lg bg-white shadow">
+          <div className="card overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Action</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Description</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Rate (IDR)</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase text-gray-500">Active</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase text-gray-500">Save</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Action</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Description</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">Rate (IDR)</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-osee-400">Active</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-osee-400">Save</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rates.map((rate) => (
-                  <tr key={rate.id}>
-                    <td className="px-4 py-3 text-sm font-mono text-gray-900">{rate.action}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{rate.description ?? '—'}</td>
+                  <tr key={rate.id} className="table-row">
+                    <td className="px-4 py-3 text-sm font-mono text-osee-900">{rate.action}</td>
+                    <td className="px-4 py-3 text-sm text-osee-500">{rate.description ?? '—'}</td>
                     <td className="px-4 py-3 text-right text-sm">
                       <input
                         type="number"
-                        className="w-28 rounded border px-2 py-1 text-right text-sm"
+                        className="input w-28 text-right text-sm"
                         defaultValue={rate.rate_idr}
                         onChange={(e) =>
                           setEditing((p) => ({ ...p, [rate.action]: e.target.value }))
@@ -131,7 +132,7 @@ export function Commission() {
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        className="rounded bg-osee-700 px-2 py-1 text-xs text-white hover:bg-osee-600 disabled:opacity-50"
+                        className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50"
                         disabled={!editing[rate.action] || saving === rate.action}
                         onClick={() => saveRate(rate.action)}
                       >
@@ -148,22 +149,22 @@ export function Commission() {
           {summary && summary.by_teacher.length > 0 ? (
             <>
               <h3 className="mb-2 mt-6 text-lg font-semibold">Top Teachers by Earnings</h3>
-              <div className="overflow-hidden rounded-lg bg-white shadow">
+              <div className="card overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Teacher</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Students</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Earned</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Pending</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Paid</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-osee-400">Teacher</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">Students</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">Earned</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">Pending</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-osee-400">Paid</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {summary.by_teacher.slice(0, 50).map((t) => (
-                      <tr key={t.teacher_id}>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{t.teacher_name}</td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-600">{t.student_count}</td>
+                      <tr key={t.teacher_id} className="table-row">
+                        <td className="px-4 py-3 text-sm font-semibold text-osee-900">{t.teacher_name}</td>
+                        <td className="px-4 py-3 text-right text-sm text-osee-500">{t.student_count}</td>
                         <td className="px-4 py-3 text-right text-sm">{formatRupiah(t.total_earned)}</td>
                         <td className="px-4 py-3 text-right text-sm text-orange-600">{formatRupiah(t.pending)}</td>
                         <td className="px-4 py-3 text-right text-sm text-green-700">{formatRupiah(t.paid)}</td>
@@ -182,9 +183,9 @@ export function Commission() {
 
 function Card({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-white p-4 shadow">
-      <div className="text-sm text-gray-500">{label}</div>
-      <div className="mt-1 text-xl font-bold">{value}</div>
+    <div className="stat-card">
+      <div className="stat-label">{label}</div>
+      <div className="stat-value">{value}</div>
     </div>
   );
 }
