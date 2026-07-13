@@ -233,12 +233,13 @@ adminRoutes.post('/commission-rates', async (c) => {
 adminRoutes.get('/ambassadors', async (c) => {
   const supabase = getSupabase(c.env);
 
-  // Fetch ambassadors
+  // Fetch ambassadors — specify FK hint (user_id) because there are 2 FKs
+  // between unified_profiles and teacher_profiles (user_id + ambassador_recruited_by)
   const { data: ambassadors, error } = await supabase
     .from('unified_profiles')
     .select(`
       id, display_name, email,
-      teacher_profiles!inner(is_ambassador, ambassador_recruited_at, ambassador_recruited_by)
+      teacher_profiles!user_id!inner(is_ambassador, ambassador_recruited_at, ambassador_recruited_by)
     `)
     .eq('teacher_profiles.is_ambassador', true)
     .order('display_name');
