@@ -100,3 +100,43 @@ RETURNS TABLE (
   ORDER BY e.embedding <=> query_embedding
   LIMIT match_count;
 $$ LANGUAGE SQL;
+-- ============================================================
+-- Wave 2: fix missing tables + columns (runtime crash fixes)
+-- ============================================================
+
+-- 7. class_registrations — student registers interest for a live class
+CREATE TABLE IF NOT EXISTS class_registrations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  class_id UUID NOT NULL REFERENCES live_classes(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  registered_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(class_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_class_reg_class ON class_registrations(class_id);
+CREATE INDEX IF NOT EXISTS idx_class_reg_user ON class_registrations(user_id);
+
+-- 8. video_progress — track student watch progress per lesson
+CREATE TABLE IF NOT EXISTS video_progress (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  lesson_id UUID NOT NULL REFERENCES video_lessons(id) ON DELETE CASCADE,
+  watched_seconds INTEGER DEFAULT 0,
+  completed BOOLEAN DEFAULT FALSE,
+  quiz_score INTEGER,
+  last_watched_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, lesson_id)
+);
+CREATE INDEX IF NOT EXISTS idx_video_progress_user ON video_progress(user_id);
+CREATE INDEX IF NOT EXISTS idx_video_progress_lesson ON video_progress(lesson_id);
+
+-- 9. student_progress_unified — add practice_count columns
+ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS ibt_practice_count INTEGER DEFAULT 0;
+ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS itp_practice_count INTEGER DEFAULT 0;
+ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS ielts_practice_count INTEGER DEFAULT 0;
+ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS toeic_practice_count INTEGER DEFAULT 0;
+ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS edubot_practice_count INTEGER DEFAULT 0;
+
+-- 10. ai_generation_queue — add user_id column (code queries user_id, schema has teacher_id)
+ALTER TABLE ai_generation_queue ADD COLUMN IF NOT EXISTS user_id UUID;
+-- Backfill user_id from teacher_id for existing rows
+UPDATE ai_generation_queue SET user_id = teacher_id WHERE user_id IS NULL;

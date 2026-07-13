@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/theme.dart';
 
 /// Tutor Bot floating action button — Task 2.6.
 ///
@@ -29,10 +30,7 @@ class _TutorBotFabState extends State<TutorBotFab>
       parent: _controller,
       curve: Curves.easeOutBack,
     );
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeIn,
-    );
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     // Start animation after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.forward();
@@ -67,9 +65,9 @@ class _TutorBotFabState extends State<TutorBotFab>
           onPressed: _openTutorBot,
           icon: const Icon(Icons.smart_toy),
           label: const Text('Ask Tutor Bot'),
-          backgroundColor: Colors.blue,
+          backgroundColor: OseeTheme.primary,
           foregroundColor: Colors.white,
-          elevation: 4,
+          elevation: 2,
         ),
       ),
     );

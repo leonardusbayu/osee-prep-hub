@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../app/theme.dart';
 import '../../../shared/widgets/ui_components.dart';
 
 /// Teacher Earnings/Commission dashboard page — Task 12.1.
@@ -24,7 +25,10 @@ class _EarningsPageState extends State<EarningsPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final results = await Future.wait([
@@ -37,7 +41,10 @@ class _EarningsPageState extends State<EarningsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() { _error = 'Failed to load earnings'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load earnings';
+        _isLoading = false;
+      });
     }
   }
 
@@ -54,10 +61,7 @@ class _EarningsPageState extends State<EarningsPage> {
           children: [
             TextField(
               controller: amountController,
-              decoration: const InputDecoration(
-                labelText: 'Amount (IDR)',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Amount (IDR)'),
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 12),
@@ -69,14 +73,20 @@ class _EarningsPageState extends State<EarningsPage> {
                     .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                     .toList(),
                 onChanged: (v) => method.value = v ?? 'bank_transfer',
-                decoration: const InputDecoration(labelText: 'Method', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Method'),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Request')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Request'),
+          ),
         ],
       ),
     );
@@ -87,14 +97,16 @@ class _EarningsPageState extends State<EarningsPage> {
 
     try {
       final dio = ApiClient.create();
-      await dio.post('/teacher/commission/payout', data: {
-        'amount': amount,
-        'method': method.value,
-      });
+      await dio.post(
+        '/teacher/commission/payout',
+        data: {'amount': amount, 'method': method.value},
+      );
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payout failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Payout failed: $e')));
       }
     }
   }
@@ -116,96 +128,115 @@ class _EarningsPageState extends State<EarningsPage> {
       body: _isLoading
           ? const LoadingState()
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
+          ? ErrorState(message: _error!, onRetry: _load)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.all(Spacing.md),
+                children: [
+                  const PageHeader(
+                    title: 'Earnings',
+                    subtitle:
+                        'Track commission, pending balance, payout requests, and recent student-driven revenue.',
+                    icon: Icons.payments_rounded,
+                  ),
+                  const SizedBox(height: Spacing.lg),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 1.5,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
                     children: [
-                      GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: 2,
-                        childAspectRatio: 1.5,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        children: [
-                          _StatCard('Total Earned', 'Rp ${_stats?['total_earned'] ?? 0}', Colors.green),
-                          _StatCard('This Month', 'Rp ${_stats?['this_month'] ?? 0}', Colors.blue),
-                          _StatCard('Pending', 'Rp ${_stats?['pending_amount'] ?? 0}', Colors.orange),
-                          _StatCard('Paid Out', 'Rp ${_stats?['paid_amount'] ?? 0}', Colors.purple),
-                        ],
+                      StatCard(
+                        icon: Icons.savings_rounded,
+                        label: 'Total Earned',
+                        value: 'Rp ${_stats?['total_earned'] ?? 0}',
+                        color: OseeTheme.success,
                       ),
-                      const SizedBox(height: 24),
-                      const Text('By Type', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      for (final entry in (_stats?['by_type'] as Map?)?.entries ?? <MapEntry<String, dynamic>>[])
-                        ListTile(
-                          leading: const Icon(Icons.category),
-                          title: Text(entry.key),
-                          trailing: Text('Rp ${entry.value}'),
-                        ),
-                      const SizedBox(height: 24),
-                      const Text('Recent Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      for (final entry in (_stats?['recent_entries'] as List?) ?? <dynamic>[])
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.receipt),
-                            title: Text('${(entry as Map)['type']} · ${(entry)['student_name'] ?? '—'}'),
-                            subtitle: Text('Rp ${entry['amount']} · ${entry['status']}'),
-                            trailing: Text((entry)['created_at'] as String? ?? ''),
-                          ),
-                        ),
-                      const SizedBox(height: 24),
-                      const Text('Payout History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      if (_payouts?.isEmpty ?? true)
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text('No payouts yet', style: Theme.of(context).textTheme.bodyMedium),
-                          ),
-                        )
-                      else
-                        for (final p in _payouts!)
-                          Card(
-                            child: ListTile(
-                              leading: const Icon(Icons.account_balance_wallet),
-                              title: Text('Rp ${(p as Map)['amount']}'),
-                              subtitle: Text('${p['method'] ?? '—'} · ${p['status']}'),
-                              trailing: Text(p['requested_at'] as String? ?? ''),
-                            ),
-                          ),
+                      StatCard(
+                        icon: Icons.calendar_month_rounded,
+                        label: 'This Month',
+                        value: 'Rp ${_stats?['this_month'] ?? 0}',
+                        color: OseeTheme.primary,
+                      ),
+                      StatCard(
+                        icon: Icons.hourglass_top_rounded,
+                        label: 'Pending',
+                        value: 'Rp ${_stats?['pending_amount'] ?? 0}',
+                        color: OseeTheme.warning,
+                      ),
+                      StatCard(
+                        icon: Icons.verified_rounded,
+                        label: 'Paid Out',
+                        value: 'Rp ${_stats?['paid_amount'] ?? 0}',
+                        color: OseeTheme.accent,
+                      ),
                     ],
                   ),
-                ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard(this.label, this.value, this.color);
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const Spacer(),
-            Text(value,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
-          ],
-        ),
-      ),
+                  const SizedBox(height: Spacing.lg),
+                  const SectionHeader(title: 'By Type'),
+                  for (final entry
+                      in (_stats?['by_type'] as Map?)?.entries ??
+                          <MapEntry<String, dynamic>>[])
+                    SurfaceCard(
+                      child: InfoRow(
+                        label: entry.key.toString().replaceAll('_', ' '),
+                        value: 'Rp ${entry.value}',
+                      ),
+                    ),
+                  const SizedBox(height: Spacing.lg),
+                  const SectionHeader(title: 'Recent Activity'),
+                  for (final entry
+                      in (_stats?['recent_entries'] as List?) ?? <dynamic>[])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: Spacing.sm),
+                      child: SurfaceCard(
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(
+                            Icons.receipt_long_rounded,
+                            color: OseeTheme.primary,
+                          ),
+                          title: Text(
+                            '${(entry as Map)['type']} · ${(entry)['student_name'] ?? '—'}',
+                          ),
+                          subtitle: Text(
+                            'Rp ${entry['amount']} · ${entry['status']}',
+                          ),
+                          trailing: Text(
+                            (entry)['created_at'] as String? ?? '',
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: Spacing.lg),
+                  const SectionHeader(title: 'Payout History'),
+                  if (_payouts?.isEmpty ?? true)
+                    const SurfaceCard(child: Text('No payouts yet'))
+                  else
+                    for (final p in _payouts!)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: Spacing.sm),
+                        child: SurfaceCard(
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(
+                              Icons.account_balance_wallet_rounded,
+                              color: OseeTheme.success,
+                            ),
+                            title: Text('Rp ${(p as Map)['amount']}'),
+                            subtitle: Text(
+                              '${p['method'] ?? '—'} · ${p['status']}',
+                            ),
+                            trailing: Text(p['requested_at'] as String? ?? ''),
+                          ),
+                        ),
+                      ),
+                ],
+              ),
+            ),
     );
   }
 }

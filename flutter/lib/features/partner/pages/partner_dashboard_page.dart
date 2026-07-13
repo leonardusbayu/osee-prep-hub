@@ -5,13 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/ui_components.dart';
+import '../../../app/theme.dart';
 
 /// Partner (institution) dashboard — Task 15.8.
 class PartnerDashboardPage extends ConsumerStatefulWidget {
   const PartnerDashboardPage({super.key});
 
   @override
-  ConsumerState<PartnerDashboardPage> createState() => _PartnerDashboardPageState();
+  ConsumerState<PartnerDashboardPage> createState() =>
+      _PartnerDashboardPageState();
 }
 
 class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
@@ -27,7 +29,10 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final statsR = await dio.get('/partner/dashboard');
@@ -38,7 +43,10 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() { _error = 'Failed to load'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load';
+        _isLoading = false;
+      });
     }
   }
 
@@ -53,15 +61,23 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
       appBar: AppBar(
         title: const Text('Institution Dashboard'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load, tooltip: 'Refresh'),
-          IconButton(icon: const Icon(Icons.logout), onPressed: _logout, tooltip: 'Logout'),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _load,
+            tooltip: 'Refresh',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Logout',
+          ),
         ],
       ),
       body: _isLoading
           ? const LoadingState()
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : RefreshIndicator(onRefresh: _load, child: _body()),
+          ? ErrorState(message: _error!, onRetry: _load)
+          : RefreshIndicator(onRefresh: _load, child: _body()),
     );
   }
 
@@ -70,6 +86,13 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
     return ListView(
       padding: const EdgeInsets.all(Spacing.md),
       children: [
+        const PageHeader(
+          title: 'Institution Dashboard',
+          subtitle:
+              'Manage teachers, student activity, and institution-level ordering.',
+          icon: Icons.business_rounded,
+        ),
+        const SizedBox(height: Spacing.lg),
         SectionHeader(title: 'Overview'),
         GridView.count(
           shrinkWrap: true,
@@ -79,10 +102,30 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
           crossAxisSpacing: Spacing.sm,
           mainAxisSpacing: Spacing.sm,
           children: [
-            StatCard(icon: Icons.school, label: 'Teachers', value: '${s['teachers_count'] ?? 0}', color: const Color(0xFF1A1A2E)),
-            StatCard(icon: Icons.people, label: 'Students', value: '${s['total_students'] ?? 0}', color: const Color(0xFF6B8E7F)),
-            StatCard(icon: Icons.receipt_long, label: 'Orders', value: '${s['total_orders'] ?? 0}', color: const Color(0xFFC9A96E)),
-            StatCard(icon: Icons.payments, label: 'Total Spent', value: 'Rp ${_formatNum(s['total_spent'] ?? 0)}', color: const Color(0xFFE63946)),
+            StatCard(
+              icon: Icons.school_rounded,
+              label: 'Teachers',
+              value: '${s['teachers_count'] ?? 0}',
+              color: OseeTheme.primary,
+            ),
+            StatCard(
+              icon: Icons.people_rounded,
+              label: 'Students',
+              value: '${s['total_students'] ?? 0}',
+              color: OseeTheme.success,
+            ),
+            StatCard(
+              icon: Icons.receipt_long_rounded,
+              label: 'Orders',
+              value: '${s['total_orders'] ?? 0}',
+              color: OseeTheme.warning,
+            ),
+            StatCard(
+              icon: Icons.payments_rounded,
+              label: 'Total Spent',
+              value: 'Rp ${_formatNum(s['total_spent'] ?? 0)}',
+              color: OseeTheme.accent,
+            ),
           ],
         ),
         const SizedBox(height: Spacing.lg),
@@ -107,27 +150,28 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
 
         SectionHeader(title: 'Teachers in Institution'),
         if ((_teachers ?? []).isEmpty)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.md),
-              child: Text(
-                'No teachers yet — invite one!',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).hintColor,
-                ),
-              ),
-            ),
-          )
+          const SurfaceCard(child: Text('No teachers yet — invite one.'))
         else
           ...(_teachers ?? []).map((t) {
             final m = t as Map<String, dynamic>;
-            return Card(
-              margin: const EdgeInsets.only(bottom: Spacing.xs),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.xs),
-                leading: const Icon(Icons.person_outline),
-                title: Text(m['name'] as String? ?? '', style: Theme.of(context).textTheme.bodyLarge),
-                subtitle: Text('${m['email']} · ${m['students_count'] ?? 0} students', style: Theme.of(context).textTheme.bodySmall),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: Spacing.sm),
+              child: SurfaceCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.person_outline_rounded,
+                    color: OseeTheme.primary,
+                  ),
+                  title: Text(
+                    m['name'] as String? ?? '',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  subtitle: Text(
+                    '${m['email']} · ${m['students_count'] ?? 0} students',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
               ),
             );
           }),
@@ -154,12 +198,18 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
           keyboardType: TextInputType.emailAddress,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () async {
               try {
                 final dio = ApiClient.create();
-                await dio.post('/partner/teachers/invite', data: {'email': emailCtrl.text.trim()});
+                await dio.post(
+                  '/partner/teachers/invite',
+                  data: {'email': emailCtrl.text.trim()},
+                );
                 if (mounted) Navigator.pop(ctx);
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -169,7 +219,9 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
                 _load();
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Failed: $e')));
                 }
               }
             },

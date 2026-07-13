@@ -159,12 +159,44 @@ aiRoutes.post('/generate-material', async (c) => {
     return c.json({ error: { code: 'QUOTA_CHECK_FAILED', message: (err as Error).message } }, 500);
   }
   try {
+    // Insert generation job into ai_generation_queue (Task 6.2)
+    const { getSupabase } = await import('../services/supabase');
+    const supabase = getSupabase(c.env);
+    const { data: queueRow } = await supabase
+      .from('ai_generation_queue')
+      .insert({
+        teacher_id: user.id,
+        user_id: user.id,
+        generation_type: body.type,
+        exam_type: body.exam,
+        cefr_level: body.level,
+        topic: body.topic,
+        status: 'processing',
+        processing_started_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    const jobId = (queueRow as Record<string, unknown>)?.id as string | undefined;
+
     const result = await generateMaterial(c.env, {
       type: body.type as 'reading' | 'listening' | 'speaking' | 'writing' | 'grammar' | 'vocabulary' | 'mock_test',
       exam: body.exam, level: body.level, topic: body.topic, options: body.options,
     });
+
+    // Update queue row with result
+    if (jobId) {
+      await supabase
+        .from('ai_generation_queue')
+        .update({
+          status: 'completed',
+          generated_content: result,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', jobId);
+    }
+
     console.log(`generate-material user=${user.id} type=${body.type} topic=${body.topic}`);
-    return c.json(result);
+    return c.json({ ...result, job_id: jobId });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Generation failed';
     return c.json({ error: { code: 'GENERATION_FAILED', message } }, 500);

@@ -4,7 +4,7 @@ import '../../app/theme.dart';
 /// OSEE shared UI components — modern professional design system.
 ///
 /// Design principles:
-/// - Cards: radius 16, subtle shadow, white on slate-50 bg
+/// - Cards: radius 8, subtle border, white on slate-50 bg
 /// - Spacing: 8px grid (xs=4, sm=8, md=16, lg=24, xl=32, xxl=48)
 /// - Colors: OseeTheme palette (indigo primary, emerald success, etc.)
 /// - Typography: Inter via theme
@@ -19,6 +19,98 @@ class Spacing {
   static const double lg = 24;
   static const double xl = 32;
   static const double xxl = 48;
+}
+
+// ---------- Page structure ----------
+
+class PageHeader extends StatelessWidget {
+  const PageHeader({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return SurfaceCard(
+      padding: const EdgeInsets.all(Spacing.lg),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: OseeTheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: OseeTheme.primary, size: 22),
+          ),
+          const SizedBox(width: Spacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: OseeTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: Spacing.md),
+            trailing!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class SurfaceCard extends StatelessWidget {
+  const SurfaceCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(Spacing.md),
+    this.color,
+    this.borderColor = OseeTheme.border,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final Color? color;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color ?? OseeTheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: OseeTheme.textPrimary.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
 }
 
 // ---------- Section header ----------
@@ -94,7 +186,8 @@ class StatCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: OseeTheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: OseeTheme.border),
         boxShadow: [
           BoxShadow(
             color: OseeTheme.textPrimary.withValues(alpha: 0.04),
@@ -115,7 +208,7 @@ class StatCard extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, size: 18, color: color),
             ),
@@ -184,7 +277,7 @@ class EmptyState extends StatelessWidget {
               height: 80,
               decoration: BoxDecoration(
                 color: OseeTheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, size: 36, color: OseeTheme.textMuted),
             ),
@@ -219,11 +312,7 @@ class EmptyState extends StatelessWidget {
 // ---------- Error state ----------
 
 class ErrorState extends StatelessWidget {
-  const ErrorState({
-    super.key,
-    required this.message,
-    this.onRetry,
-  });
+  const ErrorState({super.key, required this.message, this.onRetry});
   final String message;
   final VoidCallback? onRetry;
 
@@ -240,17 +329,21 @@ class ErrorState extends StatelessWidget {
               height: 64,
               decoration: BoxDecoration(
                 color: OseeTheme.danger.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.error_outline, color: OseeTheme.danger, size: 28),
+              child: const Icon(
+                Icons.error_outline,
+                color: OseeTheme.danger,
+                size: 28,
+              ),
             ),
             const SizedBox(height: Spacing.md),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: OseeTheme.textSecondary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: OseeTheme.textSecondary),
             ),
             if (onRetry != null) ...[
               const SizedBox(height: Spacing.md),
@@ -261,6 +354,77 @@ class ErrorState extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------- Action tile ----------
+
+class ActionTile extends StatelessWidget {
+  const ActionTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.color = OseeTheme.primary,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: OseeTheme.surface,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(Spacing.md),
+          decoration: BoxDecoration(
+            border: Border.all(color: OseeTheme.border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: Spacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: OseeTheme.textMuted,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -291,9 +455,9 @@ class LoadingState extends StatelessWidget {
             const SizedBox(height: Spacing.md),
             Text(
               message!,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: OseeTheme.textSecondary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: OseeTheme.textSecondary),
             ),
           ],
         ],

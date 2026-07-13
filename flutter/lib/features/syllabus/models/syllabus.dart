@@ -29,44 +29,48 @@ class Syllabus {
   });
 
   factory Syllabus.fromJson(Map<String, dynamic> json) => Syllabus(
-        id: json['id'] as String,
-        teacherId: json['teacher_id'] as String,
-        classroomId: json['classroom_id'] as String?,
-        name: json['name'] as String,
-        description: json['description'] as String?,
-        targetExam: json['target_exam'] as String?,
-        isTemplate: json['is_template'] as bool? ?? false,
-        isPublished: json['is_published'] as bool? ?? false,
-        createdAt: DateTime.parse(json['created_at'] as String),
-        updatedAt: DateTime.parse(json['updated_at'] as String),
-      );
+    id: json['id'] as String,
+    teacherId: json['teacher_id'] as String,
+    classroomId: json['classroom_id'] as String?,
+    name: json['name'] as String,
+    description: json['description'] as String?,
+    targetExam: json['target_exam'] as String?,
+    isTemplate: json['is_template'] as bool? ?? false,
+    isPublished: json['is_published'] as bool? ?? false,
+    createdAt: DateTime.parse(json['created_at'] as String),
+    updatedAt: DateTime.parse(json['updated_at'] as String),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'teacher_id': teacherId,
-        'classroom_id': classroomId,
-        'name': name,
-        'description': description,
-        'target_exam': targetExam,
-        'is_template': isTemplate,
-        'is_published': isPublished,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'teacher_id': teacherId,
+    'classroom_id': classroomId,
+    'name': name,
+    'description': description,
+    'target_exam': targetExam,
+    'is_template': isTemplate,
+    'is_published': isPublished,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+  };
 
-  Syllabus copyWith({String? name, String? description, String? targetExam, bool? isPublished}) =>
-      Syllabus(
-        id: id,
-        teacherId: teacherId,
-        classroomId: classroomId,
-        name: name ?? this.name,
-        description: description ?? this.description,
-        targetExam: targetExam ?? this.targetExam,
-        isTemplate: isTemplate,
-        isPublished: isPublished ?? this.isPublished,
-        createdAt: createdAt,
-        updatedAt: updatedAt,
-      );
+  Syllabus copyWith({
+    String? name,
+    String? description,
+    String? targetExam,
+    bool? isPublished,
+  }) => Syllabus(
+    id: id,
+    teacherId: teacherId,
+    classroomId: classroomId,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    targetExam: targetExam ?? this.targetExam,
+    isTemplate: isTemplate,
+    isPublished: isPublished ?? this.isPublished,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+  );
 }
 
 /// A single learning unit placed inside a syllabus column (week/unit).
@@ -81,7 +85,8 @@ class SyllabusItem {
   final String? sourcePlatformUrl;
   final String title;
   final String? description;
-  final String itemType; // reading | listening | speaking | writing | grammar | vocab | mock_test | video | live_class | review | assignment | diagnostic
+  final String
+  itemType; // reading | listening | speaking | writing | grammar | vocab | mock_test | video | live_class | review | assignment | diagnostic
   final String? section;
   final String? difficulty; // A1..C2
   final int? estimatedMinutes;
@@ -92,8 +97,10 @@ class SyllabusItem {
   // ----- Planka-style client-only fields (not persisted to backend yet) -----
   /// IDs of [SyllabusLabel]s applied to this item.
   final List<String> labelIds;
+
   /// Comments threaded on this item.
   final List<SyllabusComment> comments;
+
   /// Attachments (file/url) on this item.
   final List<SyllabusAttachment> attachments;
 
@@ -119,41 +126,41 @@ class SyllabusItem {
   });
 
   factory SyllabusItem.fromJson(Map<String, dynamic> json) => SyllabusItem(
-        id: json['id'] as String,
-        syllabusId: json['syllabus_id'] as String,
-        sortOrder: json['sort_order'] as int,
-        sourceType: json['source_type'] as String,
-        sourceMaterialId: json['source_material_id'] as String?,
-        sourcePlatformUrl: json['source_platform_url'] as String?,
-        title: json['title'] as String,
-        description: json['description'] as String?,
-        itemType: json['item_type'] as String,
-        section: json['section'] as String?,
-        difficulty: json['difficulty'] as String?,
-        estimatedMinutes: json['estimated_minutes'] as int?,
-        flavorTag: json['flavor_tag'] as String?,
-        temperatureTag: json['temperature_tag'] as String?,
-        unlockedAt: json['unlocked_at'] != null
-            ? DateTime.parse(json['unlocked_at'] as String)
-            : null,
-      );
+    id: json['id'] as String,
+    syllabusId: json['syllabus_id'] as String,
+    sortOrder: json['sort_order'] as int,
+    sourceType: json['source_type'] as String,
+    sourceMaterialId: json['source_material_id'] as String?,
+    sourcePlatformUrl: json['source_platform_url'] as String?,
+    title: json['title'] as String,
+    description: json['description'] as String?,
+    itemType: json['item_type'] as String,
+    section: json['section'] as String?,
+    difficulty: json['difficulty'] as String?,
+    estimatedMinutes: json['estimated_minutes'] as int?,
+    flavorTag: json['flavor_tag'] as String?,
+    temperatureTag: json['temperature_tag'] as String?,
+    unlockedAt: json['unlocked_at'] != null
+        ? DateTime.parse(json['unlocked_at'] as String)
+        : null,
+  );
 
   /// JSON payload for `PUT /api/teacher/syllabi/:id/items` (no id / created_at).
   Map<String, dynamic> toSaveJson() => {
-        'sort_order': sortOrder,
-        'source_type': sourceType,
-        'source_material_id': sourceMaterialId,
-        'source_platform_url': sourcePlatformUrl,
-        'title': title,
-        'description': description,
-        'item_type': itemType,
-        'section': section,
-        'difficulty': difficulty,
-        'estimated_minutes': estimatedMinutes,
-        'flavor_tag': flavorTag,
-        'temperature_tag': temperatureTag,
-        'unlocked_at': unlockedAt?.toIso8601String(),
-      };
+    'sort_order': sortOrder,
+    'source_type': sourceType,
+    'source_material_id': sourceMaterialId,
+    'source_platform_url': sourcePlatformUrl,
+    'title': title,
+    'description': description,
+    'item_type': itemType,
+    'section': section,
+    'difficulty': difficulty,
+    'estimated_minutes': estimatedMinutes,
+    'flavor_tag': flavorTag,
+    'temperature_tag': temperatureTag,
+    'unlocked_at': unlockedAt?.toIso8601String(),
+  };
 
   SyllabusItem copyWith({
     int? sortOrder,
@@ -164,27 +171,26 @@ class SyllabusItem {
     List<String>? labelIds,
     List<SyllabusComment>? comments,
     List<SyllabusAttachment>? attachments,
-  }) =>
-      SyllabusItem(
-        id: id,
-        syllabusId: syllabusId,
-        sortOrder: sortOrder ?? this.sortOrder,
-        sourceType: sourceType,
-        sourceMaterialId: sourceMaterialId,
-        sourcePlatformUrl: sourcePlatformUrl,
-        title: title ?? this.title,
-        description: description ?? this.description,
-        itemType: itemType,
-        section: section ?? this.section,
-        difficulty: difficulty,
-        estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
-        flavorTag: flavorTag,
-        temperatureTag: temperatureTag,
-        unlockedAt: unlockedAt,
-        labelIds: labelIds ?? this.labelIds,
-        comments: comments ?? this.comments,
-        attachments: attachments ?? this.attachments,
-      );
+  }) => SyllabusItem(
+    id: id,
+    syllabusId: syllabusId,
+    sortOrder: sortOrder ?? this.sortOrder,
+    sourceType: sourceType,
+    sourceMaterialId: sourceMaterialId,
+    sourcePlatformUrl: sourcePlatformUrl,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    itemType: itemType,
+    section: section ?? this.section,
+    difficulty: difficulty,
+    estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
+    flavorTag: flavorTag,
+    temperatureTag: temperatureTag,
+    unlockedAt: unlockedAt,
+    labelIds: labelIds ?? this.labelIds,
+    comments: comments ?? this.comments,
+    attachments: attachments ?? this.attachments,
+  );
 }
 
 /// Where a syllabus item originates from. Used for icon/color and the catalog.

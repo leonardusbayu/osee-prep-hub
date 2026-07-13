@@ -27,13 +27,24 @@ class _ClassroomReportPageState extends State<ClassroomReportPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
-      final r = await dio.get('/teacher/classrooms/${widget.classroomId}/report');
-      setState(() { _report = r.data as Map<String, dynamic>; _isLoading = false; });
+      final r = await dio.get(
+        '/teacher/classrooms/${widget.classroomId}/report',
+      );
+      setState(() {
+        _report = r.data as Map<String, dynamic>;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = 'Failed to load'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load';
+        _isLoading = false;
+      });
     }
   }
 
@@ -41,7 +52,9 @@ class _ClassroomReportPageState extends State<ClassroomReportPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_report?['classroom']?['name'] as String? ?? 'Classroom Report'),
+        title: Text(
+          _report?['classroom']?['name'] as String? ?? 'Classroom Report',
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
@@ -49,8 +62,8 @@ class _ClassroomReportPageState extends State<ClassroomReportPage> {
       body: _isLoading
           ? const LoadingState()
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : _buildContent(_report ?? {}),
+          ? ErrorState(message: _error!, onRetry: _load)
+          : _buildContent(_report ?? {}),
     );
   }
 
@@ -78,23 +91,29 @@ class _ClassroomReportPageState extends State<ClassroomReportPage> {
         const SizedBox(height: 16),
 
         // Common weaknesses badges
-        const Text('Common Weaknesses',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Common Weaknesses',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 6,
           children: ((summary['common_weaknesses'] as List?) ?? <dynamic>[])
-              .map((w) => Chip(
-                    label: Text(w.toString()),
-                    backgroundColor: Colors.red.shade100,
-                  ))
+              .map(
+                (w) => Chip(
+                  label: Text(w.toString()),
+                  backgroundColor: Colors.red.shade100,
+                ),
+              )
               .toList(),
         ),
         const SizedBox(height: 24),
 
         // Weakness heatmap
-        const Text('Weakness Heatmap',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Weakness Heatmap',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 4),
         const Text(
           'Color = score per exam. Red = low, Green = high. Blank = no data.',
@@ -109,7 +128,10 @@ class _ClassroomReportPageState extends State<ClassroomReportPage> {
   Widget _stat(String label, String value) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
         Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
       ],
     );
@@ -129,7 +151,10 @@ class _Heatmap extends StatelessWidget {
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Text('No students enrolled.', style: Theme.of(context).textTheme.bodyMedium),
+          child: Text(
+            'No students enrolled.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
         ),
       );
     }
@@ -172,13 +197,20 @@ class _Heatmap extends StatelessWidget {
       return const SizedBox(
         width: 50,
         height: 28,
-        child: Center(child: Text('—', style: TextStyle(color: Colors.grey, fontSize: 12))),
+        child: Center(
+          child: Text('—', style: TextStyle(color: Colors.grey, fontSize: 12)),
+        ),
       );
     }
 
     // Normalize score to 0-1 range for color
     // Different exams have different max: iBT 120, ITP 677, IELTS 9, TOEIC 990
-    final maxByExam = {'ibt': 120.0, 'itp': 677.0, 'ielts': 9.0, 'toeic': 990.0};
+    final maxByExam = {
+      'ibt': 120.0,
+      'itp': 677.0,
+      'ielts': 9.0,
+      'toeic': 990.0,
+    };
     final max = maxByExam[exam] ?? 100.0;
     final ratio = ((score as num).toDouble() / max).clamp(0.0, 1.0);
 

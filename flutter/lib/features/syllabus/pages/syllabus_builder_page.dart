@@ -24,7 +24,8 @@ class SyllabusBuilderPage extends ConsumerStatefulWidget {
   final String syllabusId;
 
   @override
-  ConsumerState<SyllabusBuilderPage> createState() => _SyllabusBuilderPageState();
+  ConsumerState<SyllabusBuilderPage> createState() =>
+      _SyllabusBuilderPageState();
 }
 
 class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
@@ -56,7 +57,9 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
 
   Future<void> _bootstrap() async {
     try {
-      final detail = await ref.read(syllabusRepositoryProvider).getSyllabus(widget.syllabusId);
+      final detail = await ref
+          .read(syllabusRepositoryProvider)
+          .getSyllabus(widget.syllabusId);
       _syllabus = detail.syllabus;
       _columns = List.generate(_initialColumns, (_) => <SyllabusItem>[]);
       for (final item in detail.items) {
@@ -115,14 +118,22 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
     });
   }
 
-  void _onCardMoved(KanbanCard<SyllabusItem> card, String fromLaneId, String toLaneId, int newIndex) {
+  void _onCardMoved(
+    KanbanCard<SyllabusItem> card,
+    String fromLaneId,
+    String toLaneId,
+    int newIndex,
+  ) {
     setState(() {
       final from = int.parse(fromLaneId);
       final to = int.parse(toLaneId);
       if (from == to) {
         if (newIndex >= 0 && newIndex < _columns[from].length) {
           final item = _columns[from].removeAt(card.index);
-          _columns[from].insert(newIndex, item.copyWith(section: _columnSectionLabel(to)));
+          _columns[from].insert(
+            newIndex,
+            item.copyWith(section: _columnSectionLabel(to)),
+          );
         }
       } else {
         if (card.index >= 0 && card.index < _columns[from].length) {
@@ -152,7 +163,10 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
         title: const Text('Rename item'),
         content: TextField(controller: ctl, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () {
               final v = ctl.text.trim();
@@ -211,7 +225,9 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
       createdAt: DateTime.now(),
     );
     setState(() {
-      _columns[col][idx] = current.copyWith(attachments: [...current.attachments, a]);
+      _columns[col][idx] = current.copyWith(
+        attachments: [...current.attachments, a],
+      );
       _isDirty = true;
     });
   }
@@ -233,10 +249,14 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
           flat.add(item);
         }
       }
-      await ref.read(syllabusRepositoryProvider).saveItems(widget.syllabusId, flat);
+      await ref
+          .read(syllabusRepositoryProvider)
+          .saveItems(widget.syllabusId, flat);
       setState(() => _isDirty = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Syllabus saved')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Syllabus saved')));
     } catch (e) {
       if (mounted) setState(() => _error = 'Save failed: $e');
     } finally {
@@ -260,10 +280,13 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
       backgroundColor: OseeTheme.paper,
       appBar: _buildMagazineAppBar(),
       body: _error != null
-          ? _ErrorPanel(message: _error!, onRetry: () => setState(() => _error = null))
+          ? _ErrorPanel(
+              message: _error!,
+              onRetry: () => setState(() => _error = null),
+            )
           : loaded
-              ? _buildBody()
-              : const Center(child: CircularProgressIndicator()),
+          ? _buildBody()
+          : const Center(child: CircularProgressIndicator()),
       endDrawer: _drawerItem != null
           ? _ItemDetailDrawer(
               item: _drawerItem!,
@@ -271,19 +294,25 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
               onToggleLabel: (labelId) {
                 if (_drawerCol >= 0 && _drawerIdx >= 0) {
                   _toggleLabel(_drawerCol, _drawerIdx, labelId);
-                  setState(() => _drawerItem = _columns[_drawerCol][_drawerIdx]);
+                  setState(
+                    () => _drawerItem = _columns[_drawerCol][_drawerIdx],
+                  );
                 }
               },
               onAddComment: (text) {
                 if (_drawerCol >= 0 && _drawerIdx >= 0) {
                   _addComment(_drawerCol, _drawerIdx, text);
-                  setState(() => _drawerItem = _columns[_drawerCol][_drawerIdx]);
+                  setState(
+                    () => _drawerItem = _columns[_drawerCol][_drawerIdx],
+                  );
                 }
               },
               onAddAttachment: (url, filename) {
                 if (_drawerCol >= 0 && _drawerIdx >= 0) {
                   _addAttachment(_drawerCol, _drawerIdx, url, filename);
-                  setState(() => _drawerItem = _columns[_drawerCol][_drawerIdx]);
+                  setState(
+                    () => _drawerItem = _columns[_drawerCol][_drawerIdx],
+                  );
                 }
               },
               onRename: () {
@@ -322,7 +351,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
               fontFamily: 'Helvetica',
               fontSize: 9,
               fontWeight: FontWeight.w700,
-              letterSpacing: 3,
+              letterSpacing: 0,
               color: OseeTheme.stone,
             ),
           ),
@@ -349,7 +378,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: OseeTheme.gold,
-                    letterSpacing: 1.5,
+                    letterSpacing: 0,
                   ),
                 ),
             ],
@@ -369,7 +398,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                   fontFamily: 'Helvetica',
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
+                  letterSpacing: 0,
                   color: OseeTheme.accent,
                 ),
               ),
@@ -414,17 +443,33 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
   Widget _buildBoardArea() {
     // Asymmetric lane widths — alternate wide / medium / narrow for editorial feel.
     final widths = <double>[
-      320, 280, 360, 280, 320, 280, 360, 240, 320, 280, 360, 280,
+      320,
+      280,
+      360,
+      280,
+      320,
+      280,
+      360,
+      240,
+      320,
+      280,
+      360,
+      280,
     ];
     final lanes = <KanbanLane<SyllabusItem>>[];
     for (var c = 0; c < _columns.length; c++) {
       final w = widths[c % widths.length];
-      final totalMin = _columns[c].fold<int>(0, (a, i) => a + (i.estimatedMinutes ?? 0));
+      final totalMin = _columns[c].fold<int>(
+        0,
+        (a, i) => a + (i.estimatedMinutes ?? 0),
+      );
       lanes.add(
         KanbanLane<SyllabusItem>(
           id: c.toString(),
           title: 'Week ${c + 1}',
-          subtitle: _columns[c].isEmpty ? '—' : '${_columns[c].length} · ${totalMin}m',
+          subtitle: _columns[c].isEmpty
+              ? '—'
+              : '${_columns[c].length} · ${totalMin}m',
           cards: [
             for (var i = 0; i < _columns[c].length; i++)
               KanbanCard<SyllabusItem>(
@@ -491,10 +536,12 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
 
   Widget _buildCatalog() {
     final filtered = kMaterialCatalog.where((e) {
-      if (_catalogSourceFilter != null && e.sourceType != _catalogSourceFilter) return false;
+      if (_catalogSourceFilter != null && e.sourceType != _catalogSourceFilter)
+        return false;
       if (_catalogQuery.isEmpty) return true;
       return e.title.toLowerCase().contains(_catalogQuery.toLowerCase()) ||
-          (e.description?.toLowerCase().contains(_catalogQuery.toLowerCase()) ?? false);
+          (e.description?.toLowerCase().contains(_catalogQuery.toLowerCase()) ??
+              false);
     }).toList();
 
     return Container(
@@ -506,7 +553,9 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
           Container(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: OseeTheme.ink, width: 1)),
+              border: Border(
+                bottom: BorderSide(color: OseeTheme.ink, width: 1),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,7 +574,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                               fontFamily: 'Helvetica',
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
-                              letterSpacing: 3,
+                              letterSpacing: 0,
                               color: OseeTheme.stone,
                             ),
                           ),
@@ -564,7 +613,11 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
             child: TextField(
               decoration: InputDecoration(
                 isDense: true,
-                prefixIcon: const Icon(Icons.search, size: 16, color: OseeTheme.stone),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  size: 16,
+                  color: OseeTheme.stone,
+                ),
                 hintText: 'Search the library…',
                 hintStyle: TextStyle(
                   fontFamily: 'Georgia',
@@ -613,10 +666,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                 final pad = i.isEven ? 12.0 : 8.0;
                 return Padding(
                   padding: EdgeInsets.symmetric(vertical: pad / 2),
-                  child: _MagazineCatalogCard(
-                    entry: filtered[i],
-                    index: i + 1,
-                  ),
+                  child: _MagazineCatalogCard(entry: filtered[i], index: i + 1),
                 );
               },
             ),
@@ -631,7 +681,10 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
     return Padding(
       padding: const EdgeInsets.only(right: 4),
       child: ChoiceChip(
-        label: Text(label, style: const TextStyle(fontSize: 10, fontFamily: 'Helvetica')),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 10, fontFamily: 'Helvetica'),
+        ),
         selected: selected,
         selectedColor: OseeTheme.ink,
         labelStyle: TextStyle(
@@ -653,7 +706,11 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
 /// The "PUBLISH" stamp — a magazine-style bordered button with letter-spaced
 /// Helvetica uppercase, gold border, ink background when active.
 class _PublishStamp extends StatelessWidget {
-  const _PublishStamp({required this.disabled, required this.isSaving, required this.onTap});
+  const _PublishStamp({
+    required this.disabled,
+    required this.isSaving,
+    required this.onTap,
+  });
   final bool disabled;
   final bool isSaving;
   final VoidCallback? onTap;
@@ -682,7 +739,10 @@ class _PublishStamp extends StatelessWidget {
                 const SizedBox(
                   width: 12,
                   height: 12,
-                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: Colors.white,
+                  ),
                 )
               else
                 const Icon(Icons.save, size: 14, color: Colors.white),
@@ -693,7 +753,7 @@ class _PublishStamp extends StatelessWidget {
                   fontFamily: 'Helvetica',
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
+                  letterSpacing: 0,
                   color: active ? Colors.white : OseeTheme.stone,
                 ),
               ),
@@ -708,7 +768,11 @@ class _PublishStamp extends StatelessWidget {
 /// Magazine-styled Kanban card. Mixed Georgia/Helvetica, gold rule, label chips,
 /// comments/attachments counts. Tappable to open detail drawer.
 class _MagazineCard extends StatelessWidget {
-  const _MagazineCard({required this.card, required this.selected, required this.onTap});
+  const _MagazineCard({
+    required this.card,
+    required this.selected,
+    required this.onTap,
+  });
   final KanbanCard<SyllabusItem> card;
   final bool selected;
   final VoidCallback onTap;
@@ -747,14 +811,18 @@ class _MagazineCard extends StatelessWidget {
                       fontFamily: 'Helvetica',
                       fontSize: 8,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
+                      letterSpacing: 0,
                       color: typeColor,
                     ),
                   ),
                   if (item.difficulty != null) ...[
                     const Text(
                       ' · ',
-                      style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, color: OseeTheme.stone),
+                      style: TextStyle(
+                        fontFamily: 'Helvetica',
+                        fontSize: 8,
+                        color: OseeTheme.stone,
+                      ),
                     ),
                     Text(
                       item.difficulty!.toUpperCase(),
@@ -762,7 +830,7 @@ class _MagazineCard extends StatelessWidget {
                         fontFamily: 'Helvetica',
                         fontSize: 8,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 1.5,
+                        letterSpacing: 0,
                         color: OseeTheme.stone,
                       ),
                     ),
@@ -810,10 +878,15 @@ class _MagazineCard extends StatelessWidget {
                     for (final labelId in item.labelIds.take(4))
                       if (SyllabusLabel.byId(labelId) case final l?)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: Color(l.color).withOpacity(0.15),
-                            border: Border(left: BorderSide(color: Color(l.color), width: 2)),
+                            border: Border(
+                              left: BorderSide(color: Color(l.color), width: 2),
+                            ),
                           ),
                           child: Text(
                             l.name,
@@ -822,7 +895,7 @@ class _MagazineCard extends StatelessWidget {
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
                               color: Color(l.color),
-                              letterSpacing: 0.4,
+                              letterSpacing: 0,
                             ),
                           ),
                         ),
@@ -849,7 +922,11 @@ class _MagazineCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.chat_bubble_outline, size: 10, color: OseeTheme.stone),
+                          const Icon(
+                            Icons.chat_bubble_outline,
+                            size: 10,
+                            color: OseeTheme.stone,
+                          ),
                           const SizedBox(width: 2),
                           Text(
                             '${item.comments.length}',
@@ -866,7 +943,11 @@ class _MagazineCard extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.attach_file, size: 10, color: OseeTheme.stone),
+                        const Icon(
+                          Icons.attach_file,
+                          size: 10,
+                          color: OseeTheme.stone,
+                        ),
                         const SizedBox(width: 2),
                         Text(
                           '${item.attachments.length}',
@@ -937,7 +1018,7 @@ class _MagazineLaneHeader extends StatelessWidget {
                   fontFamily: 'Helvetica',
                   fontSize: 8,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 2.5,
+                  letterSpacing: 0,
                   color: OseeTheme.accent,
                 ),
               ),
@@ -1023,7 +1104,7 @@ class _MagazineEmptyLane extends StatelessWidget {
                     fontFamily: 'Helvetica',
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
+                    letterSpacing: 0,
                     color: OseeTheme.cloud,
                   ),
                 ),
@@ -1088,7 +1169,13 @@ class _MagazineCatalogCard extends StatelessWidget {
           bottom: BorderSide(color: OseeTheme.cloud, width: 1),
         ),
         boxShadow: emitShadow
-            ? [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(2, 4))]
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 8,
+                  offset: const Offset(2, 4),
+                ),
+              ]
             : null,
       ),
       child: Padding(
@@ -1125,7 +1212,11 @@ class _MagazineCatalogCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(_iconFor(entry.sourceType), size: 11, color: OseeTheme.accent),
+                      Icon(
+                        _iconFor(entry.sourceType),
+                        size: 11,
+                        color: OseeTheme.accent,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         _sourceLabel(entry.sourceType).toUpperCase(),
@@ -1133,7 +1224,7 @@ class _MagazineCatalogCard extends StatelessWidget {
                           fontFamily: 'Helvetica',
                           fontSize: 8,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
+                          letterSpacing: 0,
                           color: OseeTheme.stone,
                         ),
                       ),
@@ -1177,13 +1268,18 @@ class _MagazineCatalogCard extends StatelessWidget {
                             fontSize: 8,
                             fontWeight: FontWeight.w700,
                             color: OseeTheme.gold,
-                            letterSpacing: 0.6,
+                            letterSpacing: 0,
                           ),
                         ),
-                      if (entry.difficulty != null && entry.estimatedMinutes > 0)
+                      if (entry.difficulty != null &&
+                          entry.estimatedMinutes > 0)
                         const Text(
                           ' · ',
-                          style: TextStyle(fontFamily: 'Helvetica', fontSize: 8, color: OseeTheme.stone),
+                          style: TextStyle(
+                            fontFamily: 'Helvetica',
+                            fontSize: 8,
+                            color: OseeTheme.stone,
+                          ),
                         ),
                       if (entry.estimatedMinutes > 0)
                         Text(
@@ -1268,7 +1364,9 @@ class _ItemDetailDrawer extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
               decoration: const BoxDecoration(
                 color: OseeTheme.ink,
-                border: Border(bottom: BorderSide(color: OseeTheme.gold, width: 1)),
+                border: Border(
+                  bottom: BorderSide(color: OseeTheme.gold, width: 1),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1281,13 +1379,17 @@ class _ItemDetailDrawer extends StatelessWidget {
                           fontFamily: 'Helvetica',
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 3,
+                          letterSpacing: 0,
                           color: OseeTheme.gold,
                         ),
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                         onPressed: onClose,
                       ),
                     ],
@@ -1303,7 +1405,8 @@ class _ItemDetailDrawer extends StatelessWidget {
                       height: 1.2,
                     ),
                   ),
-                  if (item.description != null && item.description!.isNotEmpty) ...[
+                  if (item.description != null &&
+                      item.description!.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
                       item.description!,
@@ -1349,7 +1452,9 @@ class _ItemDetailDrawer extends StatelessWidget {
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        border: Border(left: BorderSide(color: OseeTheme.gold, width: 2)),
+                        border: Border(
+                          left: BorderSide(color: OseeTheme.gold, width: 2),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1363,7 +1468,7 @@ class _ItemDetailDrawer extends StatelessWidget {
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: OseeTheme.ink,
-                                  letterSpacing: 0.5,
+                                  letterSpacing: 0,
                                 ),
                               ),
                               const Spacer(),
@@ -1407,7 +1512,11 @@ class _ItemDetailDrawer extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.link, size: 14, color: OseeTheme.accent),
+                          const Icon(
+                            Icons.link,
+                            size: 14,
+                            color: OseeTheme.accent,
+                          ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
@@ -1474,7 +1583,7 @@ class _SectionLabel extends StatelessWidget {
             fontFamily: 'Helvetica',
             fontSize: 10,
             fontWeight: FontWeight.w700,
-            letterSpacing: 2.5,
+            letterSpacing: 0,
             color: OseeTheme.ink,
           ),
         ),
@@ -1484,7 +1593,11 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _LabelToggle extends StatelessWidget {
-  const _LabelToggle({required this.label, required this.selected, required this.onTap});
+  const _LabelToggle({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final SyllabusLabel label;
   final bool selected;
   final VoidCallback onTap;
@@ -1501,9 +1614,18 @@ class _LabelToggle extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border(
               left: BorderSide(color: color, width: 2),
-              top: BorderSide(color: selected ? color : Colors.transparent, width: 1),
-              right: BorderSide(color: selected ? color : Colors.transparent, width: 1),
-              bottom: BorderSide(color: selected ? color : Colors.transparent, width: 1),
+              top: BorderSide(
+                color: selected ? color : Colors.transparent,
+                width: 1,
+              ),
+              right: BorderSide(
+                color: selected ? color : Colors.transparent,
+                width: 1,
+              ),
+              bottom: BorderSide(
+                color: selected ? color : Colors.transparent,
+                width: 1,
+              ),
             ),
           ),
           child: Text(
@@ -1513,7 +1635,7 @@ class _LabelToggle extends StatelessWidget {
               fontSize: 9,
               fontWeight: FontWeight.w700,
               color: selected ? color : OseeTheme.stone,
-              letterSpacing: 0.4,
+              letterSpacing: 0,
             ),
           ),
         ),
@@ -1553,7 +1675,10 @@ class _AddCommentBarState extends State<_AddCommentBar> {
                 color: OseeTheme.stone,
               ),
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(2),
                 borderSide: const BorderSide(color: OseeTheme.cloud),
@@ -1619,7 +1744,10 @@ class _AddAttachmentBarState extends State<_AddAttachmentBar> {
                 color: OseeTheme.stone,
               ),
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(2),
                 borderSide: const BorderSide(color: OseeTheme.cloud),

@@ -1,5 +1,6 @@
 import type { Env } from '../types';
 import { searchDocuments } from './rag-search';
+import { validateContent } from './content-validator';
 
 /**
  * AI material generation service — Task 6.1.
@@ -39,6 +40,8 @@ export interface GeneratedMaterial {
   topic: string;
   content: Record<string, unknown>;
   rag_context_used: number;
+  validation_status?: string;
+  validation_warnings?: string[];
 }
 
 /** Generate study material using GPT-4o-mini + RAG context. */
@@ -54,12 +57,32 @@ export async function generateMaterial(
     throw new Error('type, exam, and level required');
   }
 
-  // RAG search for reference materials
+  // RAG search for reference materials — map generation_type to category (blueprint line 1998-2001)
+  const categoryMap: Record<string, string> = {
+    reading: 'question_templates',
+    listening: 'question_templates',
+    writing: 'question_templates',
+    speaking: 'question_templates',
+    mock_test: 'question_templates',
+    grammar: 'grammar',
+    vocabulary: 'vocabulary',
+  };
+  const ragCategory = categoryMap[input.type] ?? 'question_templates';
+
   const ragQuery = `${input.exam} ${input.level} ${input.type} ${input.topic}`;
   const ragResults = await searchDocuments(env, ragQuery, {
     matchCount: 5,
-    filter: { tier: '1' },
+    filter: { tier: '1', category: ragCategory },
   }).catch(() => []);
+
+  // Fallback: if category filter returns nothing, search without category
+  let finalRagResults = ragResults;
+  if (ragResults.length === 0) {
+    finalRagResults = await searchDocuments(env, ragQuery, {
+      matchCount: 5,
+      filter: { tier: '1' },
+    }).catch(() => []);
+  }
 
   const ragContext = ragResults
     .map((r) => `- ${r.chunk_text.slice(0, 500)}`)
@@ -128,12 +151,20 @@ ${input.options?.difficulty ? `Difficulty: ${input.options.difficulty}` : ''}`;
     throw new Error('OpenAI did not return valid JSON');
   }
 
+  // Validate generated content (Task 6.4)
+  const validation = validateContent(content);
+  if (!validation.valid) {
+    console.warn('Content validation issues:', validation.issues);
+  }
+
   return {
     type: input.type,
     exam: input.exam,
     level: input.level,
     topic: input.topic,
     content,
-    rag_context_used: ragResults.length,
+    rag_context_used: finalRagResults.length,
+    validation_status: validation.valid ? 'passed' : 'needs_review',
+    validation_warnings: validation.warnings,
   };
 }

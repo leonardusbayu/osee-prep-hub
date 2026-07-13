@@ -45,8 +45,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final auth = ref.read(authProvider);
       // In go_router v14 hash-mode, `state.path` is empty for hash routes.
       // Use `state.uri.path` which is the reliable cross-mode source of truth.
-      final path = state.uri.path.isEmpty ? (state.path ?? '/') : state.uri.path;
-      final isAuthRoute = path == '/login' || path == '/register' || path.startsWith('/r/') || path == '/ambassador/join';
+      final path = state.uri.path.isEmpty
+          ? (state.path ?? '/')
+          : state.uri.path;
+      final isAuthRoute =
+          path == '/login' ||
+          path == '/register' ||
+          path.startsWith('/r/') ||
+          path == '/ambassador/join';
 
       // Unauthenticated → /login (except auth routes + public ambassador recruitment)
       if (!auth.isAuthenticated && !isAuthRoute) {
@@ -62,9 +68,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         final onTeacherRoute = path.startsWith('/teacher');
         final onStudentRoute = path.startsWith('/student');
         final onPartnerRoute = path.startsWith('/partner');
-        if ((onStudentRoute || onPartnerRoute) && role == UserRole.teacher) return '/teacher';
-        if ((onTeacherRoute || onPartnerRoute) && role == UserRole.student) return '/student';
-        if ((onTeacherRoute || onStudentRoute) && role == UserRole.partner) return '/partner';
+        if ((onStudentRoute || onPartnerRoute) && role == UserRole.teacher)
+          return '/teacher';
+        if ((onTeacherRoute || onPartnerRoute) && role == UserRole.student)
+          return '/student';
+        if ((onTeacherRoute || onStudentRoute) && role == UserRole.partner)
+          return '/partner';
       }
       return null;
     },
@@ -76,44 +85,99 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/r/:code',
         builder: (c, s) => RegisterPage(referralCode: s.pathParameters['code']),
       ),
-      GoRoute(path: '/teacher', builder: (c, s) => const TeacherDashboardPage()),
+      GoRoute(
+        path: '/teacher',
+        builder: (c, s) => const TeacherDashboardPage(),
+      ),
       GoRoute(path: '/teacher/orders', builder: (c, s) => const OrderPage()),
-      GoRoute(path: '/teacher/ai-grader', builder: (c, s) => const AiGraderPage()),
-      GoRoute(path: '/teacher/generator', builder: (c, s) => const MaterialGeneratorPage()),
-      GoRoute(path: '/teacher/syllabi', builder: (c, s) => const SyllabusListPage()),
+      GoRoute(
+        path: '/teacher/ai-grader',
+        builder: (c, s) => const AiGraderPage(),
+      ),
+      GoRoute(
+        path: '/teacher/generator',
+        builder: (c, s) => const MaterialGeneratorPage(),
+      ),
+      GoRoute(
+        path: '/teacher/syllabi',
+        builder: (c, s) => const SyllabusListPage(),
+      ),
       GoRoute(
         path: '/teacher/syllabi/:id',
-        builder: (c, s) => SyllabusBuilderPage(syllabusId: s.pathParameters['id']!),
+        builder: (c, s) =>
+            SyllabusBuilderPage(syllabusId: s.pathParameters['id']!),
       ),
-      GoRoute(path: '/teacher/classrooms', builder: (c, s) => const ClassroomsPage()),
+      GoRoute(
+        path: '/teacher/classrooms',
+        builder: (c, s) => const ClassroomsPage(),
+      ),
       GoRoute(
         path: '/teacher/classrooms/:id',
-        builder: (c, s) => ClassroomDetailPage(classroomId: s.pathParameters['id']!),
+        builder: (c, s) =>
+            ClassroomDetailPage(classroomId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/teacher/classrooms/:id/report',
-        builder: (c, s) => ClassroomReportPage(classroomId: s.pathParameters['id']!),
+        builder: (c, s) =>
+            ClassroomReportPage(classroomId: s.pathParameters['id']!),
       ),
-      GoRoute(path: '/teacher/commission', builder: (c, s) => const EarningsPage()),
-      GoRoute(path: '/teacher/reports', builder: (c, s) => const StudentReportsPage()),
-      GoRoute(path: '/teacher/settings', builder: (c, s) => const SettingsPage()),
-      GoRoute(path: '/teacher/upgrade', builder: (c, s) => const UpgradePage()),
-      GoRoute(path: '/student', builder: (c, s) => const StudentDashboardPage()),
-      GoRoute(path: '/student/progress', builder: (c, s) => const StudentProgressPage()),
-      GoRoute(path: '/student/readiness', builder: (c, s) => const ReadinessPage()),
-      GoRoute(path: '/student/videos', builder: (c, s) => const VideoLessonsPage()),
-      GoRoute(path: '/student/classes', builder: (c, s) => const LiveClassesPage()),
-      GoRoute(path: '/student/cross-exam', builder: (c, s) => const CrossExamPage()),
-      GoRoute(path: '/student/book-test', builder: (c, s) => const BookTestPage()),
-      GoRoute(path: '/partner', builder: (c, s) => const PartnerDashboardPage()),
-      GoRoute(path: '/ambassador', builder: (c, s) => const AmbassadorDashboardPage()),
-      GoRoute(path: '/ambassador/join', builder: (c, s) => const AmbassadorRecruitmentPage()),
       GoRoute(
-        path: '/admin',
-        builder: (c, s) => const AdminPage(),
+        path: '/teacher/commission',
+        builder: (c, s) => const EarningsPage(),
       ),
+      GoRoute(
+        path: '/teacher/reports',
+        builder: (c, s) => const StudentReportsPage(),
+      ),
+      GoRoute(
+        path: '/teacher/settings',
+        builder: (c, s) => const SettingsPage(),
+      ),
+      GoRoute(path: '/teacher/upgrade', builder: (c, s) => const UpgradePage()),
+      GoRoute(
+        path: '/student',
+        builder: (c, s) => const StudentDashboardPage(),
+      ),
+      GoRoute(
+        path: '/student/progress',
+        builder: (c, s) => const StudentProgressPage(),
+      ),
+      GoRoute(
+        path: '/student/readiness',
+        builder: (c, s) => const ReadinessPage(),
+      ),
+      GoRoute(
+        path: '/student/videos',
+        builder: (c, s) => const VideoLessonsPage(),
+      ),
+      GoRoute(
+        path: '/student/classes',
+        builder: (c, s) => const LiveClassesPage(),
+      ),
+      GoRoute(
+        path: '/student/cross-exam',
+        builder: (c, s) => const CrossExamPage(),
+      ),
+      GoRoute(
+        path: '/student/book-test',
+        builder: (c, s) => const BookTestPage(),
+      ),
+      GoRoute(
+        path: '/partner',
+        builder: (c, s) => const PartnerDashboardPage(),
+      ),
+      GoRoute(
+        path: '/ambassador',
+        builder: (c, s) => const AmbassadorDashboardPage(),
+      ),
+      GoRoute(
+        path: '/ambassador/join',
+        builder: (c, s) => const AmbassadorRecruitmentPage(),
+      ),
+      GoRoute(path: '/admin', builder: (c, s) => const AdminPage()),
     ],
-    errorBuilder: (c, s) => Scaffold(body: Center(child: Text('Not found: ${s.path}'))),
+    errorBuilder: (c, s) =>
+        Scaffold(body: Center(child: Text('Not found: ${s.path}'))),
   );
 });
 

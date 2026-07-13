@@ -460,6 +460,7 @@ CREATE INDEX idx_grading_teacher ON ai_grading_queue(teacher_id);
 CREATE TABLE ai_generation_queue (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   teacher_id UUID NOT NULL REFERENCES unified_profiles(id),
+  user_id UUID REFERENCES unified_profiles(id),  -- alias for teacher_id (code queries user_id)
   classroom_id UUID REFERENCES classrooms(id),
   syllabus_id UUID REFERENCES syllabi(id),
 
@@ -547,6 +548,13 @@ CREATE TABLE student_progress_unified (
   edubot_questions_answered INTEGER DEFAULT 0,
   edubot_accuracy_rate DECIMAL,
   edubot_last_active TIMESTAMPTZ,
+
+  -- Practice counts per platform
+  ibt_practice_count INTEGER DEFAULT 0,
+  itp_practice_count INTEGER DEFAULT 0,
+  ielts_practice_count INTEGER DEFAULT 0,
+  toeic_practice_count INTEGER DEFAULT 0,
+  edubot_practice_count INTEGER DEFAULT 0,
 
   -- AI grading results
   writing_latest_band DECIMAL,
@@ -697,6 +705,21 @@ CREATE TABLE video_lessons (
 CREATE INDEX idx_video_course ON video_lessons(course_id);
 CREATE INDEX idx_video_lesson_num ON video_lessons(course_id, lesson_number);
 
+-- Video progress tracking (per student per lesson)
+CREATE TABLE video_progress (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  lesson_id UUID NOT NULL REFERENCES video_lessons(id) ON DELETE CASCADE,
+  watched_seconds INTEGER DEFAULT 0,
+  completed BOOLEAN DEFAULT FALSE,
+  quiz_score INTEGER,
+  last_watched_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, lesson_id)
+);
+
+CREATE INDEX idx_video_progress_user ON video_progress(user_id);
+CREATE INDEX idx_video_progress_lesson ON video_progress(lesson_id);
+
 -- ============================================================
 -- 13. LIVE CLASSES
 -- ============================================================
@@ -742,6 +765,18 @@ CREATE TABLE live_classes (
 
 CREATE INDEX idx_live_class_schedule ON live_classes(scheduled_at);
 CREATE INDEX idx_live_class_status ON live_classes(status);
+
+-- Class registrations (student registers interest for a live class)
+CREATE TABLE class_registrations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  class_id UUID NOT NULL REFERENCES live_classes(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  registered_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(class_id, user_id)
+);
+
+CREATE INDEX idx_class_reg_class ON class_registrations(class_id);
+CREATE INDEX idx_class_reg_user ON class_registrations(user_id);
 
 -- ============================================================
 -- 14. WEBHOOK EVENTS

@@ -17,15 +17,17 @@ class ApiClient {
   static String? currentToken;
 
   static Dio create({String? baseUrl, String? authToken}) {
-    final dio = Dio(BaseOptions(
-      baseUrl: baseUrl ?? _defaultBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {
-        'Content-Type': 'application/json',
-        if (authToken != null) 'Authorization': 'Bearer $authToken',
-      },
-    ));
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl ?? _defaultBaseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: {
+          'Content-Type': 'application/json',
+          if (authToken != null) 'Authorization': 'Bearer $authToken',
+        },
+      ),
+    );
 
     // Flutter Web: use BrowserHttpClientAdapter with withCredentials
     if (kIsWeb) {

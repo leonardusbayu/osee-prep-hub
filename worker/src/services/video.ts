@@ -58,7 +58,7 @@ export async function getCourse(env: Env, courseId: string): Promise<{
     .from('video_lessons')
     .select('*')
     .eq('course_id', courseId)
-    .order('order_index', { ascending: true });
+    .order('lesson_number', { ascending: true });
 
   return {
     course: course as VideoCourse,

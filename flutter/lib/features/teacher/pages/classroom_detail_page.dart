@@ -26,13 +26,22 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final r = await dio.get('/teacher/classrooms/${widget.classroomId}');
-      setState(() { _classroom = r.data as Map<String, dynamic>; _isLoading = false; });
+      setState(() {
+        _classroom = r.data as Map<String, dynamic>;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = 'Failed to load classroom'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load classroom';
+        _isLoading = false;
+      });
     }
   }
 
@@ -54,13 +63,27 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
                 Text('Email: ${report['student']?['email'] ?? '—'}'),
                 Text('Target: ${report['student']?['target_exam'] ?? '—'}'),
                 const SizedBox(height: 12),
-                const Text('Latest Scores:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('• iBT: ${report['progress']?['ibt_latest_score'] ?? '—'}'),
-                Text('• ITP: ${report['progress']?['itp_latest_score'] ?? '—'}'),
-                Text('• IELTS: ${report['progress']?['ielts_latest_band'] ?? '—'}'),
-                Text('• TOEIC: ${report['progress']?['toeic_latest_score'] ?? '—'}'),
+                const Text(
+                  'Latest Scores:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '• iBT: ${report['progress']?['ibt_latest_score'] ?? '—'}',
+                ),
+                Text(
+                  '• ITP: ${report['progress']?['itp_latest_score'] ?? '—'}',
+                ),
+                Text(
+                  '• IELTS: ${report['progress']?['ielts_latest_band'] ?? '—'}',
+                ),
+                Text(
+                  '• TOEIC: ${report['progress']?['toeic_latest_score'] ?? '—'}',
+                ),
                 const SizedBox(height: 12),
-                const Text('Weaknesses:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Weaknesses:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 if ((report['weaknesses'] as List?)?.isEmpty ?? true)
                   const Text('• None detected'),
                 for (final w in (report['weaknesses'] as List?) ?? [])
@@ -85,13 +108,16 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
 
   Future<void> _openClassroomReport() async {
-    final url = 'https://osee-prep-hub-worker.edubot-leonardus.workers.dev'
+    final url =
+        'https://osee-prep-hub-worker.edubot-leonardus.workers.dev'
         '/api/teacher/classrooms/${widget.classroomId}/report/html';
     await showDialog(
       context: context,
@@ -103,9 +129,14 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Open this URL in your browser to view/print the report:'),
+              const Text(
+                'Open this URL in your browser to view/print the report:',
+              ),
               const SizedBox(height: 8),
-              SelectableText(url, style: const TextStyle(fontSize: 12, color: Colors.blue)),
+              SelectableText(
+                url,
+                style: const TextStyle(fontSize: 12, color: Colors.blue),
+              ),
               const SizedBox(height: 12),
               const Text('Make sure you are logged in (auth cookie needed).'),
             ],
@@ -116,7 +147,10 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
             onPressed: () => Clipboard.setData(ClipboardData(text: url)),
             child: const Text('Copy URL'),
           ),
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
@@ -132,7 +166,8 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
           IconButton(
             icon: const Icon(Icons.grid_on),
             tooltip: 'Heatmap report',
-            onPressed: () => context.go('/teacher/classrooms/${widget.classroomId}/report'),
+            onPressed: () =>
+                context.go('/teacher/classrooms/${widget.classroomId}/report'),
           ),
           IconButton(
             icon: const Icon(Icons.picture_as_pdf),
@@ -144,8 +179,8 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
       body: _isLoading
           ? const LoadingState()
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : _buildContent(_classroom ?? {}),
+          ? ErrorState(message: _error!, onRetry: _load)
+          : _buildContent(_classroom ?? {}),
     );
   }
 
@@ -161,8 +196,13 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(c['name'] as String? ?? '',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(
+                  c['name'] as String? ?? '',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 if (c['description'] != null) ...[
                   const SizedBox(height: 4),
                   Text(c['description'] as String),
@@ -171,15 +211,20 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
                 Text('Target: ${c['target_exam'] ?? '—'}'),
                 if (joinCode != null) ...[
                   const SizedBox(height: 4),
-                  Text('Join code: $joinCode',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(
+                    'Join code: $joinCode',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ],
               ],
             ),
           ),
         ),
         const SizedBox(height: 16),
-        Text('Students (${students.length})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          'Students (${students.length})',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         if (students.isEmpty)
           Card(

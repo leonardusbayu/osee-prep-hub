@@ -16,10 +16,12 @@ class Responsive {
     final w = MediaQuery.sizeOf(context).width;
     return w >= 600 && w < 840;
   }
+
   static bool isExpanded(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
     return w >= 840 && w < 1200;
   }
+
   static bool isLarge(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= 1200;
 

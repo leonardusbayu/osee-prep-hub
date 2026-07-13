@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:js' as js;
 
 import '../../../core/api_client.dart';
+import '../../../app/theme.dart';
 import '../../../shared/widgets/ui_components.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -35,13 +36,22 @@ class _AdminPageState extends ConsumerState<AdminPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final r = await dio.get('/admin/stats');
-      setState(() { _stats = r.data as Map<String, dynamic>?; _isLoading = false; });
+      setState(() {
+        _stats = r.data as Map<String, dynamic>?;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = 'Failed to load stats'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load stats';
+        _isLoading = false;
+      });
     }
   }
 
@@ -73,55 +83,36 @@ class _AdminPageState extends ConsumerState<AdminPage> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.md),
         children: [
-          Card(
-            color: Colors.blue.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.admin_panel_settings, size: 32, color: Colors.blue),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Admin Panel (Web)',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'The full admin dashboard (Users, Pricing, Knowledge Base, Commission, '
-                    'Ambassadors, Analytics) is available in the web admin panel.',
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    icon: const Icon(Icons.open_in_new),
-                    label: const Text('Open Admin Panel'),
-                    onPressed: _openAdminPanel,
-                  ),
-                ],
-              ),
+          PageHeader(
+            title: 'Admin Panel',
+            subtitle:
+                'Open the dedicated admin web app for full operational controls.',
+            icon: Icons.admin_panel_settings_rounded,
+            trailing: FilledButton.icon(
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Open'),
+              onPressed: _openAdminPanel,
             ),
           ),
-          const SizedBox(height: 24),
-          const Text('Quick Stats', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
+          const SizedBox(height: Spacing.md),
+          SurfaceCard(
+            color: OseeTheme.primary.withValues(alpha: 0.04),
+            borderColor: OseeTheme.primary.withValues(alpha: 0.16),
+            child: Text(
+              'The full admin dashboard covers users, pricing, knowledge base, commission, ambassadors, and analytics.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: OseeTheme.textSecondary),
+            ),
+          ),
+          const SizedBox(height: Spacing.lg),
+          const SectionHeader(title: 'Quick Stats'),
           if (_isLoading)
             const LoadingState()
           else if (_error != null)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
-              ),
-            )
+            ErrorState(message: _error!, onRetry: _load)
           else if (_stats != null)
             GridView.count(
               shrinkWrap: true,
@@ -131,38 +122,33 @@ class _AdminPageState extends ConsumerState<AdminPage> {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
               children: [
-                _StatCard('Total Users', '${_stats!['total_users'] ?? 0}', Colors.blue),
-                _StatCard('Teachers', '${_stats!['active_teachers'] ?? 0}', Colors.green),
-                _StatCard('Bookings', '${_stats!['total_bookings'] ?? 0}', Colors.purple),
-                _StatCard('Revenue', 'Rp ${_stats!['total_revenue'] ?? 0}', Colors.orange),
+                StatCard(
+                  icon: Icons.people_rounded,
+                  label: 'Total Users',
+                  value: '${_stats!['total_users'] ?? 0}',
+                  color: OseeTheme.primary,
+                ),
+                StatCard(
+                  icon: Icons.school_rounded,
+                  label: 'Teachers',
+                  value: '${_stats!['active_teachers'] ?? 0}',
+                  color: OseeTheme.success,
+                ),
+                StatCard(
+                  icon: Icons.event_available_rounded,
+                  label: 'Bookings',
+                  value: '${_stats!['total_bookings'] ?? 0}',
+                  color: OseeTheme.accent,
+                ),
+                StatCard(
+                  icon: Icons.payments_rounded,
+                  label: 'Revenue',
+                  value: 'Rp ${_stats!['total_revenue'] ?? 0}',
+                  color: OseeTheme.warning,
+                ),
               ],
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard(this.label, this.value, this.color);
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const Spacer(),
-            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
-          ],
-        ),
       ),
     );
   }

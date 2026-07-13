@@ -20,32 +20,46 @@ class _UpgradePageState extends State<UpgradePage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Upgrade to $tier?'),
-        content: Text(tier == 'pro'
-            ? 'Rp 50,000/month — Unlimited AI grading, generation, classroom reports, hide OSEE branding.'
-            : 'Rp 350,000/month — Everything in Pro + custom subdomain + multi-teacher + admin dashboard.'),
+        content: Text(
+          tier == 'pro'
+              ? 'Rp 50,000/month — Unlimited AI grading, generation, classroom reports, hide OSEE branding.'
+              : 'Rp 350,000/month — Everything in Pro + custom subdomain + multi-teacher + admin dashboard.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Upgrade')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Upgrade'),
+          ),
         ],
       ),
     );
     if (confirmed != true) return;
 
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
-      await dio.post('/branding/upgrade', data: {
-        'tier': tier,
-        'payment_reference': 'manual',
-      });
+      await dio.post(
+        '/branding/upgrade',
+        data: {'tier': tier, 'payment_reference': 'manual'},
+      );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upgraded to $tier! 🎉')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Upgraded to $tier! 🎉')));
         Navigator.pop(context);
       }
     } catch (e) {
-      setState(() { _error = 'Upgrade failed: $e'; _isLoading = false; });
+      setState(() {
+        _error = 'Upgrade failed: $e';
+        _isLoading = false;
+      });
     }
   }
 
@@ -63,7 +77,10 @@ class _UpgradePageState extends State<UpgradePage> {
                     color: Colors.red.shade50,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: Text(_error!, style: TextStyle(color: Colors.red.shade800)),
+                      child: Text(
+                        _error!,
+                        style: TextStyle(color: Colors.red.shade800),
+                      ),
                     ),
                   ),
                 _TierCard(
@@ -127,18 +144,35 @@ class _TierCard extends StatelessWidget {
                 children: [
                   Icon(Icons.star, color: color),
                   const SizedBox(width: 8),
-                  Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
-              Text(price, style: TextStyle(fontSize: 16, color: color, fontWeight: FontWeight.w600)),
+              Text(
+                price,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 16),
               for (final f in features)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(child: Text(f)),
                     ],

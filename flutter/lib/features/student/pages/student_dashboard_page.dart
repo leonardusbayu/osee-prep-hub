@@ -12,7 +12,8 @@ class StudentDashboardPage extends ConsumerStatefulWidget {
   const StudentDashboardPage({super.key});
 
   @override
-  ConsumerState<StudentDashboardPage> createState() => _StudentDashboardPageState();
+  ConsumerState<StudentDashboardPage> createState() =>
+      _StudentDashboardPageState();
 }
 
 class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
@@ -27,13 +28,22 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final r = await dio.get('/student/dashboard');
-      setState(() { _dashboard = r.data as Map<String, dynamic>?; _isLoading = false; });
+      setState(() {
+        _dashboard = r.data as Map<String, dynamic>?;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = 'Failed to load'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load';
+        _isLoading = false;
+      });
     }
   }
 
@@ -48,19 +58,27 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
       appBar: AppBar(
         title: const Text('My Learning'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load, tooltip: 'Refresh'),
-          IconButton(icon: const Icon(Icons.logout_rounded), onPressed: _logout, tooltip: 'Logout'),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _load,
+            tooltip: 'Refresh',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: _logout,
+            tooltip: 'Logout',
+          ),
         ],
       ),
       body: _isLoading
           ? const LoadingState()
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  color: OseeTheme.primary,
-                  child: _buildContent(_dashboard ?? {}),
-                ),
+          ? ErrorState(message: _error!, onRetry: _load)
+          : RefreshIndicator(
+              onRefresh: _load,
+              color: OseeTheme.primary,
+              child: _buildContent(_dashboard ?? {}),
+            ),
     );
   }
 
@@ -86,11 +104,13 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
             padding: const EdgeInsets.all(Spacing.lg),
             decoration: BoxDecoration(
               color: OseeTheme.surface,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               'No classes yet — join one with a code from your teacher',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: OseeTheme.textSecondary),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: OseeTheme.textSecondary),
             ),
           )
         else
@@ -110,8 +130,16 @@ class _ReadinessCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = readiness > 80 ? OseeTheme.success : readiness > 50 ? OseeTheme.warning : OseeTheme.danger;
-    final label = readiness > 80 ? 'Ready' : readiness > 50 ? 'Almost Ready' : 'Preparing';
+    final color = readiness > 80
+        ? OseeTheme.success
+        : readiness > 50
+        ? OseeTheme.warning
+        : OseeTheme.danger;
+    final label = readiness > 80
+        ? 'Ready'
+        : readiness > 50
+        ? 'Almost Ready'
+        : 'Preparing';
 
     return Container(
       padding: const EdgeInsets.all(Spacing.lg),
@@ -121,7 +149,7 @@ class _ReadinessCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -153,10 +181,13 @@ class _ReadinessCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Readiness', style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontWeight: FontWeight.w600,
-                )),
+                Text(
+                  'Readiness',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   label,
@@ -168,7 +199,9 @@ class _ReadinessCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  readiness > 80 ? "You're ready to book your test!" : 'Keep practicing to improve',
+                  readiness > 80
+                      ? "You're ready to book your test!"
+                      : 'Keep practicing to improve',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.85),
                   ),
@@ -221,9 +254,9 @@ class _NavTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: OseeTheme.surface,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         onTap: () => context.go(item.route),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -233,7 +266,7 @@ class _NavTile extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 color: OseeTheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(item.icon, color: OseeTheme.primary, size: 20),
             ),
@@ -268,7 +301,7 @@ class _ProgressCard extends StatelessWidget {
       padding: const EdgeInsets.all(Spacing.md),
       decoration: BoxDecoration(
         color: OseeTheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,15 +309,23 @@ class _ProgressCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 32, height: 32,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: OseeTheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.bar_chart_rounded, color: OseeTheme.primary, size: 18),
+                child: const Icon(
+                  Icons.bar_chart_rounded,
+                  color: OseeTheme.primary,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: Spacing.sm + 2),
-              Text('$count practice sessions', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                '$count practice sessions',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ],
           ),
           const SizedBox(height: Spacing.sm),
@@ -307,28 +348,46 @@ class _ClassroomTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: Spacing.sm),
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm + 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: Spacing.md,
+        vertical: Spacing.sm + 2,
+      ),
       decoration: BoxDecoration(
         color: OseeTheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: OseeTheme.success.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.class_rounded, color: OseeTheme.success, size: 18),
+            child: const Icon(
+              Icons.class_rounded,
+              color: OseeTheme.success,
+              size: 18,
+            ),
           ),
           const SizedBox(width: Spacing.sm + 2),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(c['name'] as String? ?? '', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-                Text('Teacher: ${c['teacher_name'] as String? ?? ''}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: OseeTheme.textSecondary)),
+                Text(
+                  c['name'] as String? ?? '',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  'Teacher: ${c['teacher_name'] as String? ?? ''}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: OseeTheme.textSecondary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -347,29 +406,44 @@ class _BookTestCTA extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: OseeTheme.success.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(Spacing.md),
           child: Row(
             children: [
               Container(
-                width: 44, height: 44,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: OseeTheme.success,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.verified_rounded, color: Colors.white, size: 24),
+                child: const Icon(
+                  Icons.verified_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: Spacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Ready for the official test?', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                    Text('Book at OSEE test center', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: OseeTheme.textSecondary)),
+                    Text(
+                      'Ready for the official test?',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Book at OSEE test center',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: OseeTheme.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -6,8 +6,14 @@ import { getSupabase } from './supabase';
  * from webhook events.
  *
  * Task 3.3: Implements the full update logic.
- * For now, this is a functional implementation that handles
- * practice_completed and test_completed events.
+ * Handles practice_completed and test_completed events.
+ *
+ * IMPORTANT: Only writes columns that exist in the schema:
+ *   - ibt_latest_score, ibt_latest_section_scores (JSONB), ibt_last_test_at, ibt_practice_count
+ *   - itp_*, ielts_*, toeic_* (same pattern)
+ *   - edubot_xp, edubot_streak_days, edubot_questions_answered, edubot_accuracy_rate, edubot_last_active, edubot_practice_count
+ *
+ * For platform 'booking' and 'edubot': no score column, only update what exists.
  */
 
 export interface ProgressUpdateInput {
@@ -17,39 +23,54 @@ export interface ProgressUpdateInput {
   payload: Record<string, unknown>;
 }
 
+/** Map platform to exam score column prefix (null = no score column for this platform). */
+const PLATFORM_SCORE_PREFIX: Record<string, string | null> = {
+  ibt: 'ibt',
+  itp: 'itp',
+  ielts: 'ielts',
+  toeic: 'toeic',
+  booking: null,
+  edubot: null,
+};
+
 /** Update student_progress_unified with new practice/test data. */
 export async function updateStudentProgress(env: Env, input: ProgressUpdateInput): Promise<void> {
   const supabase = getSupabase(env);
 
-  // Extract score + section from payload (shape varies by platform)
   const score = extractScore(input.payload);
-  const section = (input.payload.section as string) ?? null;
+  const sectionScores = extractSectionScores(input.payload);
   const examType = mapPlatformToExamType(input.platform);
+  const prefix = PLATFORM_SCORE_PREFIX[input.platform];
 
-  // Upsert into student_progress_unified
-  // The table has one row per student, with columns for each platform's latest score
+  const now = new Date().toISOString();
+
+  // Build update object — only columns that exist in schema
   const update: Record<string, unknown> = {
     student_id: input.user_id,
-    updated_at: new Date().toISOString(),
+    updated_at: now,
   };
 
-  // Update platform-specific latest score column
-  const scoreColumn = `${input.platform}_latest_score` as string;
-  if (score !== null) {
-    update[scoreColumn] = score;
+  // Set score column + last_test_at + section_scores (JSONB) if platform has score prefix
+  if (prefix && score !== null) {
+    update[`${prefix}_latest_score`] = score;
+    update[`${prefix}_last_test_at`] = now;
+    if (sectionScores) {
+      update[`${prefix}_latest_section_scores`] = sectionScores;
+    }
   }
 
-  // Update section-specific score if provided
-  if (section && score !== null) {
-    const sectionColumn = `${input.platform}_${section}_score` as string;
-    update[sectionColumn] = score;
+  // For ielts, the score column is ielts_latest_band (not ielts_latest_score)
+  if (input.platform === 'ielts' && score !== null) {
+    update['ielts_latest_band'] = score;
+    delete update['ielts_latest_score']; // column doesn't exist
   }
 
   // Increment practice count
-  const countColumn = `${input.platform}_practice_count` as string;
-  update[countColumn] = await incrementCount(supabase, input.user_id, countColumn);
+  const countColumn = `${input.platform}_practice_count`;
+  const currentCount = await getCount(supabase, input.user_id, countColumn);
+  update[countColumn] = currentCount + 1;
 
-  // Try upsert — if row doesn't exist, insert; if exists, update
+  // Try upsert
   const { error } = await supabase
     .from('student_progress_unified')
     .upsert(update, { onConflict: 'student_id' });
@@ -58,16 +79,16 @@ export async function updateStudentProgress(env: Env, input: ProgressUpdateInput
     throw new Error(`Failed to update progress: ${error.message}`);
   }
 
-  // Also insert a history row (if student_progress_history table exists)
-  // This preserves the full practice history for analytics
+  // Also insert a history row
   await supabase.from('student_progress_history').insert({
     student_id: input.user_id,
     platform: input.platform,
     exam_type: examType,
-    section,
+    section: (input.payload.section as string) ?? null,
     score,
-    completed_at: new Date().toISOString(),
-  });
+    completed_at: now,
+    metadata: input.payload,
+  }).then(() => {}); // best-effort, ignore errors
 }
 
 /** Extract numeric score from webhook payload. Returns null if not found. */
@@ -79,6 +100,18 @@ function extractScore(payload: Record<string, unknown>): number | null {
     if (typeof val === 'string') {
       const parsed = parseFloat(val);
       if (!Number.isNaN(parsed)) return parsed;
+    }
+  }
+  return null;
+}
+
+/** Extract section scores as JSONB object. Returns null if not found. */
+function extractSectionScores(payload: Record<string, unknown>): Record<string, unknown> | null {
+  const candidates = ['section_scores', 'sections', 'scores'];
+  for (const key of candidates) {
+    const val = payload[key];
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      return val as Record<string, unknown>;
     }
   }
   return null;
@@ -97,8 +130,8 @@ function mapPlatformToExamType(platform: string): string {
   return map[platform] ?? 'GENERAL';
 }
 
-/** Get current value of count column + 1. */
-async function incrementCount(
+/** Get current value of count column. */
+async function getCount(
   supabase: import('@supabase/supabase-js').SupabaseClient,
   userId: string,
   column: string
@@ -109,5 +142,5 @@ async function incrementCount(
     .eq('student_id', userId)
     .maybeSingle();
   const current = ((data as Record<string, unknown> | null)?.[column] as number) ?? 0;
-  return current + 1;
+  return current;
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/api_client.dart';
+import '../../../app/theme.dart';
 import '../../../shared/widgets/ui_components.dart';
 
 /// Readiness gauge page — Task 11.4.
@@ -23,27 +24,39 @@ class _ReadinessPageState extends State<ReadinessPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final r = await dio.get('/student/readiness');
-      setState(() { _data = r.data as Map<String, dynamic>; _isLoading = false; });
+      setState(() {
+        _data = r.data as Map<String, dynamic>;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = 'Failed to load'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load';
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Readiness'), actions: [
-        IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-      ]),
+      appBar: AppBar(
+        title: const Text('Readiness'),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+        ],
+      ),
       body: _isLoading
           ? const LoadingState()
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : _buildContent(_data ?? {}),
+          ? ErrorState(message: _error!, onRetry: _load)
+          : _buildContent(_data ?? {}),
     );
   }
 
@@ -56,19 +69,37 @@ class _ReadinessPageState extends State<ReadinessPage> {
     final targetScore = d['target_score'];
     final recommendations = (d['recommendations'] as List?) ?? [];
 
-    final color = pct >= 80 ? Colors.green : pct >= 60 ? Colors.orange : Colors.red;
-    final statusLabel = status == 'ready' ? 'READY' : status == 'almost_ready' ? 'ALMOST READY' : 'PREPARING';
+    final color = pct >= 80
+        ? OseeTheme.success
+        : pct >= 60
+        ? OseeTheme.warning
+        : OseeTheme.danger;
+    final statusLabel = status == 'ready'
+        ? 'READY'
+        : status == 'almost_ready'
+        ? 'ALMOST READY'
+        : 'PREPARING';
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(Spacing.md),
       children: [
-        Card(
+        const PageHeader(
+          title: 'Readiness',
+          subtitle:
+              'Estimate whether your latest progress is close to your official test target.',
+          icon: Icons.verified_rounded,
+        ),
+        const SizedBox(height: Spacing.lg),
+        SurfaceCard(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.zero,
             child: Column(
               children: [
-                const Text('Readiness Gauge', style: TextStyle(color: Colors.grey)),
-                const SizedBox(height: 12),
+                Text(
+                  'Readiness Gauge',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: Spacing.md),
                 Stack(
                   alignment: Alignment.center,
                   children: [
@@ -84,43 +115,69 @@ class _ReadinessPageState extends State<ReadinessPage> {
                     ),
                     Column(
                       children: [
-                        Text('$pct%',
-                            style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: color)),
-                        Text(statusLabel,
-                            style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+                        Text(
+                          '$pct%',
+                          style: Theme.of(context).textTheme.displaySmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: color,
+                              ),
+                        ),
+                        Text(
+                          statusLabel,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: color,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: Spacing.md),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _info('Target', '$targetExam · ${targetScore ?? '—'}'),
-                    if (predicted != null) _info('Predicted', predicted.toString()),
-                    if (weeks != null) _info('Weeks to target', weeks.toString()),
+                    if (predicted != null)
+                      _info('Predicted', predicted.toString()),
+                    if (weeks != null)
+                      _info('Weeks to target', weeks.toString()),
                   ],
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 24),
-        const Text('Recommendations', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
+        const SizedBox(height: Spacing.lg),
+        const SectionHeader(title: 'Recommendations'),
         for (final r in recommendations)
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.lightbulb_outline, color: Colors.amber),
-              title: Text(r.toString()),
+          Padding(
+            padding: const EdgeInsets.only(bottom: Spacing.sm),
+            child: SurfaceCard(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(
+                  Icons.lightbulb_outline_rounded,
+                  color: OseeTheme.warning,
+                ),
+                title: Text(r.toString()),
+              ),
             ),
           ),
-        const SizedBox(height: 24),
+        const SizedBox(height: Spacing.lg),
         if (pct >= 80)
-          Card(
-            color: Colors.green.shade100,
+          SurfaceCard(
+            color: OseeTheme.success.withValues(alpha: 0.08),
+            borderColor: OseeTheme.success.withValues(alpha: 0.2),
             child: ListTile(
-              leading: const Icon(Icons.verified, color: Colors.green, size: 32),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.verified_rounded,
+                color: OseeTheme.success,
+                size: 32,
+              ),
               title: const Text('You are ready!'),
               subtitle: const Text('Book your official test at osee.co.id'),
               trailing: const Icon(Icons.open_in_new),
@@ -136,8 +193,17 @@ class _ReadinessPageState extends State<ReadinessPage> {
   Widget _info(String label, String value) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: OseeTheme.textSecondary),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: OseeTheme.textPrimary,
+          ),
+        ),
       ],
     );
   }

@@ -23,27 +23,39 @@ class _CrossExamPageState extends State<CrossExamPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final r = await dio.get('/student/cross-exam-map');
-      setState(() { _data = r.data as Map<String, dynamic>; _isLoading = false; });
+      setState(() {
+        _data = r.data as Map<String, dynamic>;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = 'Failed to load'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load';
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cross-Exam Map'), actions: [
-        IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-      ]),
+      appBar: AppBar(
+        title: const Text('Cross-Exam Map'),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+        ],
+      ),
       body: _isLoading
           ? const LoadingState()
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : _buildContent(_data ?? {}),
+          ? ErrorState(message: _error!, onRetry: _load)
+          : _buildContent(_data ?? {}),
     );
   }
 
@@ -62,18 +74,25 @@ class _CrossExamPageState extends State<CrossExamPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Your Latest Scores',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Your Latest Scores',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 for (final exam in exams)
-                  _row(exam.replaceAll('_', ' '), sourceScores[exam.toLowerCase()]?.toString() ?? '—'),
+                  _row(
+                    exam.replaceAll('_', ' '),
+                    sourceScores[exam.toLowerCase()]?.toString() ?? '—',
+                  ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 16),
-        const Text('Equivalency Matrix',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Equivalency Matrix',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Card(
           child: Padding(
@@ -116,12 +135,23 @@ class _EquivalencyTable extends StatelessWidget {
         TableRow(
           decoration: BoxDecoration(color: Colors.grey.shade100),
           children: [
-            const Padding(padding: EdgeInsets.all(8), child: Text('Source', style: TextStyle(fontWeight: FontWeight.bold))),
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: Text(
+                'Source',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
             for (final e in exams)
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: Text(e.replaceAll('_', ' '),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                child: Text(
+                  e.replaceAll('_', ' '),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
               ),
           ],
         ),
@@ -130,7 +160,10 @@ class _EquivalencyTable extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: Text(sourceExam.replaceAll('_', ' '), style: const TextStyle(fontSize: 12)),
+                child: Text(
+                  sourceExam.replaceAll('_', ' '),
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
               for (final targetExam in exams)
                 Padding(

@@ -76,15 +76,15 @@ class User {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'email': email,
-        'display_name': displayName,
-        'role': role.name,
-        'avatar_url': avatarUrl,
-        'telegram_id': telegramId,
-        'target_exam': targetExam,
-        'current_level': currentLevel,
-        'created_at': createdAt,
-        'updated_at': updatedAt,
-      };
+    'id': id,
+    'email': email,
+    'display_name': displayName,
+    'role': role.name,
+    'avatar_url': avatarUrl,
+    'telegram_id': telegramId,
+    'target_exam': targetExam,
+    'current_level': currentLevel,
+    'created_at': createdAt,
+    'updated_at': updatedAt,
+  };
 }

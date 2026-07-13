@@ -13,7 +13,8 @@ class TeacherDashboardPage extends ConsumerStatefulWidget {
   const TeacherDashboardPage({super.key});
 
   @override
-  ConsumerState<TeacherDashboardPage> createState() => _TeacherDashboardPageState();
+  ConsumerState<TeacherDashboardPage> createState() =>
+      _TeacherDashboardPageState();
 }
 
 class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
@@ -28,13 +29,22 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
   }
 
   Future<void> _loadDashboard() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final response = await dio.get('/teacher/dashboard');
-      setState(() { _stats = response.data as Map<String, dynamic>?; _isLoading = false; });
+      setState(() {
+        _stats = response.data as Map<String, dynamic>?;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = 'Failed to load dashboard'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load dashboard';
+        _isLoading = false;
+      });
     }
   }
 
@@ -49,19 +59,27 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _loadDashboard, tooltip: 'Refresh'),
-          IconButton(icon: const Icon(Icons.logout_rounded), onPressed: _logout, tooltip: 'Logout'),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _loadDashboard,
+            tooltip: 'Refresh',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: _logout,
+            tooltip: 'Logout',
+          ),
         ],
       ),
       body: _isLoading
           ? const LoadingState()
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _loadDashboard)
-              : RefreshIndicator(
-                  onRefresh: _loadDashboard,
-                  color: OseeTheme.primary,
-                  child: _buildContent(),
-                ),
+          ? ErrorState(message: _error!, onRetry: _loadDashboard)
+          : RefreshIndicator(
+              onRefresh: _loadDashboard,
+              color: OseeTheme.primary,
+              child: _buildContent(),
+            ),
     );
   }
 
@@ -85,10 +103,30 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
           crossAxisSpacing: Spacing.sm,
           mainAxisSpacing: Spacing.sm,
           children: [
-            StatCard(icon: Icons.groups_rounded, label: 'Students', value: '${stats['total_students'] ?? 0}', color: OseeTheme.success),
-            StatCard(icon: Icons.class_rounded, label: 'Classrooms', value: '${stats['classrooms_count'] ?? 0}', color: OseeTheme.primary),
-            StatCard(icon: Icons.payments_rounded, label: 'Commission', value: 'Rp ${_formatNum(stats['commission_this_month'] ?? 0)}', color: OseeTheme.warning),
-            StatCard(icon: Icons.auto_awesome_rounded, label: 'AI Credits', value: '${stats['ai_quota_remaining'] ?? 0}', color: OseeTheme.accent),
+            StatCard(
+              icon: Icons.groups_rounded,
+              label: 'Students',
+              value: '${stats['total_students'] ?? 0}',
+              color: OseeTheme.success,
+            ),
+            StatCard(
+              icon: Icons.class_rounded,
+              label: 'Classrooms',
+              value: '${stats['classrooms_count'] ?? 0}',
+              color: OseeTheme.primary,
+            ),
+            StatCard(
+              icon: Icons.payments_rounded,
+              label: 'Commission',
+              value: 'Rp ${_formatNum(stats['commission_this_month'] ?? 0)}',
+              color: OseeTheme.warning,
+            ),
+            StatCard(
+              icon: Icons.auto_awesome_rounded,
+              label: 'AI Credits',
+              value: '${stats['ai_quota_remaining'] ?? 0}',
+              color: OseeTheme.accent,
+            ),
           ],
         ),
         const SizedBox(height: Spacing.lg),
@@ -120,7 +158,11 @@ class _GreetingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hour = DateTime.now().hour;
-    final greeting = hour < 11 ? 'Good morning' : hour < 15 ? 'Good afternoon' : 'Good evening';
+    final greeting = hour < 11
+        ? 'Good morning'
+        : hour < 15
+        ? 'Good afternoon'
+        : 'Good evening';
 
     return Container(
       padding: const EdgeInsets.all(Spacing.lg),
@@ -130,7 +172,7 @@ class _GreetingHeader extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,13 +252,13 @@ class _ActivityList extends StatelessWidget {
         padding: const EdgeInsets.all(Spacing.lg),
         decoration: BoxDecoration(
           color: OseeTheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           'No recent activity yet',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: OseeTheme.textSecondary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: OseeTheme.textSecondary),
         ),
       );
     }
@@ -227,10 +269,13 @@ class _ActivityList extends StatelessWidget {
         final isPaid = status == 'paid';
         return Container(
           margin: const EdgeInsets.only(bottom: Spacing.sm),
-          padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm + 2),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Spacing.md,
+            vertical: Spacing.sm + 2,
+          ),
           decoration: BoxDecoration(
             color: OseeTheme.surface,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
@@ -238,11 +283,14 @@ class _ActivityList extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: (isPaid ? OseeTheme.success : OseeTheme.warning).withValues(alpha: 0.12),
+                  color: (isPaid ? OseeTheme.success : OseeTheme.warning)
+                      .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  isPaid ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
+                  isPaid
+                      ? Icons.check_circle_rounded
+                      : Icons.hourglass_top_rounded,
                   color: isPaid ? OseeTheme.success : OseeTheme.warning,
                   size: 18,
                 ),
@@ -253,19 +301,30 @@ class _ActivityList extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      (a['action'] as String? ?? 'Event').replaceAll('_', ' ').split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' '),
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+                      (a['action'] as String? ?? 'Event')
+                          .replaceAll('_', ' ')
+                          .split(' ')
+                          .map((w) => w[0].toUpperCase() + w.substring(1))
+                          .join(' '),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       'Rp ${a['amount_idr'] ?? 0} · $status',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: OseeTheme.textSecondary),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: OseeTheme.textSecondary,
+                      ),
                     ),
                   ],
                 ),
               ),
               Text(
                 _formatDate(a['created_at'] as String?),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: OseeTheme.textMuted),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: OseeTheme.textMuted),
               ),
             ],
           ),

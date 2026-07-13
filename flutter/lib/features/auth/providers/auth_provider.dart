@@ -58,8 +58,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'password': password,
         'name': name,
         'role': role,
-        if (referralCode != null && referralCode.isNotEmpty) 'referral_code': referralCode,
-        if (institutionName != null && institutionName.isNotEmpty) 'institution_name': institutionName,
+        if (referralCode != null && referralCode.isNotEmpty)
+          'referral_code': referralCode,
+        if (institutionName != null && institutionName.isNotEmpty)
+          'institution_name': institutionName,
       };
       final res = await _post('/auth/register', body);
       final user = User.fromJson(res['user'] as Map<String, dynamic>);
@@ -72,13 +74,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<bool> login({required String email, required String password}) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final res = await _post('/auth/login', {'email': email, 'password': password});
+      final res = await _post('/auth/login', {
+        'email': email,
+        'password': password,
+      });
       final user = User.fromJson(res['user'] as Map<String, dynamic>);
       final token = res['jwt'] as String;
       state = AuthState(user: user, token: token);
@@ -90,7 +92,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    try { await _post('/auth/logout', {}); } catch (_) {}
+    try {
+      await _post('/auth/logout', {});
+    } catch (_) {}
     state = const AuthState();
   }
 
@@ -123,7 +127,10 @@ extension type JSHttpRequest._(JSObject _) implements JSObject {
   external set onerror(JSFunction value);
 }
 
-Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
+Future<Map<String, dynamic>> _post(
+  String path,
+  Map<String, dynamic> body,
+) async {
   final url = '$_apiUrl$path';
   final completer = Completer<Map<String, dynamic>>();
 
@@ -137,7 +144,9 @@ Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async
       final data = jsonDecode(xhr.responseText) as Map<String, dynamic>;
       if (xhr.status >= 400) {
         final err = data['error'] as Map<String, dynamic>?;
-        completer.completeError(Exception(err?['message'] ?? 'Failed (${xhr.status})'));
+        completer.completeError(
+          Exception(err?['message'] ?? 'Failed (${xhr.status})'),
+        );
       } else {
         completer.complete(data);
       }
@@ -156,4 +165,6 @@ Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async
   return completer.future;
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) => AuthNotifier());
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
+  (ref) => AuthNotifier(),
+);

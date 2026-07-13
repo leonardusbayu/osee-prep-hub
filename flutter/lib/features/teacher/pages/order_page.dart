@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
+import '../../../app/theme.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Teacher order page — Task 15.7.
 ///
@@ -76,16 +77,16 @@ class _OrderPageState extends ConsumerState<OrderPage>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOrderTab('voucher_resale'),
-                    _buildOrderTab('bulk_purchase'),
-                    _buildOrderTab('book_for_student'),
-                    _buildOrderTab('self_purchase'),
-                  ],
-                ),
+          ? Center(child: Text(_error!))
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOrderTab('voucher_resale'),
+                _buildOrderTab('bulk_purchase'),
+                _buildOrderTab('book_for_student'),
+                _buildOrderTab('self_purchase'),
+              ],
+            ),
     );
   }
 
@@ -93,70 +94,130 @@ class _OrderPageState extends ConsumerState<OrderPage>
     return RefreshIndicator(
       onRefresh: _loadPricing,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.md),
         children: [
-          Text(_orderTypeDescription(orderType),
-              style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 16),
+          PageHeader(
+            title: _orderTypeTitle(orderType),
+            subtitle: _orderTypeDescription(orderType),
+            icon: _orderTypeIcon(orderType),
+          ),
+          const SizedBox(height: Spacing.lg),
           if (_cart.isNotEmpty) ...[
             _buildCartSummary(),
-            const SizedBox(height: 16),
+            const SizedBox(height: Spacing.lg),
           ],
-          _buildItemCard('mock_itp', 'Mock Test — ITP', 'TOEFL ITP practice simulations', Icons.assignment),
-          _buildItemCard('mock_ibt', 'Mock Test — iBT', 'TOEFL iBT practice simulations', Icons.assignment),
-          _buildItemCard('mock_ielts', 'Mock Test — IELTS', 'IELTS practice simulations', Icons.assignment),
-          _buildItemCard('mock_toeic', 'Mock Test — TOEIC', 'TOEIC practice simulations', Icons.assignment),
-          _buildItemCard('tutor_bot_premium', 'Tutor Bot Premium', 'EduBot premium AI tutoring subscription', Icons.smart_toy),
-          _buildItemCard('official_toefl', 'Official TOEFL Test', 'ETS-certified TOEFL test at OSEE test center', Icons.verified),
-          _buildItemCard('official_toeic', 'Official TOEIC Test', 'ETS-certified TOEIC test at OSEE test center', Icons.verified),
-          const SizedBox(height: 24),
+          SectionHeader(title: 'Available Products'),
+          _buildItemCard(
+            'mock_itp',
+            'Mock Test — ITP',
+            'TOEFL ITP practice simulations',
+            Icons.assignment,
+          ),
+          _buildItemCard(
+            'mock_ibt',
+            'Mock Test — iBT',
+            'TOEFL iBT practice simulations',
+            Icons.assignment,
+          ),
+          _buildItemCard(
+            'mock_ielts',
+            'Mock Test — IELTS',
+            'IELTS practice simulations',
+            Icons.assignment,
+          ),
+          _buildItemCard(
+            'mock_toeic',
+            'Mock Test — TOEIC',
+            'TOEIC practice simulations',
+            Icons.assignment,
+          ),
+          _buildItemCard(
+            'tutor_bot_premium',
+            'Tutor Bot Premium',
+            'EduBot premium AI tutoring subscription',
+            Icons.smart_toy,
+          ),
+          _buildItemCard(
+            'official_toefl',
+            'Official TOEFL Test',
+            'ETS-certified TOEFL test at OSEE test center',
+            Icons.verified,
+          ),
+          _buildItemCard(
+            'official_toeic',
+            'Official TOEIC Test',
+            'ETS-certified TOEIC test at OSEE test center',
+            Icons.verified,
+          ),
+          const SizedBox(height: Spacing.lg),
           FilledButton.icon(
             onPressed: _pricing == null || _cart.isEmpty || _isPlacingOrder
                 ? null
                 : () => _showOrderSummary(context, orderType),
             icon: const Icon(Icons.shopping_cart),
-            label: Text(_isPlacingOrder ? 'Placing Order...' : 'Review & Place Order'),
+            label: Text(
+              _isPlacingOrder ? 'Placing Order...' : 'Review & Place Order',
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildItemCard(String itemType, String name, String description, IconData icon) {
+  Widget _buildItemCard(
+    String itemType,
+    String name,
+    String description,
+    IconData icon,
+  ) {
     final price = _pricing?[itemType];
-    final formattedPrice = price is num ? 'Rp ${price.toStringAsFixed(0)} / unit' : 'Price not set';
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    final formattedPrice = price is num
+        ? 'Rp ${price.toStringAsFixed(0)} / unit'
+        : 'Price not set';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Spacing.sm),
+      child: SurfaceCard(
+        padding: const EdgeInsets.all(Spacing.md),
         child: Row(
           children: [
-            Icon(icon, size: 36, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 16),
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: OseeTheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 22, color: OseeTheme.primary),
+            ),
+            const SizedBox(width: Spacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(name, style: Theme.of(context).textTheme.titleMedium),
-                  Text(description, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     formattedPrice,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: OseeTheme.primary,
+                    ),
                   ),
                 ],
               ),
             ),
-            TextButton(
+            FilledButton.tonalIcon(
               onPressed: () {
                 setState(() {
                   _cart[itemType] = (_cart[itemType] ?? 0) + 1;
                 });
               },
-              child: const Text('Add'),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add'),
             ),
           ],
         ),
@@ -171,10 +232,11 @@ class _OrderPageState extends ConsumerState<OrderPage>
       return sum + ((price is num ? price.toInt() : 0) * entry.value);
     });
 
-    return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
+    return SurfaceCard(
+      color: OseeTheme.primary.withValues(alpha: 0.06),
+      borderColor: OseeTheme.primary.withValues(alpha: 0.18),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -182,7 +244,10 @@ class _OrderPageState extends ConsumerState<OrderPage>
               children: [
                 const Icon(Icons.shopping_cart_checkout),
                 const SizedBox(width: 8),
-                Text('Selected Items', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Selected Items',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const Spacer(),
                 TextButton(
                   onPressed: () => setState(() => _cart.clear()),
@@ -213,7 +278,8 @@ class _OrderPageState extends ConsumerState<OrderPage>
                   Text('${entry.value}'),
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline),
-                    onPressed: () => setState(() => _cart[entry.key] = entry.value + 1),
+                    onPressed: () =>
+                        setState(() => _cart[entry.key] = entry.value + 1),
                   ),
                   SizedBox(
                     width: 110,
@@ -229,8 +295,16 @@ class _OrderPageState extends ConsumerState<OrderPage>
             const Divider(),
             Row(
               children: [
-                const Expanded(child: Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
-                Text(_formatRupiah(total), style: const TextStyle(fontWeight: FontWeight.bold)),
+                const Expanded(
+                  child: Text(
+                    'Total',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Text(
+                  _formatRupiah(total),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ],
@@ -254,6 +328,36 @@ class _OrderPageState extends ConsumerState<OrderPage>
     }
   }
 
+  String _orderTypeTitle(String orderType) {
+    switch (orderType) {
+      case 'voucher_resale':
+        return 'Voucher Resale';
+      case 'bulk_purchase':
+        return 'Bulk Purchase';
+      case 'book_for_student':
+        return 'Book for Student';
+      case 'self_purchase':
+        return 'Self Purchase';
+      default:
+        return 'Order';
+    }
+  }
+
+  IconData _orderTypeIcon(String orderType) {
+    switch (orderType) {
+      case 'voucher_resale':
+        return Icons.confirmation_number_rounded;
+      case 'bulk_purchase':
+        return Icons.inventory_2_rounded;
+      case 'book_for_student':
+        return Icons.event_available_rounded;
+      case 'self_purchase':
+        return Icons.shopping_bag_rounded;
+      default:
+        return Icons.shopping_cart_rounded;
+    }
+  }
+
   Future<void> _showOrderSummary(BuildContext context, String orderType) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -265,12 +369,20 @@ class _OrderPageState extends ConsumerState<OrderPage>
           children: [
             Text(_orderTypeDescription(orderType)),
             const SizedBox(height: 16),
-            ..._cart.entries.map((entry) => Text('${_itemLabel(entry.key)} x ${entry.value}')),
+            ..._cart.entries.map(
+              (entry) => Text('${_itemLabel(entry.key)} x ${entry.value}'),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Place Order')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Place Order'),
+          ),
         ],
       ),
     );
@@ -279,19 +391,20 @@ class _OrderPageState extends ConsumerState<OrderPage>
     setState(() => _isPlacingOrder = true);
     try {
       final dio = ApiClient.create();
-      final orderResponse = await dio.post('/orders', data: {
-        'order_type': orderType,
-        'items': _cart.entries
-            .map((entry) => {
-                  'item_type': entry.key,
-                  'quantity': entry.value,
-                })
-            .toList(),
-      });
+      final orderResponse = await dio.post(
+        '/orders',
+        data: {
+          'order_type': orderType,
+          'items': _cart.entries
+              .map((entry) => {'item_type': entry.key, 'quantity': entry.value})
+              .toList(),
+        },
+      );
       final orderId = orderResponse.data['id'] as String;
-      final paymentResponse = await dio.post('/orders/$orderId/pay', data: {
-        'payment_method': 'mock',
-      });
+      final paymentResponse = await dio.post(
+        '/orders/$orderId/pay',
+        data: {'payment_method': 'mock'},
+      );
       if (!mounted) return;
       setState(() {
         _cart.clear();
@@ -306,16 +419,19 @@ class _OrderPageState extends ConsumerState<OrderPage>
             'Amount: ${_formatRupiah((paymentResponse.data['amount'] as num).toInt())}',
           ),
           actions: [
-            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Done'),
+            ),
           ],
         ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isPlacingOrder = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Order failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Order failed: $e')));
     }
   }
 

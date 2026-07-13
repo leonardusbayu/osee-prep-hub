@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
+import '../../../app/theme.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Registration page — simplified, with visible errors and no blocking validation.
 class RegisterPage extends ConsumerStatefulWidget {
@@ -53,12 +55,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     });
 
     try {
-      final ok = await ref.read(authProvider.notifier).register(
+      final ok = await ref
+          .read(authProvider.notifier)
+          .register(
             email: email,
             password: password,
             name: name,
             role: _role.name,
-            referralCode: _referralController.text.trim().isEmpty ? null : _referralController.text.trim(),
+            referralCode: _referralController.text.trim().isEmpty
+                ? null
+                : _referralController.text.trim(),
             institutionName: _role == UserRole.partner ? name : null,
           );
 
@@ -99,74 +105,44 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F5F0),
-      body: Row(
-        children: [
-          // Left — editorial panel
-          Expanded(
-            flex: 2,
-            child: Container(
-              color: const Color(0xFF1A1A2E),
-              padding: const EdgeInsets.all(64),
+      backgroundColor: OseeTheme.bg,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(Spacing.lg),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SurfaceCard(
+              padding: const EdgeInsets.all(Spacing.xl),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      Text('OSEE', style: Theme.of(context).textTheme.displaySmall?.copyWith(color: Colors.white, fontSize: 24, letterSpacing: 4)),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        color: const Color(0xFFE63946),
-                        child: const Text('PREP HUB', style: TextStyle(fontFamily: 'Helvetica', fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 2)),
-                      ),
-                    ],
+                  PageHeader(
+                    title: 'Create account',
+                    subtitle: widget.referralCode == null
+                        ? 'Start with a teacher, student, or institution workspace.'
+                        : 'You are joining with referral code ${widget.referralCode}.',
+                    icon: Icons.person_add_alt_1_rounded,
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(border: Border.all(color: const Color(0xFFC9A96E))),
-                        child: const Text('JOIN US', style: TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFC9A96E), letterSpacing: 3)),
-                      ),
-                      const SizedBox(height: 20),
-                      Text('Become a\nsmarter\nteacher.', style: Theme.of(context).textTheme.displayLarge?.copyWith(color: Colors.white, fontSize: 52, height: 1.1)),
-                    ],
-                  ),
-                  Text('Your students are waiting.', style: TextStyle(fontFamily: 'Georgia', fontSize: 14, color: Colors.white.withOpacity(0.4))),
-                ],
-              ),
-            ),
-          ),
-          // Right — form (NO Form widget, NO validators — just direct submission)
-          Expanded(
-            flex: 3,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(48),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Create Account', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 32)),
-                  const SizedBox(height: 8),
-                  Text('No credit card needed.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF9B9B9B))),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: Spacing.xl),
 
                   // Name
                   TextField(
                     controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'FULL NAME'),
+                    decoration: const InputDecoration(
+                      labelText: 'Full name',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
                   ),
                   const SizedBox(height: 20),
 
                   // Email
                   TextField(
                     controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'EMAIL ADDRESS'),
+                    decoration: const InputDecoration(
+                      labelText: 'Email address',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
                     keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 20),
@@ -175,9 +151,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   TextField(
                     controller: _passwordController,
                     decoration: InputDecoration(
-                      labelText: 'PASSWORD',
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF9B9B9B)),
+                        icon: Icon(
+                          _obscure ? Icons.visibility_off : Icons.visibility,
+                          color: OseeTheme.textMuted,
+                        ),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                       helperText: 'Min 8 chars, 1 letter, 1 number',
@@ -187,15 +167,33 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   const SizedBox(height: 20),
 
                   // Role selector
-                  Text('I AM A...', style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    'Account type',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: Spacing.sm,
+                    runSpacing: Spacing.sm,
                     children: [
-                      _RoleChip(label: 'Student', selected: _role == UserRole.student, onTap: () => setState(() => _role = UserRole.student)),
-                      const SizedBox(width: 8),
-                      _RoleChip(label: 'Teacher', selected: _role == UserRole.teacher, onTap: () => setState(() => _role = UserRole.teacher)),
-                      const SizedBox(width: 8),
-                      _RoleChip(label: 'Institution', selected: _role == UserRole.partner, onTap: () => setState(() => _role = UserRole.partner)),
+                      _RoleChip(
+                        icon: Icons.school_outlined,
+                        label: 'Student',
+                        selected: _role == UserRole.student,
+                        onTap: () => setState(() => _role = UserRole.student),
+                      ),
+                      _RoleChip(
+                        icon: Icons.co_present_outlined,
+                        label: 'Teacher',
+                        selected: _role == UserRole.teacher,
+                        onTap: () => setState(() => _role = UserRole.teacher),
+                      ),
+                      _RoleChip(
+                        icon: Icons.business_outlined,
+                        label: 'Institution',
+                        selected: _role == UserRole.partner,
+                        onTap: () => setState(() => _role = UserRole.partner),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -203,16 +201,25 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   // Referral code
                   TextField(
                     controller: _referralController,
-                    decoration: const InputDecoration(labelText: 'REFERRAL CODE (OPTIONAL)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Referral code (optional)',
+                      prefixIcon: Icon(Icons.confirmation_number_outlined),
+                    ),
                   ),
                   const SizedBox(height: 24),
 
                   // ERROR MESSAGE — always visible if set
                   if (_errorMsg != null) ...[
-                    Container(
+                    SurfaceCard(
                       padding: const EdgeInsets.all(12),
-                      color: const Color(0xFFFEE),
-                      child: Text(_errorMsg!, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 13, color: Color(0xFFE63946))),
+                      color: OseeTheme.danger.withValues(alpha: 0.08),
+                      borderColor: OseeTheme.danger.withValues(alpha: 0.25),
+                      child: Text(
+                        _errorMsg!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: OseeTheme.danger,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -223,7 +230,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     child: FilledButton(
                       onPressed: _isLoading ? null : _submit,
                       child: _isLoading
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
                           : const Text('CREATE ACCOUNT'),
                     ),
                   ),
@@ -236,17 +250,22 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   ),
                 ],
               ),
-              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _RoleChip extends StatelessWidget {
-  const _RoleChip({required this.label, required this.selected, required this.onTap});
+  const _RoleChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -256,20 +275,32 @@ class _RoleChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF1A1A2E) : Colors.transparent,
-          border: Border.all(color: selected ? const Color(0xFF1A1A2E) : const Color(0xFFE8E6E1)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Helvetica',
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : const Color(0xFF1A1A2E),
-            letterSpacing: 1,
+          color: selected ? OseeTheme.primary : OseeTheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? OseeTheme.primary : OseeTheme.border,
           ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? Colors.white : OseeTheme.primary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : OseeTheme.textPrimary,
+              ),
+            ),
+          ],
         ),
       ),
     );

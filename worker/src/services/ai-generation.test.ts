@@ -94,7 +94,7 @@ describe('ai-generation service', () => {
 
   it('proceeds even if RAG search fails (graceful degradation)', async () => {
     const ragSearch = (await import('../services/rag-search')).searchDocuments as ReturnType<typeof vi.fn>;
-    ragSearch.mockImplementationOnce(async () => {
+    ragSearch.mockImplementation(async () => {
       throw new Error('RAG unavailable');
     });
 

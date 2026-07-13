@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../../../app/theme.dart';
+import '../../../shared/widgets/ui_components.dart';
 
 /// Modern login page — split layout with gradient panel + clean form.
 class LoginPage extends ConsumerStatefulWidget {
@@ -30,7 +31,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final ok = await ref.read(authProvider.notifier).login(
+    final ok = await ref
+        .read(authProvider.notifier)
+        .login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -48,116 +51,54 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   String _dashboardFor(UserRole r) => switch (r) {
-        UserRole.teacher => '/teacher',
-        UserRole.student => '/student',
-        UserRole.partner => '/partner',
-        UserRole.admin => '/admin',
-      };
+    UserRole.teacher => '/teacher',
+    UserRole.student => '/student',
+    UserRole.partner => '/partner',
+    UserRole.admin => '/admin',
+  };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: OseeTheme.bg,
-      body: Row(
-        children: [
-          // Left — gradient brand panel
-          Expanded(
-            flex: 2,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [OseeTheme.primary, OseeTheme.primaryDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              padding: const EdgeInsets.all(64),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Logo
-                  Row(
-                    children: [
-                      Text(
-                        'OSEE',
-                        style: GoogleFonts.inter(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'PREP HUB',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Hero text
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome\nback.',
-                        style: GoogleFonts.inter(
-                          fontSize: 56,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          height: 1.1,
-                          letterSpacing: -1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Your AI teaching assistant is ready.\nContinue teaching smarter.',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          color: Colors.white.withValues(alpha: 0.75),
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Footer
-                  Text(
-                    'Official ETS Test Center · Since 2014',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Right — form
-          Expanded(
-            flex: 3,
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(48),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 900;
+          final form = Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(wide ? Spacing.xxl : Spacing.lg),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: SurfaceCard(
+                  padding: const EdgeInsets.all(Spacing.xl),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: OseeTheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.school_rounded,
+                                color: OseeTheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: Spacing.sm),
+                            Text(
+                              'OSEE Prep Hub',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: Spacing.xl),
                         Text(
                           'Sign in',
                           style: GoogleFonts.inter(
@@ -193,7 +134,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             prefixIcon: Icon(Icons.email_outlined, size: 20),
                           ),
                           keyboardType: TextInputType.emailAddress,
-                          validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                          validator: (v) =>
+                              (v == null || v.isEmpty) ? 'Required' : null,
                         ),
                         const SizedBox(height: 20),
 
@@ -211,18 +153,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           controller: _passwordController,
                           decoration: InputDecoration(
                             hintText: '••••••••',
-                            prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                            prefixIcon: const Icon(
+                              Icons.lock_outline,
+                              size: 20,
+                            ),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                _obscure
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
                                 size: 20,
                                 color: OseeTheme.textMuted,
                               ),
-                              onPressed: () => setState(() => _obscure = !_obscure),
+                              onPressed: () =>
+                                  setState(() => _obscure = !_obscure),
                             ),
                           ),
                           obscureText: _obscure,
-                          validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                          validator: (v) =>
+                              (v == null || v.isEmpty) ? 'Required' : null,
                           onFieldSubmitted: (_) => _submit(),
                         ),
                         const SizedBox(height: 28),
@@ -231,11 +180,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         SizedBox(
                           height: 52,
                           child: FilledButton(
-                            onPressed: ref.watch(authProvider).isLoading ? null : _submit,
+                            onPressed: ref.watch(authProvider).isLoading
+                                ? null
+                                : _submit,
                             child: ref.watch(authProvider).isLoading
                                 ? const SizedBox(
-                                    height: 20, width: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
+                                    ),
                                   )
                                 : Text(
                                     'Sign In',
@@ -252,7 +207,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             onPressed: () => context.go('/register'),
                             child: Text(
                               "Don't have an account? Create one",
-                              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),
@@ -262,8 +220,64 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
               ),
             ),
-          ),
-        ],
+          );
+
+          final brandPanel = Container(
+            margin: const EdgeInsets.all(Spacing.lg),
+            padding: const EdgeInsets.all(Spacing.xl),
+            decoration: BoxDecoration(
+              color: OseeTheme.textPrimary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'OSEE',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(color: Colors.white),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Teaching operations, unified.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.displayMedium?.copyWith(color: Colors.white),
+                    ),
+                    const SizedBox(height: Spacing.md),
+                    Text(
+                      'AI grading, classrooms, syllabus planning, orders, and student readiness in one professional workspace.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Official ETS Test Center since 2014',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.white54),
+                ),
+              ],
+            ),
+          );
+
+          if (!wide) {
+            return form;
+          }
+
+          return Row(
+            children: [
+              Expanded(flex: 5, child: brandPanel),
+              Expanded(flex: 6, child: form),
+            ],
+          );
+        },
       ),
     );
   }

@@ -23,7 +23,10 @@ class _LiveClassesPageState extends State<LiveClassesPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final r = await dio.get('/classes/upcoming');
@@ -32,7 +35,10 @@ class _LiveClassesPageState extends State<LiveClassesPage> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() { _error = 'Failed to load'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load';
+        _isLoading = false;
+      });
     }
   }
 
@@ -42,12 +48,16 @@ class _LiveClassesPageState extends State<LiveClassesPage> {
       await dio.post('/classes/$classId/register', data: {});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registered! You will get a reminder before class.')),
+          const SnackBar(
+            content: Text('Registered! You will get a reminder before class.'),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -55,64 +65,83 @@ class _LiveClassesPageState extends State<LiveClassesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Live Classes'), actions: [
-        IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-      ]),
+      appBar: AppBar(
+        title: const Text('Live Classes'),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+        ],
+      ),
       body: _isLoading
           ? const LoadingState()
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: (_classes?.isEmpty ?? true)
-                      ? ListView(
-                          children: [
-                            const SizedBox(height: 100),
-                            Center(
-                              child: Column(
-                                children: [
-                                  Icon(Icons.event_available, size: 48, color: Colors.grey.shade400),
-                                  const SizedBox(height: 12),
-                                  const Text('No upcoming classes. Check back soon!'),
-                                ],
+          ? ErrorState(message: _error!, onRetry: _load)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: (_classes?.isEmpty ?? true)
+                  ? ListView(
+                      children: [
+                        const SizedBox(height: 100),
+                        Center(
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.event_available,
+                                size: 48,
+                                color: Colors.grey.shade400,
                               ),
-                            ),
-                          ],
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _classes!.length,
-                          itemBuilder: (ctx, i) {
-                            final c = _classes![i] as Map<String, dynamic>;
-                            final scheduled = c['scheduled_at'] as String?;
-                            final status = c['status'] as String? ?? 'scheduled';
-                            final color = status == 'live' ? Colors.red : status == 'completed' ? Colors.grey : Colors.blue;
-                            return Card(
-                              child: ListTile(
-                                leading: Icon(Icons.videocam, color: color),
-                                title: Text(c['title'] as String? ?? ''),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (c['description'] != null) Text(c['description'] as String),
-                                    Text(scheduled != null
-                                        ? DateTime.parse(scheduled).toLocal().toString()
-                                        : ''),
-                                    Text('Status: $status'),
-                                  ],
-                                ),
-                                trailing: status == 'scheduled'
-                                    ? FilledButton(
-                                        onPressed: () => _register(c['id'] as String),
-                                        child: const Text('Register'),
-                                      )
-                                    : null,
-                                isThreeLine: true,
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No upcoming classes. Check back soon!',
                               ),
-                            );
-                          },
+                            ],
+                          ),
                         ),
-                ),
+                      ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _classes!.length,
+                      itemBuilder: (ctx, i) {
+                        final c = _classes![i] as Map<String, dynamic>;
+                        final scheduled = c['scheduled_at'] as String?;
+                        final status = c['status'] as String? ?? 'scheduled';
+                        final color = status == 'live'
+                            ? Colors.red
+                            : status == 'completed'
+                            ? Colors.grey
+                            : Colors.blue;
+                        return Card(
+                          child: ListTile(
+                            leading: Icon(Icons.videocam, color: color),
+                            title: Text(c['title'] as String? ?? ''),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (c['description'] != null)
+                                  Text(c['description'] as String),
+                                Text(
+                                  scheduled != null
+                                      ? DateTime.parse(
+                                          scheduled,
+                                        ).toLocal().toString()
+                                      : '',
+                                ),
+                                Text('Status: $status'),
+                              ],
+                            ),
+                            trailing: status == 'scheduled'
+                                ? FilledButton(
+                                    onPressed: () =>
+                                        _register(c['id'] as String),
+                                    child: const Text('Register'),
+                                  )
+                                : null,
+                            isThreeLine: true,
+                          ),
+                        );
+                      },
+                    ),
+            ),
     );
   }
 }

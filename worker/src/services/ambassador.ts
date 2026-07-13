@@ -19,15 +19,14 @@ export interface AmbassadorStats {
 export async function getAmbassadorStats(env: Env, userId: string): Promise<AmbassadorStats> {
   const supabase = getSupabase(env);
 
-  // Check if ambassador
-  const { data: profile } = await supabase
-    .from('unified_profiles')
-    .select('role')
-    .eq('id', userId)
+  // Check if ambassador — query teacher_profiles.is_ambassador (not role, which doesn't have 'ambassador')
+  const { data: teacherProfile } = await supabase
+    .from('teacher_profiles')
+    .select('is_ambassador')
+    .eq('user_id', userId)
     .maybeSingle();
 
-  const isAmbassador = (profile as Record<string, unknown>)?.role === 'ambassador' ||
-    (profile as Record<string, unknown>)?.role === 'admin';
+  const isAmbassador = Boolean((teacherProfile as Record<string, unknown> | null)?.is_ambassador);
 
   // Count recruited teachers (referred_by = userId)
   const { count: recruitedCount } = await supabase
@@ -36,19 +35,18 @@ export async function getAmbassadorStats(env: Env, userId: string): Promise<Amba
     .eq('referred_by', userId)
     .eq('role', 'teacher');
 
-  // Sum commission from recruited teachers' activity
+  // Sum ALL commission earned by this ambassador (no action filter — ambassador 2x is via multiplier)
   const { data: commissions } = await supabase
     .from('commission_ledger')
-    .select('amount, created_at')
-    .eq('teacher_id', userId)
-    .eq('action', 'ambassador_bonus');
+    .select('amount_idr, created_at')
+    .eq('teacher_id', userId);
 
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   let totalBonus = 0;
   let thisMonthBonus = 0;
   for (const c of commissions ?? []) {
-    const amount = (c as Record<string, unknown>).amount as number;
+    const amount = (c as Record<string, unknown>).amount_idr as number;
     const created = new Date((c as Record<string, unknown>).created_at as string);
     totalBonus += amount;
     if (created >= thisMonthStart) thisMonthBonus += amount;

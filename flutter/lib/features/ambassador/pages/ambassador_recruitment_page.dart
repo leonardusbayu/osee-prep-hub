@@ -47,28 +47,39 @@ class AmbassadorRecruitmentPage extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Benefits
-          const Text('Ambassador Benefits',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const Text(
+            'Ambassador Benefits',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
-          ..._benefits.map((b) => Card(
-                child: ListTile(
-                  leading: Icon(b.icon, color: const Color(0xFF16A34A)),
-                  title: Text(b.title),
-                  subtitle: Text(b.desc),
-                ),
-              )),
+          ..._benefits.map(
+            (b) => Card(
+              child: ListTile(
+                leading: Icon(b.icon, color: const Color(0xFF16A34A)),
+                title: Text(b.title),
+                subtitle: Text(b.desc),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Obligations
-          const Text('Your Obligations',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const Text(
+            'Your Obligations',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
-          ..._obligations.map((o) => Card(
-                child: ListTile(
-                  leading: const Icon(Icons.assignment_outlined, color: Colors.amber),
-                  title: Text(o),
+          ..._obligations.map(
+            (o) => Card(
+              child: ListTile(
+                leading: const Icon(
+                  Icons.assignment_outlined,
+                  color: Colors.amber,
                 ),
-              )),
+                title: Text(o),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Recruitment target
@@ -79,12 +90,16 @@ class AmbassadorRecruitmentPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Who we\'re looking for',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Who we\'re looking for',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   SizedBox(height: 8),
                   Text('• English teachers with 100+ students'),
                   Text('• Active on Instagram/TikTok/Facebook'),
-                  Text('• Hashtags: #gurubahasainggris #lestofl #persiapanielts'),
+                  Text(
+                    '• Hashtags: #gurubahasainggris #lestofl #persiapanielts',
+                  ),
                   Text('• EduBot channel followers who are teachers'),
                 ],
               ),
@@ -102,7 +117,10 @@ class AmbassadorRecruitmentPage extends StatelessWidget {
                   const Text(
                     'Ready to apply?',
                     style: TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -119,13 +137,19 @@ class AmbassadorRecruitmentPage extends StatelessWidget {
                         icon: const Icon(Icons.chat),
                         label: const Text('WhatsApp'),
                         onPressed: () => _open('https://wa.me/6281234567890'),
-                        style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF16A34A)),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF16A34A),
+                        ),
                       ),
                       FilledButton.icon(
                         icon: const Icon(Icons.send),
                         label: const Text('Telegram'),
                         onPressed: () => _open('https://t.me/osee_edubot'),
-                        style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF16A34A)),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF16A34A),
+                        ),
                       ),
                     ],
                   ),
@@ -153,11 +177,31 @@ class _Benefit {
 }
 
 const _benefits = <_Benefit>[
-  _Benefit(Icons.all_inclusive, 'Unlimited AI', 'No quota on grading, generation, or reports.'),
-  _Benefit(Icons.payments, '2x Commission', 'Rp 20k per first test, Rp 100k per booking, Rp 30k/month premium.'),
-  _Benefit(Icons.verified, 'Certified Educator Badge', 'Show on profile + reports.'),
-  _Benefit(Icons.camera_alt, 'Featured on Social Media', 'OSEE will feature you on Instagram, TikTok, and the website.'),
-  _Benefit(Icons.lightbulb, 'Early Access', 'Try new features before anyone else.'),
+  _Benefit(
+    Icons.all_inclusive,
+    'Unlimited AI',
+    'No quota on grading, generation, or reports.',
+  ),
+  _Benefit(
+    Icons.payments,
+    '2x Commission',
+    'Rp 20k per first test, Rp 100k per booking, Rp 30k/month premium.',
+  ),
+  _Benefit(
+    Icons.verified,
+    'Certified Educator Badge',
+    'Show on profile + reports.',
+  ),
+  _Benefit(
+    Icons.camera_alt,
+    'Featured on Social Media',
+    'OSEE will feature you on Instagram, TikTok, and the website.',
+  ),
+  _Benefit(
+    Icons.lightbulb,
+    'Early Access',
+    'Try new features before anyone else.',
+  ),
   _Benefit(Icons.star, 'Free Pro for Life', 'No Rp 50k/month — free forever.'),
 ];
 
