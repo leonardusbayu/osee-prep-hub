@@ -203,6 +203,7 @@ class _ActionGrid extends StatelessWidget {
     _Action(Icons.view_kanban_rounded, 'Syllabi', '/teacher/syllabi'),
     _Action(Icons.class_outlined, 'Classrooms', '/teacher/classrooms'),
     _Action(Icons.edit_note_rounded, 'AI Grader', '/teacher/ai-grader'),
+    _Action(Icons.mic_rounded, 'Speaking', '/teacher/speaking-grader'),
     _Action(Icons.auto_awesome_outlined, 'Generator', '/teacher/generator'),
     _Action(Icons.shopping_cart_outlined, 'Orders', '/teacher/orders'),
     _Action(Icons.payments_outlined, 'Earnings', '/teacher/commission'),

@@ -32,8 +32,16 @@ videoRoutes.get('/courses/:id', async (c) => {
   }
 });
 
-/** GET /api/videos/lessons/:id — get single lesson detail (blueprint line 1462) */
+/** GET /api/videos/lessons/:id — get single lesson detail (blueprint line 1462)
+ *
+ *  Premium gating (Task 13.5):
+ *  - If lesson.is_free_preview = true → anyone can access (YouTube ID only)
+ *  - If lesson is premium (not free preview):
+ *    - Students: check if they have an active premium subscription (via teacher Pro/Institution or EduBot premium)
+ *    - Teachers/admins: always access (they manage content)
+ *  - video_url_r2 is only returned if user has access; otherwise only youtube_id (if any) */
 videoRoutes.get('/lessons/:id', async (c) => {
+  const user = getAuthedUser(c);
   const supabase = getSupabase(c.env);
   const { data, error } = await supabase
     .from('video_lessons')
@@ -43,9 +51,67 @@ videoRoutes.get('/lessons/:id', async (c) => {
   if (error || !data) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Lesson not found' } }, 404);
   }
-  // Free preview gating: if not free preview, check teacher subscription via branding service
-  // For now, return lesson data — frontend gating decides whether to show
-  return c.json(data);
+
+  const lesson = data as Record<string, unknown>;
+
+  // Teachers and admins always have access
+  if (user.role === 'teacher' || user.role === 'admin' || user.role === 'partner') {
+    return c.json(lesson);
+  }
+
+  // Free preview lessons — anyone can access
+  if (lesson.is_free_preview === true) {
+    return c.json(lesson);
+  }
+
+  // Premium lesson — check student access
+  // Check if student's teacher has Pro/Institution tier
+  const { data: enrollment } = await supabase
+    .from('classroom_enrollments')
+    .select(`
+      classroom:classrooms!classroom_enrollments_classroom_id_fkey (
+        teacher_id
+      )
+    `)
+    .eq('student_id', user.id)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+
+  let hasAccess = false;
+
+  if (enrollment) {
+    const classroom = (enrollment as Record<string, unknown>).classroom as Record<string, unknown>;
+    const teacherId = classroom?.teacher_id as string | undefined;
+    if (teacherId) {
+      // Check teacher's tier
+      const { data: teacherProfile } = await supabase
+        .from('teacher_profiles')
+        .select('tier, tier_expires_at, is_ambassador')
+        .eq('user_id', teacherId)
+        .maybeSingle();
+      const tp = (teacherProfile as Record<string, unknown> | null) ?? {};
+      const tier = (tp.tier as string) ?? 'free';
+      const isAmbassador = Boolean(tp.is_ambassador);
+      const expiresAt = tp.tier_expires_at as string | null;
+      const notExpired = !expiresAt || new Date(expiresAt).getTime() > Date.now();
+      if ((tier === 'pro' || tier === 'institution' || isAmbassador) && notExpired) {
+        hasAccess = true;
+      }
+    }
+  }
+
+  if (!hasAccess) {
+    // Return lesson without premium video URL — only YouTube preview if available
+    return c.json({
+      ...lesson,
+      video_url_r2: null,  // strip premium URL
+      _premium_locked: true,
+      _message: 'This is a premium lesson. Ask your teacher to upgrade to Pro.',
+    });
+  }
+
+  return c.json(lesson);
 });
 
 /** POST /api/videos/lessons/:id/progress — track watch progress (Task 13.3) */

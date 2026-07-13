@@ -258,3 +258,193 @@ export async function generateClassroomReport(
     generated_at: new Date().toISOString(),
   };
 }
+// ============================================================
+// Batch report generation — Task 8.4
+// ============================================================
+
+/** Generate reports for ALL students in a classroom at once.
+ *  Returns array of student reports (same structure as generateStudentReport). */
+export async function generateBatchStudentReports(
+  env: Env,
+  teacherId: string,
+  classroomId: string
+): Promise<Array<{ student_id: string; student_name: string; report: StudentReport | null; error?: string }>> {
+  const supabase = getSupabase(env);
+
+  // Verify classroom belongs to teacher
+  const { data: classroom, error: classErr } = await supabase
+    .from('classrooms')
+    .select('id, name, teacher_id')
+    .eq('id', classroomId)
+    .eq('teacher_id', teacherId)
+    .maybeSingle();
+
+  if (classErr || !classroom) {
+    throw new Error('Classroom not found or not owned by teacher');
+  }
+
+  // Get enrolled students
+  const { data: enrollments } = await supabase
+    .from('classroom_enrollments')
+    .select(`
+      student:unified_profiles!classroom_enrollments_student_id_fkey (
+        id, display_name
+      )
+    `)
+    .eq('classroom_id', classroomId)
+    .eq('is_active', true);
+
+  const students = ((enrollments ?? []) as Array<Record<string, unknown>>).map((e) => {
+    const s = e.student as Record<string, unknown>;
+    return { id: s.id as string, name: s.display_name as string };
+  });
+
+  const results: Array<{ student_id: string; student_name: string; report: StudentReport | null; error?: string }> = [];
+
+  for (const s of students) {
+    try {
+      const report = await generateStudentReport(env, teacherId, s.id);
+      results.push({ student_id: s.id, student_name: s.name, report });
+    } catch (err) {
+      results.push({
+        student_id: s.id,
+        student_name: s.name,
+        report: null,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
+  }
+
+  return results;
+}
+
+// ============================================================
+// Teacher effectiveness metrics — Task 9.4
+// ============================================================
+
+export interface TeacherEffectiveness {
+  total_students: number;
+  active_students: number;       // students with > 0 practice
+  avg_improvement: number;        // avg score change (latest - first) across students
+  engagement_rate: number;        // active_students / total_students * 100
+  avg_class_score: number;        // mean of all latest scores
+  top_performers: number;         // students scoring >= 80% of target
+  needs_attention: number;         // students with low or no progress
+  teaching_duration_weeks: number; // weeks since first student enrollment
+}
+
+/** Calculate teacher effectiveness metrics for a classroom — Task 9.4. */
+export async function getTeacherEffectiveness(
+  env: Env,
+  teacherId: string,
+  classroomId: string
+): Promise<TeacherEffectiveness> {
+  const supabase = getSupabase(env);
+
+  // Verify ownership
+  const { data: classroom } = await supabase
+    .from('classrooms')
+    .select('id, teacher_id, created_at')
+    .eq('id', classroomId)
+    .eq('teacher_id', teacherId)
+    .maybeSingle();
+  if (!classroom) throw new Error('Classroom not found');
+
+  // Get enrollments with progress
+  const { data: enrollments } = await supabase
+    .from('classroom_enrollments')
+    .select(`
+      enrolled_at,
+      student:unified_profiles!classroom_enrollments_student_id_fkey (id)
+    `)
+    .eq('classroom_id', classroomId)
+    .eq('is_active', true);
+
+  const students = (enrollments ?? []) as Array<Record<string, unknown>>;
+  const totalStudents = students.length;
+  if (totalStudents === 0) {
+    return {
+      total_students: 0,
+      active_students: 0,
+      avg_improvement: 0,
+      engagement_rate: 0,
+      avg_class_score: 0,
+      top_performers: 0,
+      needs_attention: 0,
+      teaching_duration_weeks: 0,
+    };
+  }
+
+  // Get progress for each student
+  const studentIds = students.map((s) => {
+    const student = s.student as Record<string, unknown>;
+    return student.id as string;
+  });
+
+  const { data: progressRows } = await supabase
+    .from('student_progress_unified')
+    .select('*')
+    .in('student_id', studentIds);
+
+  const progresses = (progressRows ?? []) as Array<Record<string, unknown>>;
+
+  let activeCount = 0;
+  let totalScore = 0;
+  let scoreCount = 0;
+  let topPerformers = 0;
+  let needsAttention = 0;
+  let totalImprovement = 0;
+  let improvementCount = 0;
+
+  for (const p of progresses) {
+    const scores = [
+      p.ibt_latest_score as number | null,
+      p.itp_latest_score as number | null,
+      p.ielts_latest_band as number | null,
+      p.toeic_latest_score as number | null,
+    ].filter((s): s is number => s !== null);
+
+    const practiceCount =
+      (p.ibt_practice_count as number ?? 0) +
+      (p.itp_practice_count as number ?? 0) +
+      (p.ielts_practice_count as number ?? 0) +
+      (p.toeic_practice_count as number ?? 0) +
+      (p.edubot_practice_count as number ?? 0);
+
+    if (practiceCount > 0) activeCount++;
+
+    if (scores.length > 0) {
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      totalScore += avg;
+      scoreCount++;
+
+      // Improvement = latest score - first recorded score (from history)
+      // For now, use readiness_pct as proxy
+      const readiness = (p.readiness_pct as number) ?? 0;
+      if (readiness >= 80) topPerformers++;
+      if (readiness < 40 || practiceCount === 0) needsAttention++;
+    } else {
+      needsAttention++;
+    }
+  }
+
+  // Teaching duration
+  const firstEnrolled = students
+    .map((s) => new Date(s.enrolled_at as string).getTime())
+    .filter((t) => !Number.isNaN(t))
+    .sort((a, b) => a - b)[0];
+  const weeks = firstEnrolled
+    ? Math.max(1, Math.round((Date.now() - firstEnrolled) / (7 * 24 * 60 * 60 * 1000)))
+    : 0;
+
+  return {
+    total_students: totalStudents,
+    active_students: activeCount,
+    avg_improvement: improvementCount > 0 ? Math.round((totalImprovement / improvementCount) * 10) / 10 : 0,
+    engagement_rate: totalStudents > 0 ? Math.round((activeCount / totalStudents) * 100) : 0,
+    avg_class_score: scoreCount > 0 ? Math.round((totalScore / scoreCount) * 10) / 10 : 0,
+    top_performers: topPerformers,
+    needs_attention: needsAttention,
+    teaching_duration_weeks: weeks,
+  };
+}

@@ -9,6 +9,7 @@ import '../features/auth/providers/auth_provider.dart';
 import '../features/landing/pages/landing_page.dart';
 import '../features/student/pages/student_dashboard_page.dart';
 import '../features/student/pages/student_progress_page.dart';
+import '../features/student/pages/student_syllabus_page.dart';
 import '../features/student/pages/readiness_page.dart';
 import '../features/student/pages/video_lessons_page.dart';
 import '../features/student/pages/live_classes_page.dart';
@@ -19,6 +20,7 @@ import '../features/teacher/pages/classrooms_page.dart';
 import '../features/teacher/pages/classroom_detail_page.dart';
 import '../features/teacher/pages/order_page.dart';
 import '../features/teacher/pages/ai_grader_page.dart';
+import '../features/teacher/pages/speaking_grader_page.dart';
 import '../features/teacher/pages/material_generator_page.dart';
 import '../features/teacher/pages/earnings_page.dart';
 import '../features/teacher/pages/student_reports_page.dart';
@@ -95,6 +97,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (c, s) => const AiGraderPage(),
       ),
       GoRoute(
+        path: '/teacher/speaking-grader',
+        builder: (c, s) => const SpeakingGraderPage(),
+      ),
+      GoRoute(
         path: '/teacher/generator',
         builder: (c, s) => const MaterialGeneratorPage(),
       ),
@@ -141,6 +147,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/student/progress',
         builder: (c, s) => const StudentProgressPage(),
+      ),
+      GoRoute(
+        path: '/student/syllabus',
+        builder: (c, s) => const StudentSyllabusPage(),
       ),
       GoRoute(
         path: '/student/readiness',

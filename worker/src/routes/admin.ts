@@ -290,6 +290,7 @@ adminRoutes.post('/ambassadors/promote', async (c) => {
       ambassador_recruited_at: now,
       tier: 'pro',
       tier_expires_at: null,  // for life
+      badge: 'osee_certified_educator',  // Appendix B line 2918
       updated_at: now,
     })
     .eq('user_id', body.teacher_id)

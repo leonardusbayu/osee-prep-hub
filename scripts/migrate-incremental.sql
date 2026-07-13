@@ -140,3 +140,12 @@ ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS edubot_practice_co
 ALTER TABLE ai_generation_queue ADD COLUMN IF NOT EXISTS user_id UUID;
 -- Backfill user_id from teacher_id for existing rows
 UPDATE ai_generation_queue SET user_id = teacher_id WHERE user_id IS NULL;
+
+-- ============================================================
+-- Wave 3: Ambassador badge + effectiveness + email support
+-- ============================================================
+
+-- 11. Add badge column to teacher_profiles
+ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS badge TEXT DEFAULT NULL;
+-- Values: NULL (no badge), 'osee_certified_educator' (ambassador)
+UPDATE teacher_profiles SET badge = 'osee_certified_educator' WHERE is_ambassador = TRUE;

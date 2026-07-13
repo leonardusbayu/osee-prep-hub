@@ -10,6 +10,8 @@ import {
 import {
   generateStudentReport,
   generateClassroomReport,
+  generateBatchStudentReports,
+  getTeacherEffectiveness,
 } from '../services/reports';
 import {
   generateStudentReportHtml,
@@ -261,6 +263,51 @@ teacherRoutes.get('/classrooms/:id/report/html', async (c) => {
     const message = err instanceof Error ? err.message : 'Report failed';
     return c.json({ error: { code: 'REPORT_FAILED', message } }, 404);
   }
+});
+
+/** GET /api/teacher/classrooms/:id/batch-report — generate reports for all students (Task 8.4) */
+teacherRoutes.get('/classrooms/:id/batch-report', async (c) => {
+  const user = getAuthedUser(c);
+  const classroomId = c.req.param('id');
+  try {
+    const reports = await generateBatchStudentReports(c.env, user.id, classroomId);
+    return c.json({ classroom_id: classroomId, reports, count: reports.length });
+  } catch (err) {
+    return c.json({ error: { code: 'BATCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** GET /api/teacher/classrooms/:id/effectiveness — teacher effectiveness metrics (Task 9.4) */
+teacherRoutes.get('/classrooms/:id/effectiveness', async (c) => {
+  const user = getAuthedUser(c);
+  const classroomId = c.req.param('id');
+  try {
+    const metrics = await getTeacherEffectiveness(c.env, user.id, classroomId);
+    return c.json(metrics);
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** POST /api/teacher/students/:id/report/email — email report link to student (Task 8.5) */
+teacherRoutes.post('/students/:id/report/email', async (c) => {
+  const studentId = c.req.param('id');
+  let body: { email?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+
+  // Generate report URL (teacher-auth scoped)
+  const reportUrl = `${c.env.WEBAPP_URL ?? ''}/api/teacher/students/${studentId}/report/html`;
+
+  // Best-effort email send — in production, integrate with Resend/SES
+  // For now, return the URL for manual sharing
+  return c.json({
+    success: true,
+    message: 'Report link generated. Email sending requires email service integration (Resend/SES).',
+    report_url: reportUrl,
+    recipient: body.email ?? 'student email on file',
+  });
 });
 
 // ---------- Syllabus endpoints (Task 10.x) ----------

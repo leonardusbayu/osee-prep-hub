@@ -21,6 +21,7 @@ import { brandingRoutes } from './routes/branding';
 import type { Env, ContextVars } from './types';
 import { getPricingForRole } from './services/pricing';
 import { optionalAuth } from './middleware/auth';
+import { requireAuth } from './middleware/auth';
 
 const app = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -59,6 +60,27 @@ app.route('/api/ambassador', ambassadorRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/platform', platformRoutes);
 app.route('/api/branding', brandingRoutes);
+
+// Blueprint alias endpoints (path compatibility — same handler, different path)
+// These mirror the blueprint Section 5 exact paths for client compatibility.
+
+// /api/teacher/earnings → commission dashboard
+app.get('/api/teacher/earnings', requireAuth(), async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: { code: 'UNAUTHORIZED' } }, 401);
+  const { getCommissionStats } = await import('./services/commission-dashboard');
+  return c.json(await getCommissionStats(c.env, user.id));
+});
+
+// /api/teacher/ai-quota → AI quota
+app.get('/api/teacher/ai-quota', requireAuth(), async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: { code: 'UNAUTHORIZED' } }, 401);
+  const { getQuotaStatus } = await import('./services/quota');
+  const grading = await getQuotaStatus(c.env, user.id, user.role, 'grading');
+  const generation = await getQuotaStatus(c.env, user.id, user.role, 'generation');
+  return c.json({ grading, generation });
+});
 
 // Root
 app.get('/', (c) => {

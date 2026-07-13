@@ -87,12 +87,13 @@ export async function getTeacherTier(env: Env, teacherId: string): Promise<TierI
   const supabase = getSupabase(env);
   const { data: profile } = await supabase
     .from('teacher_profiles')
-    .select('tier, tier_expires_at')
+    .select('tier, tier_expires_at, is_ambassador, badge')
     .eq('user_id', teacherId)
     .maybeSingle();
   const p = (profile as Record<string, unknown> | null) ?? {};
   const tier = (p.tier as 'free' | 'pro' | 'institution') ?? 'free';
   const expiresAt = (p.tier_expires_at as string) ?? null;
+  const badge = (p.badge as string | null) ?? null;
 
   const features =
     tier === 'free'
@@ -100,6 +101,10 @@ export async function getTeacherTier(env: Env, teacherId: string): Promise<TierI
       : tier === 'pro'
         ? ['Unlimited AI grading', 'Unlimited AI generation', 'Classroom reports', 'Hide OSEE branding', 'Priority support']
         : ['Everything in Pro', 'Custom subdomain', 'Multi-teacher accounts', 'Admin dashboard', 'White-label fully'];
+
+  if (badge === 'osee_certified_educator') {
+    features.push('⭐ OSEE Certified Educator badge');
+  }
 
   return {
     tier,

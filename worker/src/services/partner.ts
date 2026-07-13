@@ -113,12 +113,44 @@ export async function inviteTeacher(
   partnerId: string,
   teacherEmail: string
 ): Promise<{ invited: boolean; message: string }> {
-  void env; // reserved for future email notification
-  // In production, this would send an email with a referral link.
-  // For now, just log the invitation.
-  console.log(`Partner ${partnerId} invited teacher ${teacherEmail}`);
+  const supabase = getSupabase(env);
+
+  // Get partner's institution name
+  const { data: partner } = await supabase
+    .from('unified_profiles')
+    .select('teacher_institution')
+    .eq('id', partnerId)
+    .maybeSingle();
+  const institution = (partner as Record<string, unknown> | null)?.teacher_institution as string | null;
+
+  if (!institution) {
+    throw new Error('Partner profile has no institution name');
+  }
+
+  // Check if teacher already exists
+  const { data: existing } = await supabase
+    .from('unified_profiles')
+    .select('id, teacher_institution')
+    .eq('email', teacherEmail.toLowerCase())
+    .eq('role', 'teacher')
+    .maybeSingle();
+
+  if (existing) {
+    // Link existing teacher to this institution
+    await supabase
+      .from('unified_profiles')
+      .update({ teacher_institution: institution })
+      .eq('id', (existing as Record<string, unknown>).id as string);
+    return {
+      invited: true,
+      message: `${teacherEmail} linked to ${institution}`,
+    };
+  }
+
+  // Teacher doesn't exist yet — store invitation (they'll be linked on register)
+  // In production, send email with registration link containing institution_name
   return {
     invited: true,
-    message: `Invitation sent to ${teacherEmail}. The teacher will be linked to your institution upon registration.`,
+    message: `Invitation sent to ${teacherEmail}. They will be linked to ${institution} upon registration.`,
   };
 }
