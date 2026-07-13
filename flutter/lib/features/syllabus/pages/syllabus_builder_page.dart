@@ -412,13 +412,6 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
           : loaded
           ? _buildBody()
           : const Center(child: CircularProgressIndicator()),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddMaterialDialog(0),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Material'),
-        backgroundColor: OseeTheme.accent,
-        foregroundColor: Colors.white,
-      ),
       endDrawer: _drawerItem != null
           ? _ItemDetailDrawer(
               item: _drawerItem!,
@@ -614,12 +607,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
               _drawerCol = col;
               _drawerIdx = card.index;
             });
-            ScaffoldMessenger.of(ctx).showSnackBar(
-              SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text('Open details for "${card.data.title}"'),
-              ),
-            );
+            Scaffold.of(ctx).openEndDrawer();
           },
         ),
         laneHeaderBuilder: (ctx, lane) => _MagazineLaneHeader(
@@ -635,6 +623,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
             _drawerCol = col;
             _drawerIdx = card.index;
           });
+          Scaffold.of(context).openEndDrawer();
         },
       ),
     );
