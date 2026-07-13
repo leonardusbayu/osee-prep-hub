@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 
 /// Partner (institution) dashboard — Task 15.8.
 class PartnerDashboardPage extends ConsumerStatefulWidget {
@@ -47,7 +48,10 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
         title: const Text('Partner Dashboard'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-          IconButton(icon: const Icon(Icons.logout), onPressed: () => context.go('/login')),
+          IconButton(icon: const Icon(Icons.logout), onPressed: () async {
+            await ref.read(authProvider.notifier).logout();
+            if (context.mounted) context.go('/login');
+          }),
         ],
       ),
       body: _isLoading

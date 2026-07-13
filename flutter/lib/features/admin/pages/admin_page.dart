@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:js' as js;
 
 import '../../../core/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 
 /// Admin page (Flutter) — Task 18.4.
 ///
@@ -12,14 +15,14 @@ import '../../../core/api_client.dart';
 ///      new browser tab.
 ///   3. Shows quick stats (read-only) from /admin/stats so admin can glance
 ///      at numbers without leaving Flutter.
-class AdminPage extends StatefulWidget {
+class AdminPage extends ConsumerStatefulWidget {
   const AdminPage({super.key});
 
   @override
-  State<AdminPage> createState() => _AdminPageState();
+  ConsumerState<AdminPage> createState() => _AdminPageState();
 }
 
-class _AdminPageState extends State<AdminPage> {
+class _AdminPageState extends ConsumerState<AdminPage> {
   Map<String, dynamic>? _stats;
   bool _isLoading = true;
   String? _error;
@@ -58,6 +61,14 @@ class _AdminPageState extends State<AdminPage> {
         title: const Text('Admin'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/login');
+            },
+            tooltip: 'Logout',
+          ),
         ],
       ),
       body: ListView(

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 
 /// Ambassador dashboard — Task 17.2.
 class AmbassadorDashboardPage extends ConsumerStatefulWidget {
@@ -76,6 +77,14 @@ class _AmbassadorDashboardPageState extends ConsumerState<AmbassadorDashboardPag
             },
           ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/login');
+            },
+            tooltip: 'Logout',
+          ),
         ],
       ),
       body: _isLoading

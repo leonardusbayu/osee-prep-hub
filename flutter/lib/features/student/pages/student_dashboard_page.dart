@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
 import '../../../core/responsive.dart';
+import '../../auth/providers/auth_provider.dart';
 
 /// Student dashboard page — Task 11.1.
 class StudentDashboardPage extends ConsumerStatefulWidget {
@@ -42,6 +43,14 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
         title: const Text('My Learning'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/login');
+            },
+            tooltip: 'Logout',
+          ),
         ],
       ),
       body: _isLoading

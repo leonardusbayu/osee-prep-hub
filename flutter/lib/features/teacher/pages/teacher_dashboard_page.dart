@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
 import '../../../core/responsive.dart';
+import '../../auth/providers/auth_provider.dart';
 
 /// Teacher dashboard — Task 2.1.
 ///
@@ -61,7 +62,10 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => context.go('/login'),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/login');
+            },
             tooltip: 'Logout',
           ),
         ],
