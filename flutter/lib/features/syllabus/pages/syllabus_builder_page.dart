@@ -372,6 +372,13 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
           : loaded
           ? _buildBody()
           : const Center(child: CircularProgressIndicator()),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddMaterialDialog(0),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Material'),
+        backgroundColor: OseeTheme.accent,
+        foregroundColor: Colors.white,
+      ),
       endDrawer: _drawerItem != null
           ? _ItemDetailDrawer(
               item: _drawerItem!,
@@ -584,15 +591,9 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
     return Container(
       color: OseeTheme.paper,
       child: DragTarget<CatalogEntry>(
-        onAcceptWithDetails: (details) {
-          // Determine target column based on horizontal position
-          final renderBox = context.findRenderObject() as RenderBox?;
-          if (renderBox == null) return;
-          final localX = details.offset.dx - renderBox.localToGlobal(Offset.zero).dx;
-          final boardWidth = renderBox.size.width;
-          final colWidth = boardWidth / _columns.length;
-          final targetCol = (localX / colWidth).floor().clamp(0, _columns.length - 1);
-          _onCatalogDrop(details.data, targetCol);
+        onAccept: (entry) {
+          // Drop ke column pertama (default) — user bisa reorder setelahnya
+          _onCatalogDrop(entry, 0);
         },
         builder: (context, candidate, rejected) {
           return VooKanbanBoard<SyllabusItem>(
