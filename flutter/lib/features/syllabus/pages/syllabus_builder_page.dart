@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:voo_kanban/voo_kanban.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/api_client.dart';
 import '../models/catalog.dart';
 import '../models/syllabus.dart';
 import '../models/labels.dart';
@@ -377,11 +378,19 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
       await ref
           .read(syllabusRepositoryProvider)
           .saveItems(widget.syllabusId, flat);
-      setState(() => _isDirty = false);
+
+      // Publish syllabus so students can see it
+      final dio = ApiClient.create();
+      await dio.post('/teacher/syllabi/${widget.syllabusId}/publish', data: {'published': true});
+
+      setState(() {
+        _isDirty = false;
+        _syllabus = _syllabus?.copyWith(isPublished: true);
+      });
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Syllabus saved')));
+      ).showSnackBar(const SnackBar(content: Text('Syllabus published! Students can now see it.')));
     } catch (e) {
       if (mounted) setState(() => _error = 'Save failed: $e');
     } finally {

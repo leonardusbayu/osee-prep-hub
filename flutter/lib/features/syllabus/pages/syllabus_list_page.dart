@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/api_client.dart';
 import '../../../shared/widgets/ui_components.dart';
 import '../models/syllabus.dart';
 import '../providers/syllabus_repository.dart';
@@ -108,6 +109,7 @@ class SyllabusListPage extends ConsumerWidget {
         name: result.name,
         description: result.description,
         targetExam: result.targetExam,
+        classroomId: result.classroomId,
       );
       ref.invalidate(syllabiListProvider);
       if (!context.mounted) return;
@@ -263,7 +265,8 @@ class _CreateSyllabusResult {
   final String name;
   final String? description;
   final String? targetExam;
-  _CreateSyllabusResult(this.name, this.description, this.targetExam);
+  final String? classroomId;
+  _CreateSyllabusResult(this.name, this.description, this.targetExam, this.classroomId);
 }
 
 class _CreateSyllabusDialog extends StatefulWidget {
@@ -276,6 +279,28 @@ class _CreateSyllabusDialogState extends State<_CreateSyllabusDialog> {
   final _name = TextEditingController();
   final _desc = TextEditingController();
   String? _exam;
+  String? _classroomId;
+  List<dynamic>? _classrooms;
+  bool _loadingClassrooms = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClassrooms();
+  }
+
+  Future<void> _loadClassrooms() async {
+    try {
+      final dio = ApiClient.create();
+      final r = await dio.get('/teacher/classrooms');
+      setState(() {
+        _classrooms = (r.data as Map)['classrooms'] as List? ?? [];
+        _loadingClassrooms = false;
+      });
+    } catch (_) {
+      setState(() => _loadingClassrooms = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -290,42 +315,57 @@ class _CreateSyllabusDialogState extends State<_CreateSyllabusDialog> {
       title: const Text('New syllabus'),
       content: SizedBox(
         width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _name,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. TOEFL iBT 12-week plan',
-              ),
-            ),
-            const SizedBox(height: Spacing.md),
-            TextField(
-              controller: _desc,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-            const SizedBox(height: Spacing.md),
-            DropdownButtonFormField<String>(
-              value: _exam,
-              decoration: const InputDecoration(labelText: 'Target exam'),
-              items: const [
-                DropdownMenuItem(value: null, child: Text('Any / Mixed')),
-                DropdownMenuItem(value: 'TOEFL_IBT', child: Text('TOEFL iBT')),
-                DropdownMenuItem(value: 'TOEFL_ITP', child: Text('TOEFL ITP')),
-                DropdownMenuItem(value: 'IELTS', child: Text('IELTS')),
-                DropdownMenuItem(value: 'TOEIC', child: Text('TOEIC')),
-                DropdownMenuItem(
-                  value: 'GENERAL',
-                  child: Text('General English'),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _name,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  hintText: 'e.g. TOEFL iBT 12-week plan',
                 ),
-              ],
-              onChanged: (v) => setState(() => _exam = v),
-            ),
-          ],
+              ),
+              const SizedBox(height: Spacing.md),
+              TextField(
+                controller: _desc,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Description'),
+              ),
+              const SizedBox(height: Spacing.md),
+              DropdownButtonFormField<String>(
+                value: _exam,
+                decoration: const InputDecoration(labelText: 'Target exam'),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('Any / Mixed')),
+                  DropdownMenuItem(value: 'TOEFL_IBT', child: Text('TOEFL iBT')),
+                  DropdownMenuItem(value: 'TOEFL_ITP', child: Text('TOEFL ITP')),
+                  DropdownMenuItem(value: 'IELTS', child: Text('IELTS')),
+                  DropdownMenuItem(value: 'TOEIC', child: Text('TOEIC')),
+                  DropdownMenuItem(value: 'GENERAL', child: Text('General English')),
+                ],
+                onChanged: (v) => setState(() => _exam = v),
+              ),
+              const SizedBox(height: Spacing.md),
+              if (_loadingClassrooms)
+                const Padding(padding: const EdgeInsets.all(8), child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+              else
+                DropdownButtonFormField<String>(
+                  value: _classroomId,
+                  decoration: const InputDecoration(labelText: 'Assign to classroom (optional)'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('No classroom')),
+                    ...(_classrooms ?? []).map((c) => DropdownMenuItem(
+                      value: (c as Map)['id'] as String?,
+                      child: Text(c['name'] as String? ?? ''),
+                    )),
+                  ],
+                  onChanged: (v) => setState(() => _classroomId = v),
+                ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -343,6 +383,7 @@ class _CreateSyllabusDialogState extends State<_CreateSyllabusDialog> {
                 n,
                 _desc.text.trim().isEmpty ? null : _desc.text.trim(),
                 _exam,
+                _classroomId,
               ),
             );
           },
