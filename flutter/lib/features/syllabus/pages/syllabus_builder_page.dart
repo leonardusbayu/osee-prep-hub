@@ -118,6 +118,91 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
     });
   }
 
+  /// Show dialog to pick a material from the catalog and add to a lane.
+  void _showAddMaterialDialog(int targetCol) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        String query = '';
+        String? sourceFilter;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            var filtered = kMaterialCatalog.where((e) {
+              if (sourceFilter != null && e.sourceType != sourceFilter) return false;
+              if (query.isEmpty) return true;
+              return e.title.toLowerCase().contains(query.toLowerCase()) ||
+                  (e.description?.toLowerCase().contains(query.toLowerCase()) ?? false);
+            }).toList();
+            return AlertDialog(
+              title: const Text('Add Material'),
+              content: SizedBox(
+                width: 500,
+                height: 400,
+                child: Column(
+                  children: [
+                    TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Search materials...',
+                        prefixIcon: Icon(Icons.search, size: 18),
+                      ),
+                      onChanged: (v) => setDialogState(() => query = v),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        FilterChip(label: const Text('All'), selected: sourceFilter == null, onSelected: (_) => setDialogState(() => sourceFilter = null)),
+                        FilterChip(label: const Text('iBT'), selected: sourceFilter == 'platform_ibt', onSelected: (_) => setDialogState(() => sourceFilter = 'platform_ibt')),
+                        FilterChip(label: const Text('ITP'), selected: sourceFilter == 'platform_itp', onSelected: (_) => setDialogState(() => sourceFilter = 'platform_itp')),
+                        FilterChip(label: const Text('IELTS'), selected: sourceFilter == 'platform_ielts', onSelected: (_) => setDialogState(() => sourceFilter = 'platform_ielts')),
+                        FilterChip(label: const Text('TOEIC'), selected: sourceFilter == 'platform_toeic', onSelected: (_) => setDialogState(() => sourceFilter = 'platform_toeic')),
+                        FilterChip(label: const Text('AI'), selected: sourceFilter == 'ai_generated', onSelected: (_) => setDialogState(() => sourceFilter = 'ai_generated')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) {
+                          final entry = filtered[i];
+                          return ListTile(
+                            leading: Icon(_sourceIcon(entry.sourceType), size: 20),
+                            title: Text(entry.title, style: const TextStyle(fontSize: 14)),
+                            subtitle: Text('${entry.itemType} · ${entry.difficulty ?? '—'}', style: const TextStyle(fontSize: 12)),
+                            trailing: const Icon(Icons.add_circle_outline, size: 20),
+                            onTap: () {
+                              _onCatalogDrop(entry, targetCol);
+                              Navigator.pop(ctx);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  IconData _sourceIcon(String source) {
+    switch (source) {
+      case 'platform_ibt': return Icons.school;
+      case 'platform_itp': return Icons.quiz;
+      case 'platform_ielts': return Icons.language;
+      case 'platform_toeic': return Icons.work;
+      case 'edubot': return Icons.smart_toy;
+      case 'ai_generated': return Icons.auto_awesome;
+      default: return Icons.book;
+    }
+  }
+
   void _onCardMoved(
     KanbanCard<SyllabusItem> card,
     String fromLaneId,
@@ -426,14 +511,26 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
     return LayoutBuilder(
       builder: (context, c) {
         final isWide = c.maxWidth >= 1100;
-        return Row(
-          children: [
-            Expanded(child: _buildBoardArea()),
-            if (isWide) ...[
+        if (isWide) {
+          // Wide layout: board (left) + catalog sidebar (right)
+          return Row(
+            children: [
+              Expanded(child: _buildBoardArea()),
               Container(width: 1, color: OseeTheme.cloud),
               SizedBox(width: 340, child: _buildCatalog()),
-            ] else
-              SizedBox(width: c.maxWidth, height: 220, child: _buildCatalog()),
+            ],
+          );
+        }
+        // Narrow layout: catalog (top, collapsible) + board (below)
+        return Column(
+          children: [
+            SizedBox(
+              width: c.maxWidth,
+              height: 280,
+              child: _buildCatalog(),
+            ),
+            Container(height: 1, color: OseeTheme.cloud),
+            Expanded(child: _buildBoardArea()),
           ],
         );
       },
@@ -519,7 +616,10 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
             );
           },
         ),
-        laneHeaderBuilder: (ctx, lane) => _MagazineLaneHeader(lane: lane),
+        laneHeaderBuilder: (ctx, lane) => _MagazineLaneHeader(
+          lane: lane,
+          onAddMaterial: () => _showAddMaterialDialog(int.parse(lane.id)),
+        ),
         emptyLaneBuilder: (ctx, lane) => _MagazineEmptyLane(lane: lane),
         onCardMoved: _onCardMoved,
         onCardTap: (card) {
@@ -996,8 +1096,9 @@ class _MagazineCard extends StatelessWidget {
 
 /// Magazine-styled lane header — kicker "WEEK" + big Georgia number + thin gold rule.
 class _MagazineLaneHeader extends StatelessWidget {
-  const _MagazineLaneHeader({required this.lane});
+  const _MagazineLaneHeader({required this.lane, this.onAddMaterial});
   final KanbanLane<SyllabusItem> lane;
+  final VoidCallback? onAddMaterial;
 
   @override
   Widget build(BuildContext context) {
@@ -1034,6 +1135,14 @@ class _MagazineLaneHeader extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              if (onAddMaterial != null)
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline, size: 18, color: OseeTheme.primary),
+                  onPressed: onAddMaterial,
+                  tooltip: 'Add material',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                ),
               if (lane.subtitle != null && lane.subtitle != '—')
                 Text(
                   lane.subtitle!,
