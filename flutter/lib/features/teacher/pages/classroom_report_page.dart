@@ -50,21 +50,11 @@ class _ClassroomReportPageState extends State<ClassroomReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _report?['classroom']?['name'] as String? ?? 'Classroom Report',
-        ),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-        ],
-      ),
-      body: _isLoading
-          ? const LoadingState()
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : _buildContent(_report ?? {}),
-    );
+    return _isLoading
+        ? const LoadingState()
+        : _error != null
+        ? ErrorState(message: _error!, onRetry: _load)
+        : _buildContent(_report ?? {});
   }
 
   Widget _buildContent(Map<String, dynamic> r) {

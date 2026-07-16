@@ -64,32 +64,33 @@ class _OrderPageState extends ConsumerState<OrderPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Order Tests & Vouchers'),
-        bottom: TabBar(
+    return Column(
+      children: [
+        TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'Voucher Resale', icon: Icon(Icons.confirmation_number)),
-            Tab(text: 'Bulk Purchase', icon: Icon(Icons.inventory_2)),
-            Tab(text: 'Book for Student', icon: Icon(Icons.event)),
-            Tab(text: 'Self Purchase', icon: Icon(Icons.shopping_bag)),
+            Tab(text: 'Voucher', icon: Icon(Icons.confirmation_number)),
+            Tab(text: 'Bulk', icon: Icon(Icons.inventory_2)),
+            Tab(text: 'Book', icon: Icon(Icons.event)),
+            Tab(text: 'Self', icon: Icon(Icons.shopping_bag)),
           ],
         ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(child: Text(_error!))
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOrderTab('voucher_resale'),
-                _buildOrderTab('bulk_purchase'),
-                _buildOrderTab('book_for_student'),
-                _buildOrderTab('self_purchase'),
-              ],
-            ),
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+              ? Center(child: Text(_error!))
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildOrderTab('voucher_resale'),
+                    _buildOrderTab('bulk_purchase'),
+                    _buildOrderTab('book_for_student'),
+                    _buildOrderTab('self_purchase'),
+                  ],
+                ),
+        ),
+      ],
     );
   }
 

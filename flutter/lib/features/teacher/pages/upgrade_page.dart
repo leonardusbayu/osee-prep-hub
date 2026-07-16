@@ -65,11 +65,9 @@ class _UpgradePageState extends State<UpgradePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Upgrade')),
-      body: _isLoading
-          ? const LoadingState()
-          : ListView(
+    return _isLoading
+        ? const LoadingState()
+        : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 if (_error != null)
@@ -111,8 +109,7 @@ class _UpgradePageState extends State<UpgradePage> {
                   onTap: () => _upgrade('institution'),
                 ),
               ],
-            ),
-    );
+            );
   }
 }
 

@@ -4,6 +4,7 @@ import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api_client.dart';
+import '../auth_storage.dart';
 import '../models/user.dart';
 
 String get _apiUrl => kDebugMode
@@ -32,7 +33,26 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(const AuthState());
+  AuthNotifier() : super(const AuthState()) {
+    _restoreFromStorage();
+  }
+
+  /// Restore auth state from localStorage on app start / page refresh.
+  void _restoreFromStorage() {
+    final token = AuthStorage.token;
+    final userJson = AuthStorage.userJson;
+    if (token != null && userJson != null) {
+      try {
+        final user = User.fromJson(
+          jsonDecode(userJson) as Map<String, dynamic>,
+        );
+        state = AuthState(user: user, token: token);
+      } catch (_) {
+        // Corrupt storage — clear it.
+        AuthStorage.clear();
+      }
+    }
+  }
 
   @override
   set state(AuthState value) {
@@ -67,6 +87,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = User.fromJson(res['user'] as Map<String, dynamic>);
       final token = res['jwt'] as String;
       state = AuthState(user: user, token: token);
+      AuthStorage.save(token, jsonEncode(user.toJson()));
       return true;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -84,6 +105,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = User.fromJson(res['user'] as Map<String, dynamic>);
       final token = res['jwt'] as String;
       state = AuthState(user: user, token: token);
+      AuthStorage.save(token, jsonEncode(user.toJson()));
       return true;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -95,6 +117,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await _post('/auth/logout', {});
     } catch (_) {}
+    AuthStorage.clear();
     state = const AuthState();
   }
 
@@ -105,9 +128,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (res['valid'] == true) {
         final user = User.fromJson(res['user'] as Map<String, dynamic>);
         state = AuthState(user: user, token: state.token);
+        AuthStorage.save(state.token!, jsonEncode(user.toJson()));
         return true;
       }
     } catch (_) {}
+    AuthStorage.clear();
     state = const AuthState();
     return false;
   }
@@ -138,6 +163,9 @@ Future<Map<String, dynamic>> _post(
   xhr.open('POST', url, true);
   xhr.withCredentials = true;
   xhr.setRequestHeader('Content-Type', 'application/json');
+  if (ApiClient.currentToken != null) {
+    xhr.setRequestHeader('Authorization', 'Bearer ${ApiClient.currentToken}');
+  }
 
   xhr.onload = (() {
     try {

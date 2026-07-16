@@ -11,7 +11,7 @@ const ALLOWED_ORIGIN_PATTERNS = [
   /^https:\/\/[a-z0-9]+\.osee-prep-hub-admin\.pages\.dev$/,
 ];
 const ALLOWED_EXACT_ORIGINS = new Set<string>([
-  'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:8080',
   'http://localhost:8787',
   'https://prep.osee.co.id',

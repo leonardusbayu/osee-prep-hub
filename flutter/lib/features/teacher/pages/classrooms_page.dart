@@ -120,103 +120,94 @@ class _ClassroomsPageState extends State<ClassroomsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Classrooms'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-          IconButton(icon: const Icon(Icons.add), onPressed: _createClassroom),
-        ],
-      ),
-      body: _isLoading
-          ? const LoadingState()
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: (_classrooms?.isEmpty ?? true)
-                  ? ListView(
-                      padding: const EdgeInsets.all(Spacing.md),
-                      children: [
-                        PageHeader(
-                          title: 'Classrooms',
-                          subtitle:
-                              'Create groups, share join codes, and monitor enrolled students.',
-                          icon: Icons.class_rounded,
-                          trailing: FilledButton.icon(
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Create'),
-                            onPressed: _createClassroom,
-                          ),
+    return _isLoading
+        ? const LoadingState()
+        : _error != null
+        ? ErrorState(message: _error!, onRetry: _load)
+        : RefreshIndicator(
+            onRefresh: _load,
+            child: (_classrooms?.isEmpty ?? true)
+                ? ListView(
+                    padding: const EdgeInsets.all(Spacing.md),
+                    children: [
+                      PageHeader(
+                        title: 'Classrooms',
+                        subtitle:
+                            'Create groups, share join codes, and monitor enrolled students.',
+                        icon: Icons.class_rounded,
+                        trailing: FilledButton.icon(
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Create'),
+                          onPressed: _createClassroom,
                         ),
-                        const SizedBox(height: Spacing.xl),
-                        EmptyState(
-                          icon: Icons.class_outlined,
-                          title: 'No classrooms yet',
-                          subtitle:
-                              'Create a classroom to invite students with a join code.',
-                          action: FilledButton.icon(
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Create Classroom'),
-                            onPressed: _createClassroom,
-                          ),
+                      ),
+                      const SizedBox(height: Spacing.xl),
+                      EmptyState(
+                        icon: Icons.class_outlined,
+                        title: 'No classrooms yet',
+                        subtitle:
+                            'Create a classroom to invite students with a join code.',
+                        action: FilledButton.icon(
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Create Classroom'),
+                          onPressed: _createClassroom,
                         ),
-                      ],
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(Spacing.md),
-                      itemCount: _classrooms!.length + 1,
-                      itemBuilder: (ctx, i) {
-                        if (i == 0) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: Spacing.lg),
-                            child: PageHeader(
-                              title: 'Classrooms',
-                              subtitle:
-                                  'Manage your active learning groups and join codes.',
-                              icon: Icons.class_rounded,
-                              trailing: FilledButton.icon(
-                                icon: const Icon(Icons.add_rounded),
-                                label: const Text('Create'),
-                                onPressed: _createClassroom,
-                              ),
-                            ),
-                          );
-                        }
-                        final index = i - 1;
-                        final cr = _classrooms![index] as Map<String, dynamic>;
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(Spacing.md),
+                    itemCount: _classrooms!.length + 1,
+                    itemBuilder: (ctx, i) {
+                      if (i == 0) {
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: Spacing.sm),
-                          child: SurfaceCard(
-                            child: ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: OseeTheme.primary.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.class_rounded,
-                                  color: OseeTheme.primary,
-                                ),
-                              ),
-                              title: Text(cr['name'] as String? ?? ''),
-                              subtitle: Text(
-                                '${cr['target_exam'] ?? '—'} · ${cr['join_code'] ?? 'no code'}',
-                              ),
-                              trailing: const Icon(Icons.chevron_right_rounded),
-                              onTap: () =>
-                                  context.go('/teacher/classrooms/${cr['id']}'),
+                          padding: const EdgeInsets.only(bottom: Spacing.lg),
+                          child: PageHeader(
+                            title: 'Classrooms',
+                            subtitle:
+                                'Manage your active learning groups and join codes.',
+                            icon: Icons.class_rounded,
+                            trailing: FilledButton.icon(
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text('Create'),
+                              onPressed: _createClassroom,
                             ),
                           ),
                         );
-                      },
-                    ),
-            ),
-    );
+                      }
+                      final index = i - 1;
+                      final cr = _classrooms![index] as Map<String, dynamic>;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: Spacing.sm),
+                        child: SurfaceCard(
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: OseeTheme.primary.withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.class_rounded,
+                                color: OseeTheme.primary,
+                              ),
+                            ),
+                            title: Text(cr['name'] as String? ?? ''),
+                            subtitle: Text(
+                              '${cr['target_exam'] ?? '—'} · ${cr['join_code'] ?? 'no code'}',
+                            ),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () =>
+                                context.go('/teacher/classrooms/${cr['id']}'),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          );
   }
 }

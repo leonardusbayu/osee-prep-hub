@@ -83,93 +83,68 @@ class _SyllabusListPageState extends ConsumerState<SyllabusListPage> {
   Widget build(BuildContext context) {
     final asyncSyllabi = ref.watch(syllabiListProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Syllabi'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.go('/teacher'),
-          tooltip: 'Back',
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              ref.invalidate(syllabiListProvider);
-              _loadClassroomNames();
-            },
-            tooltip: 'Refresh',
+    return asyncSyllabi.when(
+      loading: () => const LoadingState(),
+      error: (e, _) => ErrorState(
+        message: 'Failed to load syllabi: $e',
+        onRetry: () => ref.invalidate(syllabiListProvider),
+      ),
+      data: (syllabi) => RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(syllabiListProvider);
+          _loadClassroomNames();
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            96,
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateDialog(context, ref),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('New Syllabus'),
-      ),
-      body: asyncSyllabi.when(
-        loading: () => const LoadingState(),
-        error: (e, _) => ErrorState(
-          message: 'Failed to load syllabi: $e',
-          onRetry: () => ref.invalidate(syllabiListProvider),
-        ),
-        data: (syllabi) => RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(syllabiListProvider);
-            _loadClassroomNames();
-          },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              Spacing.md,
-              Spacing.md,
-              Spacing.md,
-              96,
+          children: [
+            PageHeader(
+              title: 'Syllabus Library',
+              subtitle:
+                  'Plan weekly learning paths and assign materials from OSEE platforms, EduBot, videos, and AI generation.',
+              icon: Icons.view_kanban_rounded,
+              trailing: FilledButton.icon(
+                onPressed: () => _showCreateDialog(context, ref),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Create'),
+              ),
             ),
-            children: [
-              PageHeader(
-                title: 'Syllabus Library',
+            const SizedBox(height: Spacing.lg),
+            _StatsRow(syllabi: syllabi),
+            const SizedBox(height: Spacing.lg),
+            SectionHeader(
+              title: 'All Syllabi',
+              subtitle:
+                  '${syllabi.length} plan${syllabi.length == 1 ? '' : 's'}',
+            ),
+            if (syllabi.isEmpty)
+              EmptyState(
+                icon: Icons.view_kanban_outlined,
+                title: 'No syllabi yet',
                 subtitle:
-                    'Plan weekly learning paths and assign materials from OSEE platforms, EduBot, videos, and AI generation.',
-                icon: Icons.view_kanban_rounded,
-                trailing: FilledButton.icon(
+                    'Create your first plan and organize materials into weekly units.',
+                action: FilledButton.icon(
                   onPressed: () => _showCreateDialog(context, ref),
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('Create'),
+                  label: const Text('Create Syllabus'),
                 ),
-              ),
-              const SizedBox(height: Spacing.lg),
-              _StatsRow(syllabi: syllabi),
-              const SizedBox(height: Spacing.lg),
-              SectionHeader(
-                title: 'All Syllabi',
-                subtitle:
-                    '${syllabi.length} plan${syllabi.length == 1 ? '' : 's'}',
-              ),
-              if (syllabi.isEmpty)
-                EmptyState(
-                  icon: Icons.view_kanban_outlined,
-                  title: 'No syllabi yet',
-                  subtitle:
-                      'Create your first plan and organize materials into weekly units.',
-                  action: FilledButton.icon(
-                    onPressed: () => _showCreateDialog(context, ref),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Create Syllabus'),
-                  ),
-                )
-              else
-                ...syllabi.map(
-                  (s) => Padding(
-                    padding: const EdgeInsets.only(bottom: Spacing.sm),
-                    child: _SyllabusCard(
-                      syllabus: s,
-                      classroomName: _classroomNames[s.classroomId],
-                      onDelete: () => _deleteSyllabus(s.id),
-                    ),
+              )
+            else
+              ...syllabi.map(
+                (s) => Padding(
+                  padding: const EdgeInsets.only(bottom: Spacing.sm),
+                  child: _SyllabusCard(
+                    syllabus: s,
+                    classroomName: _classroomNames[s.classroomId],
+                    onDelete: () => _deleteSyllabus(s.id),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -210,33 +185,38 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final published = syllabi.where((s) => s.isPublished).length;
     final templates = syllabi.where((s) => s.isTemplate).length;
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 3,
-      childAspectRatio: 1.45,
-      crossAxisSpacing: Spacing.sm,
-      mainAxisSpacing: Spacing.sm,
-      children: [
-        StatCard(
-          icon: Icons.library_books_rounded,
-          label: 'Total',
-          value: '${syllabi.length}',
-          color: OseeTheme.primary,
-        ),
-        StatCard(
-          icon: Icons.check_circle_rounded,
-          label: 'Published',
-          value: '$published',
-          color: OseeTheme.success,
-        ),
-        StatCard(
-          icon: Icons.copy_all_rounded,
-          label: 'Templates',
-          value: '$templates',
-          color: OseeTheme.warning,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = constraints.maxWidth < 400 ? 1 : (constraints.maxWidth < 700 ? 2 : 3);
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: cols,
+          childAspectRatio: 1.45,
+          crossAxisSpacing: Spacing.sm,
+          mainAxisSpacing: Spacing.sm,
+          children: [
+            StatCard(
+              icon: Icons.library_books_rounded,
+              label: 'Total',
+              value: '${syllabi.length}',
+              color: OseeTheme.primary,
+            ),
+            StatCard(
+              icon: Icons.check_circle_rounded,
+              label: 'Published',
+              value: '$published',
+              color: OseeTheme.success,
+            ),
+            StatCard(
+              icon: Icons.copy_all_rounded,
+              label: 'Templates',
+              value: '$templates',
+              color: OseeTheme.warning,
+            ),
+          ],
+        );
+      },
     );
   }
 }

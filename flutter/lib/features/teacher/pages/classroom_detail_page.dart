@@ -240,35 +240,11 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_classroom?['name'] as String? ?? 'Classroom'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_rounded),
-            tooltip: 'Add students',
-            onPressed: _addStudents,
-          ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-          IconButton(
-            icon: const Icon(Icons.grid_on),
-            tooltip: 'Heatmap report',
-            onPressed: () =>
-                context.go('/teacher/classrooms/${widget.classroomId}/report'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            tooltip: 'PDF report',
-            onPressed: _openClassroomReport,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const LoadingState()
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : _buildContent(_classroom ?? {}),
-    );
+    return _isLoading
+        ? const LoadingState()
+        : _error != null
+        ? ErrorState(message: _error!, onRetry: _load)
+        : _buildContent(_classroom ?? {});
   }
 
   Widget _buildContent(Map<String, dynamic> c) {
@@ -277,6 +253,29 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.person_add_rounded),
+              tooltip: 'Add students',
+              onPressed: _addStudents,
+            ),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+            IconButton(
+              icon: const Icon(Icons.grid_on),
+              tooltip: 'Heatmap report',
+              onPressed: () =>
+                  context.go('/teacher/classrooms/${widget.classroomId}/report'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf),
+              tooltip: 'PDF report',
+              onPressed: _openClassroomReport,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),

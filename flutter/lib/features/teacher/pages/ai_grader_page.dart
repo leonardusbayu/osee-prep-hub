@@ -65,11 +65,9 @@ class _AiGraderPageState extends ConsumerState<AiGraderPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('AI Writing Grader')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Form(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(Spacing.md),
+      child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -239,8 +237,7 @@ class _AiGraderPageState extends ConsumerState<AiGraderPage> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildStatus() {

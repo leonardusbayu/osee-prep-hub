@@ -85,20 +85,26 @@ class _SpeakingGraderPageState extends State<SpeakingGraderPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI Speaking Grader'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: () => setState(() { _result = null; _error = null; }), tooltip: 'Reset'),
-        ],
-      ),
-      body: _isGrading
-          ? const LoadingState(message: 'Evaluating speaking...')
-          : ListView(
-              padding: const EdgeInsets.all(Spacing.md),
-              children: [
-                // Exam + level selectors
-                Row(
+    return _isGrading
+        ? const LoadingState(message: 'Evaluating speaking...')
+        : ListView(
+            padding: const EdgeInsets.all(Spacing.md),
+            children: [
+              Row(
+                children: [
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Reset',
+                    onPressed: () => setState(() {
+                      _result = null;
+                      _error = null;
+                    }),
+                  ),
+                ],
+              ),
+              // Exam + level selectors
+              Row(
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
@@ -168,8 +174,7 @@ class _SpeakingGraderPageState extends State<SpeakingGraderPage> {
                   _ResultCard(result: _result!),
                 ],
               ],
-            ),
-    );
+            );
   }
 }
 

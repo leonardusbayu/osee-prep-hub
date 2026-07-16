@@ -28,6 +28,8 @@ dependencies:
   dio_web_adapter: ^2.2.0
   web: ^1.1.1
   voo_kanban: ^0.0.3
+  url_launcher: ^6.3.2
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -47,3 +49,4 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/student/

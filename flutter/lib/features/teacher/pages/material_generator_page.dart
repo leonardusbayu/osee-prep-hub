@@ -66,21 +66,19 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('AI Material Generator')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const PageHeader(
-                title: 'Material Generator',
-                subtitle:
-                    'Create exam-aligned material and send it directly into a syllabus.',
-                icon: Icons.auto_awesome_rounded,
-              ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(Spacing.md),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const PageHeader(
+              title: 'Material Generator',
+              subtitle:
+                  'Create exam-aligned material and send it directly into a syllabus.',
+              icon: Icons.auto_awesome_rounded,
+            ),
               const SizedBox(height: Spacing.lg),
               SurfaceCard(
                 padding: const EdgeInsets.all(Spacing.lg),
@@ -213,8 +211,7 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
                 const SizedBox(height: Spacing.lg),
                 _buildPreview(),
               ],
-            ],
-          ),
+          ],
         ),
       ),
     );

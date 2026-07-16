@@ -5,10 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_widgets.dart';
 import '../../../app/theme.dart';
 import '../../../shared/widgets/ui_components.dart';
 
-/// Modern login page — split layout with gradient panel + clean form.
+/// Modern login page — premium split layout with dynamic illustrations.
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -20,6 +21,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  UserRole _role = UserRole.teacher;
   bool _obscure = true;
 
   @override
@@ -64,208 +66,320 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 900;
+
           final form = Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(wide ? Spacing.xxl : Spacing.lg),
+              padding: EdgeInsets.symmetric(
+                horizontal: wide ? Spacing.xxl : Spacing.lg,
+                vertical: Spacing.xl,
+              ),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: SurfaceCard(
-                  padding: const EdgeInsets.all(Spacing.xl),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: OseeTheme.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Logo & brand
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  OseeTheme.primary,
+                                  OseeTheme.primary.withValues(alpha: 0.8),
+                                ],
                               ),
-                              child: const Icon(
-                                Icons.school_rounded,
-                                color: OseeTheme.primary,
-                              ),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            const SizedBox(width: Spacing.sm),
-                            Text(
-                              'OSEE Prep Hub',
-                              style: Theme.of(context).textTheme.titleLarge,
+                            child: const Icon(
+                              Icons.school_rounded,
+                              color: Colors.white,
+                              size: 22,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: Spacing.xl),
-                        Text(
-                          'Sign in',
-                          style: GoogleFonts.inter(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            color: OseeTheme.textPrimary,
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Welcome back to OSEE Prep Hub.',
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            color: OseeTheme.textSecondary,
+                          const SizedBox(width: Spacing.sm),
+                          Text(
+                            'OSEE Prep Hub',
+                            style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: OseeTheme.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 32),
+                        ],
+                      ),
+                      const SizedBox(height: 36),
 
-                        // Email
-                        Text(
-                          'Email',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: OseeTheme.textSecondary,
-                          ),
+                      // Welcome text
+                      Text(
+                        'Welcome back',
+                        style: GoogleFonts.inter(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                          color: OseeTheme.textPrimary,
+                          height: 1.1,
+                          letterSpacing: -0.5,
                         ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _emailController,
-                          decoration: const InputDecoration(
-                            hintText: 'you@example.com',
-                            prefixIcon: Icon(Icons.email_outlined, size: 20),
-                          ),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (v) =>
-                              (v == null || v.isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Sign in to continue to your workspace.',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          color: OseeTheme.textSecondary,
+                          height: 1.4,
                         ),
-                        const SizedBox(height: 20),
+                      ),
+                      const SizedBox(height: 32),
 
-                        // Password
-                        Text(
-                          'Password',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: OseeTheme.textSecondary,
-                          ),
+                      // Role selector — mini cards
+                      Text(
+                        'I am a',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: OseeTheme.textSecondary,
+                          letterSpacing: 0.3,
                         ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _passwordController,
-                          decoration: InputDecoration(
-                            hintText: '••••••••',
-                            prefixIcon: const Icon(
-                              Icons.lock_outline,
-                              size: 20,
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscure
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                size: 20,
-                                color: OseeTheme.textMuted,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _obscure = !_obscure),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AuthRoleChip(
+                              icon: Icons.school_outlined,
+                              label: 'Student',
+                              description: 'Learn & practice',
+                              selected: _role == UserRole.student,
+                              onTap: () =>
+                                  setState(() => _role = UserRole.student),
                             ),
                           ),
-                          obscureText: _obscure,
-                          validator: (v) =>
-                              (v == null || v.isEmpty) ? 'Required' : null,
-                          onFieldSubmitted: (_) => _submit(),
-                        ),
-                        const SizedBox(height: 28),
+                          const SizedBox(width: Spacing.sm),
+                          Expanded(
+                            child: AuthRoleChip(
+                              icon: Icons.co_present_outlined,
+                              label: 'Teacher',
+                              description: 'Manage classes',
+                              selected: _role == UserRole.teacher,
+                              onTap: () =>
+                                  setState(() => _role = UserRole.teacher),
+                            ),
+                          ),
+                          const SizedBox(width: Spacing.sm),
+                          Expanded(
+                            child: AuthRoleChip(
+                              icon: Icons.business_outlined,
+                              label: 'Institution',
+                              description: 'Admin & analytics',
+                              selected: _role == UserRole.partner,
+                              onTap: () =>
+                                  setState(() => _role = UserRole.partner),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 28),
 
-                        // Submit
-                        SizedBox(
-                          height: 52,
-                          child: FilledButton(
-                            onPressed: ref.watch(authProvider).isLoading
-                                ? null
-                                : _submit,
-                            child: ref.watch(authProvider).isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : Text(
-                                    'Sign In',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                      // Email field
+                      Text(
+                        'Email',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: OseeTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          hintText: 'you@example.com',
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
+                            size: 20,
+                            color: OseeTheme.textMuted,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: OseeTheme.border,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: OseeTheme.border,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: OseeTheme.primary,
+                              width: 1.5,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        Center(
-                          child: TextButton(
-                            onPressed: () => context.go('/register'),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) =>
+                            (v == null || v.isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Password field
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Password',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: OseeTheme.textPrimary,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {},
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(0, 0),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                             child: Text(
-                              "Don't have an account? Create one",
+                              'Forgot password?',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: OseeTheme.primary.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _passwordController,
+                        decoration: InputDecoration(
+                          hintText: '••••••••',
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            size: 20,
+                            color: OseeTheme.textMuted,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              size: 20,
+                              color: OseeTheme.textMuted,
+                            ),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: OseeTheme.border,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: OseeTheme.border,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(
+                              color: OseeTheme.primary,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                        obscureText: _obscure,
+                        validator: (v) =>
+                            (v == null || v.isEmpty) ? 'Required' : null,
+                        onFieldSubmitted: (_) => _submit(),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Submit button
+                      SizedBox(
+                        height: 52,
+                        child: FilledButton(
+                          onPressed: ref.watch(authProvider).isLoading
+                              ? null
+                              : _submit,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: OseeTheme.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: ref.watch(authProvider).isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'Sign In',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Register link
+                      Center(
+                        child: TextButton(
+                          onPressed: () => context.go('/register'),
+                          child: RichText(
+                            text: TextSpan(
+                              text: "Don't have an account? ",
                               style: GoogleFonts.inter(
                                 fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w400,
+                                color: OseeTheme.textSecondary,
                               ),
+                              children: [
+                                TextSpan(
+                                  text: 'Create one',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: OseeTheme.primary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           );
 
-          final brandPanel = Container(
-            margin: const EdgeInsets.all(Spacing.lg),
-            padding: const EdgeInsets.all(Spacing.xl),
-            decoration: BoxDecoration(
-              color: OseeTheme.textPrimary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'OSEE',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(color: Colors.white),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Teaching operations, unified.',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.displayMedium?.copyWith(color: Colors.white),
-                    ),
-                    const SizedBox(height: Spacing.md),
-                    Text(
-                      'AI grading, classrooms, syllabus planning, orders, and student readiness in one professional workspace.',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
-                    ),
-                  ],
-                ),
-                Text(
-                  'Official ETS Test Center since 2014',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.white54),
-                ),
-              ],
-            ),
-          );
+          final brandPanel = AuthBrandPanel(role: _role);
 
           if (!wide) {
             return form;

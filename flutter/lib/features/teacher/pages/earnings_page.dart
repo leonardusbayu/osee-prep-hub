@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/api_client.dart';
 import '../../../app/theme.dart';
 import '../../../shared/widgets/ui_components.dart';
+import '../../../core/responsive.dart';
 
 /// Teacher Earnings/Commission dashboard page — Task 12.1.
 class EarningsPage extends StatefulWidget {
@@ -113,38 +114,26 @@ class _EarningsPageState extends State<EarningsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Earnings'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.payment),
-        label: const Text('Request Payout'),
-        onPressed: _requestPayout,
-      ),
-      body: _isLoading
-          ? const LoadingState()
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(Spacing.md),
-                children: [
-                  const PageHeader(
-                    title: 'Earnings',
-                    subtitle:
-                        'Track commission, pending balance, payout requests, and recent student-driven revenue.',
-                    icon: Icons.payments_rounded,
-                  ),
-                  const SizedBox(height: Spacing.lg),
+    return _isLoading
+        ? const LoadingState()
+        : _error != null
+        ? ErrorState(message: _error!, onRetry: _load)
+        : RefreshIndicator(
+            onRefresh: _load,
+            child: ListView(
+              padding: const EdgeInsets.all(Spacing.md),
+              children: [
+                const PageHeader(
+                  title: 'Earnings',
+                  subtitle:
+                      'Track commission, pending balance, payout requests, and recent student-driven revenue.',
+                  icon: Icons.payments_rounded,
+                ),
+                const SizedBox(height: Spacing.lg),
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
+                    crossAxisCount: Responsive.statGridColumns(context),
                     childAspectRatio: 1.5,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
@@ -234,9 +223,17 @@ class _EarningsPageState extends State<EarningsPage> {
                           ),
                         ),
                       ),
-                ],
-              ),
+                const SizedBox(height: Spacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _requestPayout,
+                    icon: const Icon(Icons.payment),
+                    label: const Text('Request Payout'),
+                  ),
+                ),
+              ],
             ),
-    );
+        );
   }
 }

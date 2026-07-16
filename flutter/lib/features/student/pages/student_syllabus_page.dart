@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
-import '../../../shared/widgets/ui_components.dart';
-import '../../../app/theme.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../student_theme.dart';
+import '../widgets/student_widgets.dart';
 
-/// Student syllabus page — blueprint line 1623.
+/// Student syllabus page — Modernized UI.
 /// Shows assigned syllabi + items with deep links to practice platforms.
-class StudentSyllabusPage extends StatefulWidget {
+class StudentSyllabusPage extends ConsumerStatefulWidget {
   const StudentSyllabusPage({super.key});
 
   @override
-  State<StudentSyllabusPage> createState() => _StudentSyllabusPageState();
+  ConsumerState<StudentSyllabusPage> createState() => _StudentSyllabusPageState();
 }
 
-class _StudentSyllabusPageState extends State<StudentSyllabusPage> {
+class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
   List<dynamic>? _syllabi;
   bool _isLoading = true;
   String? _error;
@@ -44,16 +46,28 @@ class _StudentSyllabusPageState extends State<StudentSyllabusPage> {
       if (deepLink != null && deepLink.isNotEmpty && mounted) {
         // Open deep link in new tab
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Opening: $deepLink'), action: SnackBarAction(label: 'Open', onPressed: () {})),
+          SnackBar(
+            backgroundColor: StudentTheme.primary,
+            content: Text('Opening: $deepLink', style: StudentTheme.cardLabel(Colors.white)),
+            action: SnackBarAction(label: 'Open', textColor: Colors.white, onPressed: () {}),
+          ),
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Started! No external link for this item.')),
+          SnackBar(
+            backgroundColor: StudentTheme.successGreen,
+            content: Text('Started! No external link for this item.', style: StudentTheme.cardLabel(Colors.white)),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: StudentTheme.danger,
+            content: Text('Failed: $e', style: StudentTheme.cardLabel(Colors.white)),
+          ),
+        );
       }
     }
   }
@@ -64,52 +78,106 @@ class _StudentSyllabusPageState extends State<StudentSyllabusPage> {
       await dio.post('/student/syllabus/$itemId/complete', data: {});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Completed! ✓')),
+          SnackBar(
+            backgroundColor: StudentTheme.successGreen,
+            content: Text('Completed! ✓', style: StudentTheme.cardLabel(Colors.white)),
+          ),
         );
       }
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: StudentTheme.danger,
+            content: Text('Failed: $e', style: StudentTheme.cardLabel(Colors.white)),
+          ),
+        );
       }
     }
   }
 
+  Future<void> _logout() async {
+    await ref.read(authProvider.notifier).logout();
+    if (!mounted) return;
+    context.go('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Syllabus'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load, tooltip: 'Refresh'),
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator(color: StudentTheme.primary))
+        : _error != null
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(_error!, style: StudentTheme.cardLabel(StudentTheme.textSecondary)),
+                    const SizedBox(height: StudentSpacing.lg),
+                    ElevatedButton(
+                      onPressed: _load,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
+            : _buildContent(isDesktop);
+  }
+
+  Widget _buildContent(bool isDesktop) {
+    final isEmpty = _syllabi?.isEmpty ?? true;
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: StudentTheme.primary,
+      child: ListView(
+        padding: const EdgeInsets.all(StudentSpacing.xl),
+        children: [
+          StudentTopBar(
+            name: 'Student',
+            subtitle: 'My Syllabus',
+            onMenuTap: isDesktop ? null : () => Scaffold.of(context).openDrawer(),
+          ),
+          const SizedBox(height: StudentSpacing.xxl),
+          
+          if (isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 64, horizontal: StudentSpacing.xl),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: StudentTheme.surface,
+                borderRadius: BorderRadius.circular(StudentTheme.radiusCard),
+                boxShadow: StudentTheme.cardShadow,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.view_kanban_outlined, size: 64, color: StudentTheme.textSecondary.withValues(alpha: 0.5)),
+                  const SizedBox(height: StudentSpacing.lg),
+                  Text('No syllabus assigned yet', style: StudentTheme.courseTitle()),
+                  const SizedBox(height: 8),
+                  Text('Ask your teacher to assign a syllabus to your classroom.', style: StudentTheme.cardLabel(), textAlign: TextAlign.center),
+                ],
+              ),
+            )
+          else ...[
+            const StudentSectionHeader(
+              title: 'Assigned Syllabi',
+              icon: Icons.assignment_rounded,
+            ),
+            const SizedBox(height: StudentSpacing.lg),
+            for (final sData in _syllabi!) ...[
+              _SyllabusCard(
+                syllabus: sData as Map<String, dynamic>,
+                onStart: _startItem,
+                onComplete: _completeItem,
+              ),
+              const SizedBox(height: StudentSpacing.md),
+            ],
+          ]
         ],
       ),
-      body: _isLoading
-          ? const LoadingState()
-          : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  color: OseeTheme.primary,
-                  child: (_syllabi?.isEmpty ?? true)
-                      ? ListView(children: [
-                          const SizedBox(height: 100),
-                          EmptyState(
-                            icon: Icons.view_kanban_outlined,
-                            title: 'No syllabus assigned yet',
-                            subtitle: 'Ask your teacher to assign a syllabus to your classroom.',
-                          ),
-                        ])
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(Spacing.md),
-                          itemCount: _syllabi!.length,
-                          itemBuilder: (ctx, i) => _SyllabusCard(
-                            syllabus: _syllabi![i] as Map<String, dynamic>,
-                            onStart: _startItem,
-                            onComplete: _completeItem,
-                          ),
-                        ),
-                ),
     );
   }
 }
@@ -124,44 +192,48 @@ class _SyllabusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = (syllabus['syllabus_items'] as List?) ?? [];
     return Container(
-      margin: const EdgeInsets.only(bottom: Spacing.md),
-      padding: const EdgeInsets.all(Spacing.md),
       decoration: BoxDecoration(
-        color: OseeTheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: StudentTheme.surface,
+        borderRadius: BorderRadius.circular(StudentTheme.radiusCard),
+        boxShadow: StudentTheme.cardShadow,
+        border: Border.all(color: StudentTheme.divider),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: OseeTheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.view_kanban_rounded, color: OseeTheme.primary, size: 20),
-              ),
-              const SizedBox(width: Spacing.sm + 2),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(syllabus['name'] as String? ?? '', style: Theme.of(context).textTheme.titleMedium),
-                    Text('${syllabus['target_exam'] ?? '—'} · ${items.length} items', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: OseeTheme.textSecondary)),
-                  ],
-                ),
-              ),
-            ],
+      child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: StudentTheme.primarySurface,
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(height: Spacing.sm),
-          for (final item in items)
-            _SyllabusItemTile(
-              item: item as Map<String, dynamic>,
-              onStart: () => onStart(item['id'] as String),
-              onComplete: () => onComplete(item['id'] as String),
+          child: const Icon(Icons.view_kanban_rounded, color: StudentTheme.primary, size: 28),
+        ),
+        title: Text(
+          syllabus['name'] as String? ?? '',
+          style: StudentTheme.courseTitle().copyWith(fontSize: 16),
+        ),
+        subtitle: Text(
+          '${syllabus['target_exam'] ?? '—'} · ${items.length} items',
+          style: StudentTheme.cardLabel(),
+        ),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(StudentSpacing.md),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: StudentTheme.divider)),
             ),
+            child: Column(
+              children: [
+                for (final item in items)
+                  _SyllabusItemTile(
+                    item: item as Map<String, dynamic>,
+                    onStart: () => onStart(item['id'] as String),
+                    onComplete: () => onComplete(item['id'] as String),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -179,17 +251,46 @@ class _SyllabusItemTile extends StatelessWidget {
     final type = item['item_type'] as String? ?? '';
     final icon = _typeIcon(type);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Spacing.xs + 2),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: OseeTheme.textSecondary),
-          const SizedBox(width: Spacing.sm + 2),
-          Expanded(
-            child: Text(item['title'] as String? ?? '', style: Theme.of(context).textTheme.bodyMedium),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: StudentTheme.background,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: StudentTheme.divider),
+            ),
+            child: Icon(icon, size: 16, color: StudentTheme.textSecondary),
           ),
-          TextButton(onPressed: onStart, child: const Text('Start')),
-          const SizedBox(width: Spacing.xs),
-          OutlinedButton(onPressed: onComplete, child: const Text('Done')),
+          const SizedBox(width: StudentSpacing.md),
+          Expanded(
+            child: Text(
+              item['title'] as String? ?? '',
+              style: StudentTheme.noticeTitle().copyWith(fontWeight: FontWeight.normal),
+            ),
+          ),
+          const SizedBox(width: StudentSpacing.sm),
+          TextButton(
+            onPressed: onStart,
+            style: TextButton.styleFrom(
+              foregroundColor: StudentTheme.primary,
+              textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            child: const Text('Start'),
+          ),
+          const SizedBox(width: 4),
+          OutlinedButton(
+            onPressed: onComplete,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: StudentTheme.textSecondary,
+              side: const BorderSide(color: StudentTheme.divider),
+              textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            child: const Text('Done'),
+          ),
         ],
       ),
     );

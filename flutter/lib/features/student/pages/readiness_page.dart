@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/api_client.dart';
-import '../../../app/theme.dart';
-import '../../../shared/widgets/ui_components.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../student_theme.dart';
+import '../widgets/student_widgets.dart';
 
-/// Readiness gauge page — Task 11.4.
-class ReadinessPage extends StatefulWidget {
+/// Readiness gauge page — Modernized UI.
+class ReadinessPage extends ConsumerStatefulWidget {
   const ReadinessPage({super.key});
 
   @override
-  State<ReadinessPage> createState() => _ReadinessPageState();
+  ConsumerState<ReadinessPage> createState() => _ReadinessPageState();
 }
 
-class _ReadinessPageState extends State<ReadinessPage> {
+class _ReadinessPageState extends ConsumerState<ReadinessPage> {
   Map<String, dynamic>? _data;
   bool _isLoading = true;
   String? _error;
@@ -43,24 +46,36 @@ class _ReadinessPageState extends State<ReadinessPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Readiness'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-        ],
-      ),
-      body: _isLoading
-          ? const LoadingState()
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : _buildContent(_data ?? {}),
-    );
+  Future<void> _logout() async {
+    await ref.read(authProvider.notifier).logout();
+    if (!mounted) return;
+    context.go('/login');
   }
 
-  Widget _buildContent(Map<String, dynamic> d) {
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator(color: StudentTheme.primary))
+        : _error != null
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(_error!, style: StudentTheme.cardLabel(StudentTheme.textSecondary)),
+                    const SizedBox(height: StudentSpacing.lg),
+                    ElevatedButton(
+                      onPressed: _load,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
+            : _buildContent(isDesktop);
+  }
+
+  Widget _buildContent(bool isDesktop) {
+    final d = _data ?? {};
     final pct = (d['readiness_pct'] as num?) ?? 0;
     final status = d['readiness_status'] as String? ?? 'preparing';
     final predicted = d['predicted_score'];
@@ -70,10 +85,11 @@ class _ReadinessPageState extends State<ReadinessPage> {
     final recommendations = (d['recommendations'] as List?) ?? [];
 
     final color = pct >= 80
-        ? OseeTheme.success
+        ? StudentTheme.successGreen
         : pct >= 60
-        ? OseeTheme.warning
-        : OseeTheme.danger;
+        ? StudentTheme.warningOrange
+        : StudentTheme.danger;
+        
     final statusLabel = status == 'ready'
         ? 'READY'
         : status == 'almost_ready'
@@ -81,111 +97,140 @@ class _ReadinessPageState extends State<ReadinessPage> {
         : 'PREPARING';
 
     return ListView(
-      padding: const EdgeInsets.all(Spacing.md),
+      padding: const EdgeInsets.all(StudentSpacing.xl),
       children: [
-        const PageHeader(
-          title: 'Readiness',
-          subtitle:
-              'Estimate whether your latest progress is close to your official test target.',
-          icon: Icons.verified_rounded,
+        StudentTopBar(
+          name: 'Student',
+          subtitle: 'Readiness',
+          onMenuTap: isDesktop ? null : () => Scaffold.of(context).openDrawer(),
         ),
-        const SizedBox(height: Spacing.lg),
-        SurfaceCard(
-          child: Padding(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                Text(
-                  'Readiness Gauge',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: Spacing.md),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 180,
-                      height: 180,
-                      child: CircularProgressIndicator(
-                        value: pct / 100,
-                        strokeWidth: 14,
-                        color: color,
-                        backgroundColor: Colors.grey.shade200,
+        const SizedBox(height: StudentSpacing.xxl),
+        
+        Container(
+          padding: const EdgeInsets.all(StudentSpacing.xxl),
+          decoration: BoxDecoration(
+            color: StudentTheme.surface,
+            borderRadius: BorderRadius.circular(StudentTheme.radiusCard),
+            boxShadow: StudentTheme.cardShadow,
+            border: Border.all(color: StudentTheme.divider),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'Readiness Gauge',
+                style: StudentTheme.sectionTitle(),
+              ),
+              const SizedBox(height: StudentSpacing.xl),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 200,
+                    height: 200,
+                    child: CircularProgressIndicator(
+                      value: pct / 100,
+                      strokeWidth: 16,
+                      color: color,
+                      backgroundColor: StudentTheme.divider,
+                      strokeCap: StrokeCap.round,
+                    ),
+                  ),
+                  Column(
+                    children: [
+                      Text(
+                        '$pct%',
+                        style: TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          fontFamily: 'Inter',
+                        ),
                       ),
-                    ),
-                    Column(
-                      children: [
-                        Text(
-                          '$pct%',
-                          style: Theme.of(context).textTheme.displaySmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: color,
-                              ),
+                      Text(
+                        statusLabel,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                          letterSpacing: 1.2,
+                          fontFamily: 'Inter',
                         ),
-                        Text(
-                          statusLabel,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: color,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: StudentSpacing.xxl),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _info('Target', '$targetExam · ${targetScore ?? '—'}'),
+                  if (predicted != null)
+                    _info('Predicted', predicted.toString()),
+                  if (weeks != null)
+                    _info('Weeks to target', weeks.toString()),
+                ],
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: StudentSpacing.xxl),
+        const StudentSectionHeader(
+          title: 'Recommendations',
+          icon: Icons.lightbulb_outline_rounded,
+        ),
+        const SizedBox(height: StudentSpacing.lg),
+        
+        if (recommendations.isNotEmpty)
+          DailyNoticePanel(
+            items: recommendations.map((r) => NoticeItem(
+              title: 'Recommendation',
+              body: r.toString(),
+              icon: Icons.tips_and_updates_rounded,
+            )).toList(),
+          ),
+          
+        if (pct >= 80) ...[
+          const SizedBox(height: StudentSpacing.lg),
+          Container(
+            padding: const EdgeInsets.all(StudentSpacing.lg),
+            decoration: BoxDecoration(
+              color: StudentTheme.successGreen.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(StudentTheme.radiusCard),
+              border: Border.all(color: StudentTheme.successGreen.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: StudentTheme.successGreen.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.verified_rounded, color: StudentTheme.successGreen, size: 28),
                 ),
-                const SizedBox(height: Spacing.md),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _info('Target', '$targetExam · ${targetScore ?? '—'}'),
-                    if (predicted != null)
-                      _info('Predicted', predicted.toString()),
-                    if (weeks != null)
-                      _info('Weeks to target', weeks.toString()),
-                  ],
+                const SizedBox(width: StudentSpacing.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('You are ready!', style: StudentTheme.courseTitle()),
+                      const SizedBox(height: 4),
+                      Text('Book your official test at osee.co.id', style: StudentTheme.cardLabel()),
+                    ],
+                  ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.open_in_new_rounded, color: StudentTheme.successGreen),
+                  onPressed: () {
+                    // Link to book test
+                  },
+                )
               ],
             ),
           ),
-        ),
-        const SizedBox(height: Spacing.lg),
-        const SectionHeader(title: 'Recommendations'),
-        for (final r in recommendations)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Spacing.sm),
-            child: SurfaceCard(
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(
-                  Icons.lightbulb_outline_rounded,
-                  color: OseeTheme.warning,
-                ),
-                title: Text(r.toString()),
-              ),
-            ),
-          ),
-        const SizedBox(height: Spacing.lg),
-        if (pct >= 80)
-          SurfaceCard(
-            color: OseeTheme.success.withValues(alpha: 0.08),
-            borderColor: OseeTheme.success.withValues(alpha: 0.2),
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(
-                Icons.verified_rounded,
-                color: OseeTheme.success,
-                size: 32,
-              ),
-              title: const Text('You are ready!'),
-              subtitle: const Text('Book your official test at osee.co.id'),
-              trailing: const Icon(Icons.open_in_new),
-              onTap: () {
-                // Open osee.co.id — link via the book-test endpoint
-              },
-            ),
-          ),
+        ],
       ],
     );
   }
@@ -195,14 +240,12 @@ class _ReadinessPageState extends State<ReadinessPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: OseeTheme.textSecondary),
+          style: StudentTheme.cardLabel(),
         ),
+        const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: OseeTheme.textPrimary,
-          ),
+          style: StudentTheme.cardValue().copyWith(fontSize: 18),
         ),
       ],
     );

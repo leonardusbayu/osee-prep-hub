@@ -84,20 +84,13 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Student Reports'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-        ],
-      ),
-      body: _isLoading
-          ? const LoadingState()
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
+    return _isLoading
+        ? const LoadingState()
+        : _error != null
+        ? ErrorState(message: _error!, onRetry: _load)
+        : RefreshIndicator(
+            onRefresh: _load,
+            child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
                   if (_classrooms?.isEmpty ?? true)
@@ -140,8 +133,7 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
                         ),
                       ),
                 ],
-              ),
             ),
-    );
+        );
   }
 }

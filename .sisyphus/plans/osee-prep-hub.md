@@ -1063,7 +1063,7 @@ Max Concurrent: 9 (Wave 1)
     Steps:
       1. cd frontend-admin && npm run dev
       2. Wait 3 seconds
-      3. Run: curl http://localhost:5173
+      3. Run: curl http://localhost:5174
       4. Assert: HTML response containing "OSEE" or "admin"
     Expected Result: Admin dev server serves the app
     Evidence: .sisyphus/evidence/task-1.9-admin-dev.txt

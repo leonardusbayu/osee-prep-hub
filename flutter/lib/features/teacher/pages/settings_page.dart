@@ -128,18 +128,11 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final tier =
         (_data?['tier'] as Map<String, dynamic>?)?['tier'] as String? ?? 'free';
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-        ],
-      ),
-      body: _isLoading
-          ? const LoadingState()
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : ListView(
+    return _isLoading
+        ? const LoadingState()
+        : _error != null
+        ? ErrorState(message: _error!, onRetry: _load)
+        : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 Card(
@@ -235,7 +228,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: const Text('Save Branding'),
                 ),
               ],
-            ),
-    );
+            );
   }
 }
