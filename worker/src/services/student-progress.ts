@@ -70,6 +70,22 @@ export async function updateStudentProgress(env: Env, input: ProgressUpdateInput
   const currentCount = await getCount(supabase, input.user_id, countColumn);
   update[countColumn] = currentCount + 1;
 
+  // For edubot, also update xp/questions/last_active/streak/accuracy (Goal 6).
+  if (input.platform === 'edubot') {
+    const { data: existingEdu } = await supabase
+      .from('student_progress_unified')
+      .select('edubot_xp, edubot_questions_answered, edubot_streak_days, edubot_accuracy_rate')
+      .eq('student_id', input.user_id)
+      .maybeSingle();
+    const e = (existingEdu as Record<string, unknown> | null) ?? {};
+    update['edubot_xp'] = (e.edubot_xp as number ?? 0) + (score ?? 10);
+    update['edubot_questions_answered'] = (e.edubot_questions_answered as number ?? 0) + 1;
+    update['edubot_last_active'] = now;
+    // Streak + accuracy may be present in the webhook payload metadata.
+    if (input.payload.streak_days !== undefined) update['edubot_streak_days'] = input.payload.streak_days;
+    if (input.payload.accuracy_rate !== undefined) update['edubot_accuracy_rate'] = input.payload.accuracy_rate;
+  }
+
   // Try upsert
   const { error } = await supabase
     .from('student_progress_unified')

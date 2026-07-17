@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/ui_components.dart';
@@ -62,7 +63,7 @@ class _AmbassadorDashboardPageState
               final url =
                   'https://osee-prep-hub-worker.edubot-leonardus.workers.dev'
                   '/api/ambassador/proposal';
-              Clipboard.setData(ClipboardData(text: url));
+              launchUrl(Uri.parse(url));
               showDialog(
                 context: context,
                 builder: (ctx) => AlertDialog(
@@ -74,7 +75,9 @@ class _AmbassadorDashboardPageState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Open this URL in your browser (logged in) to view/print/share the proposal:',
+                          'The proposal opened in a new tab. If it didn\'t '
+                          'open, copy the URL below and paste it in a browser '
+                          'where you\'re logged in:',
                         ),
                         const SizedBox(height: 8),
                         SelectableText(
@@ -91,7 +94,7 @@ class _AmbassadorDashboardPageState
                     TextButton(
                       onPressed: () =>
                           Clipboard.setData(ClipboardData(text: url)),
-                      child: const Text('Copy'),
+                      child: const Text('Copy URL'),
                     ),
                     FilledButton(
                       onPressed: () => Navigator.pop(ctx),

@@ -140,9 +140,14 @@ class _PartnerDashboardPageState extends ConsumerState<PartnerDashboardPage> {
               onPressed: _inviteTeacherDialog,
             ),
             ActionChip(
+              avatar: const Icon(Icons.payments, size: 18),
+              label: const Text('Commission'),
+              onPressed: () => context.push('/partner/commission'),
+            ),
+            ActionChip(
               avatar: const Icon(Icons.shopping_cart, size: 18),
               label: const Text('Order Tests'),
-              onPressed: () => context.push('/teacher/orders'),
+              onPressed: () => context.go('/partner/orders'),
             ),
           ],
         ),

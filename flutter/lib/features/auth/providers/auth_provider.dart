@@ -35,6 +35,7 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(const AuthState()) {
     _restoreFromStorage();
+    _verifyOnStartup();
   }
 
   /// Restore auth state from localStorage on app start / page refresh.
@@ -52,6 +53,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
         AuthStorage.clear();
       }
     }
+  }
+
+  /// Validate the restored token against the server on startup so a stale /
+  /// expired JWT isn't trusted unconditionally. If verification fails the
+  /// state is cleared and the router redirect guard sends the user to /login.
+  /// Fire-and-forget — runs in the background; UI shows the dashboard until
+  /// verification completes, then redirects if the token turned out invalid.
+  void _verifyOnStartup() {
+    if (state.token == null) return;
+    verify().then((valid) {
+      if (!valid) {
+        // verify() already cleared state + storage; re-arm the 401 callback
+        // so subsequent failures (e.g. on the login page) are still handled.
+        ApiClient.onUnauthorized = handleUnauthorized;
+      }
+    });
+  }
+
+  /// Called by ApiClient when any Dio response returns 401. Clears the stale
+  /// token + storage and re-arms the callback so the next 401 (post-relogin)
+  /// is handled again. The router redirect guard routes to /login on the
+  /// next navigation because isAuthenticated flips to false.
+  void handleUnauthorized() {
+    ApiClient.currentToken = null;
+    AuthStorage.clear();
+    state = const AuthState();
+    ApiClient.onUnauthorized = handleUnauthorized;
   }
 
   @override
@@ -119,6 +147,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (_) {}
     AuthStorage.clear();
     state = const AuthState();
+    // Re-arm so a future 401 (after re-login) is still handled.
+    ApiClient.onUnauthorized = handleUnauthorized;
   }
 
   Future<bool> verify() async {

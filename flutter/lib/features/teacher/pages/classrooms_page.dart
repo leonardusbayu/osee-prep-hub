@@ -48,6 +48,7 @@ class _ClassroomsPageState extends State<ClassroomsPage> {
     final nameController = TextEditingController();
     final examController = TextEditingController(text: 'TOEFL_IBT');
     final descController = TextEditingController();
+    bool isPrivate = false;
 
     final result = await showDialog<bool>(
       context: context,
@@ -81,6 +82,18 @@ class _ClassroomsPageState extends State<ClassroomsPage> {
               ),
               maxLines: 2,
             ),
+            const SizedBox(height: 12),
+            StatefulBuilder(
+              builder: (ctx, setState) => CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Private lesson (1-on-1)'),
+                subtitle: const Text(
+                  'Max 1 student. Use for private tutoring (les).',
+                ),
+                value: isPrivate,
+                onChanged: (v) => setState(() => isPrivate = v ?? false),
+              ),
+            ),
           ],
         ),
         actions: [
@@ -106,6 +119,7 @@ class _ClassroomsPageState extends State<ClassroomsPage> {
           'name': nameController.text.trim(),
           'target_exam': examController.text,
           'description': descController.text.trim(),
+          'is_private': isPrivate,
         },
       );
       _load();
@@ -186,9 +200,7 @@ class _ClassroomsPageState extends State<ClassroomsPage> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: OseeTheme.primary.withValues(
-                                  alpha: 0.1,
-                                ),
+                                color: OseeTheme.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Icon(

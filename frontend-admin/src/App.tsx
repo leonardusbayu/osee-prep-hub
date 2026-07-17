@@ -2,8 +2,9 @@ import { Routes, Route, NavLink } from 'react-router-dom';
 import { FormEvent, useEffect, useState } from 'react';
 import { Dashboard } from './pages/Dashboard';
 import { Users } from './pages/Users';
-import { Content } from './pages/Content';
+import { KnowledgeBase } from './pages/KnowledgeBase';
 import { Commission } from './pages/Commission';
+import { Orders } from './pages/Orders';
 import { Analytics } from './pages/Analytics';
 import { Pricing } from './pages/Pricing';
 import { Ambassadors } from './pages/Ambassadors';
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/pricing', label: 'Pricing' },
   { to: '/content', label: 'Knowledge Base' },
   { to: '/commission', label: 'Commission' },
+  { to: '/orders', label: 'Orders' },
   { to: '/ambassadors', label: 'Ambassadors' },
   { to: '/analytics', label: 'Analytics' },
 ];
@@ -26,6 +28,7 @@ const navItems = [
 export function App() {
   const [isAuthed, setIsAuthed] = useState(() => Boolean(localStorage.getItem('osee_admin_token')));
   const [authChecked, setAuthChecked] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Register global 401 handler — clear token + redirect to login
   useEffect(() => {
@@ -65,26 +68,45 @@ export function App() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen ? (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      ) : null}
       {/* Sidebar */}
-      <aside className="flex w-64 flex-shrink-0 flex-col bg-osee-900 text-white">
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-shrink-0 flex-col bg-osee-900 text-white transition-transform lg:static lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between p-5">
           <div>
             <h1 className="text-xl font-extrabold tracking-tight">OSEE</h1>
             <p className="text-xs text-osee-400">Admin Panel</p>
           </div>
-          <button
-            type="button"
-            className="rounded-lg bg-white/10 p-2 text-xs text-white transition-colors hover:bg-white/20"
-            onClick={() => {
-              adminLogout();
-              setIsAuthed(false);
-            }}
-            title="Logout"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="rounded-lg bg-white/10 p-2 text-xs text-white transition-colors hover:bg-white/20 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+              title="Close menu"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-white/10 p-2 text-xs text-white transition-colors hover:bg-white/20"
+              onClick={() => {
+                adminLogout();
+                setIsAuthed(false);
+              }}
+              title="Logout"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          </div>
         </div>
         <nav className="flex-1 space-y-0.5 px-3">
           {navItems.map((item) => (
@@ -92,6 +114,7 @@ export function App() {
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `block rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                   isActive
@@ -110,15 +133,30 @@ export function App() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-x-auto p-6">
+      <main className="flex-1 overflow-x-auto p-4 lg:p-6">
+        {/* Mobile top bar with menu toggle */}
+        <div className="mb-4 flex items-center gap-3 lg:hidden">
+          <button
+            type="button"
+            className="rounded-lg bg-osee-900 p-2 text-white"
+            onClick={() => setSidebarOpen(true)}
+            title="Open menu"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span className="text-lg font-bold text-osee-900">OSEE Admin</span>
+        </div>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
           <Route path="/teachers" element={<Teachers />} />
           <Route path="/students" element={<Students />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/content" element={<Content />} />
+          <Route path="/content" element={<KnowledgeBase />} />
           <Route path="/commission" element={<Commission />} />
+          <Route path="/orders" element={<Orders />} />
           <Route path="/ambassadors" element={<Ambassadors />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="*" element={<NotFound />} />

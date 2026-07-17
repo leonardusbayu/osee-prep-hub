@@ -17,8 +17,9 @@ export const aiRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
 aiRoutes.use('*', requireAuth());
 
-/** POST /api/ai/rag-search — vector search over knowledge base */
-aiRoutes.post('/rag-search', async (c) => {
+/** POST /api/ai/rag/search — vector search over knowledge base (Blueprint line 1376).
+ *  Alias at /rag-search kept for backward compatibility. */
+async function handleRagSearch(c: import('hono').Context<{ Bindings: Env; Variables: ContextVars }>): Promise<Response> {
   const user = getAuthedUser(c);
   let body: { query?: string; match_count?: number; filter?: Record<string, unknown> };
   try { body = await c.req.json(); } catch {
@@ -37,7 +38,10 @@ aiRoutes.post('/rag-search', async (c) => {
     const message = err instanceof Error ? err.message : 'Search failed';
     return c.json({ error: { code: 'SEARCH_FAILED', message } }, 500);
   }
-});
+}
+
+aiRoutes.post('/rag/search', handleRagSearch);
+aiRoutes.post('/rag-search', handleRagSearch); // backward-compat alias
 
 /** POST /api/ai/grade-writing — create grading queue entry (async) */
 aiRoutes.post('/grade-writing', async (c) => {
@@ -61,8 +65,9 @@ aiRoutes.post('/grade-writing', async (c) => {
     const entryId = await createGradingEntry(c.env, user.id, 'writing', {
       essay: body.essay, rubric: body.rubric, examType: body.examType, level: body.level,
     });
-    // Process immediately (in production, this would be a background job)
-    // For now, we process inline so the user gets the result right away
+    // Process inline for low latency (the OpenAI grading call is fast enough
+    // to await). On failure the entry stays 'processing' and the cron worker
+    // retries it — the client gets a 202 + can poll /grading/:id.
     try {
       await processGradingEntry(c.env, entryId);
       const entry = await getGradingEntry(c.env, user.id, entryId);

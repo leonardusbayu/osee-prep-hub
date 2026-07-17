@@ -20,9 +20,6 @@ dependencies:
   # HTTP client
   dio: ^5.5.0
 
-  # Model codegen
-  json_annotation: ^4.9.0
-
   # Typography
   google_fonts: ^6.2.1
   dio_web_adapter: ^2.2.0
@@ -30,15 +27,12 @@ dependencies:
   voo_kanban: ^0.0.3
   url_launcher: ^6.3.2
   intl: ^0.20.2
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-
-  # Model codegen
-  build_runner: ^2.4.11
-  json_serializable: ^6.8.0
 
 dependency_overrides:
   voo_responsive:

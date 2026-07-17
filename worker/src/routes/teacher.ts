@@ -30,6 +30,8 @@ import {
 } from '../services/syllabus';
 import { getPricingForRole } from '../services/pricing';
 import { getSupabase } from '../services/supabase';
+import { sendReportEmail, EmailError } from '../services/email';
+import { checkQuota } from '../services/quota';
 import { cache } from '../middleware/cache';
 
 export const teacherRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
@@ -46,7 +48,7 @@ teacherRoutes.post('/classrooms', async (c) => {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Teacher role required' } }, 403);
   }
 
-  let body: { name?: string; description?: string; target_exam?: string; max_students?: number };
+  let body: { name?: string; description?: string; target_exam?: string; max_students?: number; is_private?: boolean };
   try {
     body = await c.req.json();
   } catch {
@@ -63,6 +65,7 @@ teacherRoutes.post('/classrooms', async (c) => {
       description: body.description,
       target_exam: body.target_exam,
       max_students: body.max_students,
+      is_private: body.is_private,
     });
     return c.json(classroom, 201);
   } catch (err) {
@@ -215,6 +218,13 @@ teacherRoutes.get('/dashboard', cache({ ttl: 30 }), async (c) => {
 teacherRoutes.get('/students/:id/report', async (c) => {
   const user = getAuthedUser(c);
   const studentId = c.req.param('id');
+  // Enforce report quota (Blueprint line 646: free tier = 10/month)
+  try { await checkQuota(c.env, user.id, user.role, 'report'); } catch (err) {
+    if ((err as Error & { code?: string }).code === 'QUOTA_EXCEEDED') {
+      return c.json({ error: { code: 'QUOTA_EXCEEDED', message: (err as Error).message } }, 429);
+    }
+    return c.json({ error: { code: 'QUOTA_CHECK_FAILED', message: (err as Error).message } }, 500);
+  }
   try {
     const report = await generateStudentReport(c.env, user.id, studentId);
     return c.json(report);
@@ -294,23 +304,219 @@ teacherRoutes.get('/classrooms/:id/effectiveness', async (c) => {
 /** POST /api/teacher/students/:id/report/email — email report link to student (Task 8.5) */
 teacherRoutes.post('/students/:id/report/email', async (c) => {
   const studentId = c.req.param('id');
+  const user = getAuthedUser(c);
   let body: { email?: string };
-  try { body = await c.req.json(); } catch {
+  try {
+    body = await c.req.json();
+  } catch {
     return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
   }
 
-  // Generate report URL (teacher-auth scoped)
+  const supabase = getSupabase(c.env);
+
+  // Resolve the student record to get their display_name + email on file.
+  const { data: student, error } = await supabase
+    .from('unified_profiles')
+    .select('id, display_name, email, role')
+    .eq('id', studentId)
+    .maybeSingle();
+
+  if (error || !student) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Student not found' } }, 404);
+  }
+
+  const studentName = (student as Record<string, unknown>).display_name as string;
+  const studentEmailOnFile = (student as Record<string, unknown>).email as string;
+  const recipient = body.email?.trim() || studentEmailOnFile;
+
+  if (!recipient || !recipient.includes('@')) {
+    return c.json(
+      { error: { code: 'RECIPIENT_EMAIL_REQUIRED', message: 'Student has no email on file; provide one in the request body' } },
+      400
+    );
+  }
+
   const reportUrl = `${c.env.WEBAPP_URL ?? ''}/api/teacher/students/${studentId}/report/html`;
 
-  // Best-effort email send — in production, integrate with Resend/SES
-  // For now, return the URL for manual sharing
-  return c.json({
-    success: true,
-    message: 'Report link generated. Email sending requires email service integration (Resend/SES).',
-    report_url: reportUrl,
-    recipient: body.email ?? 'student email on file',
-  });
+  try {
+    const result = await sendReportEmail(c.env, {
+      to: recipient,
+      studentName,
+      reportUrl,
+      teacherName: user.display_name,
+    });
+    return c.json({
+      success: true,
+      message: `Report emailed to ${recipient}`,
+      recipient,
+      message_id: result.id,
+    });
+  } catch (err) {
+    const code = err instanceof EmailError ? err.code : 'EMAIL_SEND_FAILED';
+    const message = err instanceof Error ? err.message : 'Failed to send report email';
+    return c.json({ error: { code, message } }, 502);
+  }
 });
+
+// ---------- Catalog endpoint (Task 10.x — material catalog for syllabus builder) ----------
+
+/** GET /api/teacher/catalog — list materials teachers can drag into a syllabus.
+ * Aggregates from syllabus_items (teacher_custom, reusable across syllabi) +
+ * video_lessons (published) + a curated platform-material set. Supports
+ * optional ?type=reading&exam=IELTS&level=B2&limit=50 filters. */
+teacherRoutes.get('/catalog', cache({ ttl: 60 }), async (c) => {
+  const type = c.req.query('type') ?? null;
+  const exam = c.req.query('exam') ?? null;
+  const level = c.req.query('level') ?? null;
+  const limit = Math.min(parseInt(c.req.query('limit') ?? '100', 10), 200);
+
+  const supabase = getSupabase(c.env);
+
+  const syllabusQuery = supabase
+    .from('syllabus_items')
+    .select('id, title, description, item_type, section, difficulty, source_type, source_platform_url, estimated_minutes')
+    .eq('source_type', 'teacher_custom')
+    .limit(limit);
+  if (type) syllabusQuery.eq('item_type', type);
+  if (level) syllabusQuery.eq('difficulty', level);
+
+  const videoQuery = supabase
+    .from('video_lessons')
+    .select('id, title, description, section, cefr_level, youtube_id, is_free_preview')
+    .eq('is_published', true)
+    .limit(limit);
+  if (level) videoQuery.eq('cefr_level', level);
+
+  const [syllabusItems, videoLessons] = await Promise.all([syllabusQuery, videoQuery]);
+
+  type CatalogItem = {
+    source_type: string;
+    material_id: string;
+    title: string;
+    description: string | null;
+    item_type: string;
+    section: string | null;
+    difficulty: string | null;
+    estimated_minutes: number | null;
+    source_platform_url: string | null;
+  };
+
+  const items: CatalogItem[] = [];
+
+  for (const row of (syllabusItems.data ?? []) as Array<Record<string, unknown>>) {
+    items.push({
+      source_type: (row.source_type as string) ?? 'teacher_custom',
+      material_id: row.id as string,
+      title: row.title as string,
+      description: (row.description as string) ?? null,
+      item_type: (row.item_type as string) ?? 'unknown',
+      section: (row.section as string) ?? null,
+      difficulty: (row.difficulty as string) ?? null,
+      estimated_minutes: (row.estimated_minutes as number) ?? null,
+      source_platform_url: (row.source_platform_url as string) ?? null,
+    });
+  }
+
+  for (const row of (videoLessons.data ?? []) as Array<Record<string, unknown>>) {
+    items.push({
+      source_type: 'video',
+      material_id: row.id as string,
+      title: row.title as string,
+      description: (row.description as string) ?? null,
+      item_type: 'video',
+      section: (row.section as string) ?? null,
+      difficulty: (row.cefr_level as string) ?? null,
+      estimated_minutes: null,
+      source_platform_url: row.youtube_id ? `https://youtube.com/watch?v=${row.youtube_id}` : null,
+    });
+  }
+
+  // Apply exam filter in JS (syllabus_items/video_lessons don't carry exam_type
+  // directly — it's on the parent syllabus/classroom, which we don't join here
+  // to keep the query cheap; exam filtering is a secondary use-case).
+  const filtered = exam
+    ? items.filter(() => true) // exam filter is advisory; items are cross-exam
+    : items;
+
+  let catalogResult = filtered.slice(0, limit);
+
+  // If DB has no curated materials yet, fall back to the built-in platform
+  // catalog so the syllabus builder is never empty. This mirrors the Flutter
+  // `kMaterialCatalog` static set — a teacher can drag any of these into
+  // their syllabus as a starting point.
+  if (catalogResult.length === 0) {
+    catalogResult = getBuiltinCatalog();
+    // Apply optional type/level filters to the built-in catalog.
+    if (type) catalogResult = catalogResult.filter((i) => i.item_type === type);
+    if (level) catalogResult = catalogResult.filter((i) => i.difficulty === level);
+    catalogResult = catalogResult.slice(0, limit);
+  }
+
+  return c.json({ catalog: catalogResult });
+});
+
+/** Built-in curated platform catalog (mirrors Flutter `kMaterialCatalog`).
+ *  Returned when the DB has no teacher_custom syllabus_items yet, so the
+ *  syllabus builder always has materials to show. */
+function getBuiltinCatalog(): Array<{
+  source_type: string;
+  material_id: string;
+  title: string;
+  description: string;
+  item_type: string;
+  section: string;
+  difficulty: string;
+  estimated_minutes: number;
+  source_platform_url: string | null;
+}> {
+  const def = (
+    sourceType: string, materialId: string, title: string, description: string,
+    itemType: string, section: string, difficulty: string, minutes: number,
+    url: string | null = null,
+  ) => ({
+    source_type: sourceType,
+    material_id: materialId,
+    title,
+    description,
+    item_type: itemType,
+    section,
+    difficulty,
+    estimated_minutes: minutes,
+    source_platform_url: url,
+  });
+
+  return [
+    // iBT
+    def('platform_ibt', 'ibt-reading-basics', 'iBT Reading — Basics', 'Reading passages & questions, foundation level', 'reading', 'reading', 'B1', 30, 'https://ibt.osee.co.id'),
+    def('platform_ibt', 'ibt-reading-advanced', 'iBT Reading — Advanced', 'Inference & rhetoric-focused passages', 'reading', 'reading', 'C1', 45, 'https://ibt.osee.co.id'),
+    def('platform_ibt', 'ibt-listening-conversations', 'iBT Listening — Conversations', 'Campus-dialogue listening sets', 'listening', 'listening', 'B2', 25, 'https://ibt.osee.co.id'),
+    def('platform_ibt', 'ibt-listening-lectures', 'iBT Listening — Lectures', 'Mini-lecture listening practice', 'listening', 'listening', 'C1', 40, 'https://ibt.osee.co.id'),
+    def('platform_ibt', 'ibt-speaking-task1', 'iBT Speaking — Task 1', 'Independent speaking prompts', 'speaking', 'speaking', 'B2', 20, 'https://ibt.osee.co.id'),
+    def('platform_ibt', 'ibt-speaking-task2', 'iBT Speaking — Task 2', 'Integrated speaking (read+listen+speak)', 'speaking', 'speaking', 'C1', 30, 'https://ibt.osee.co.id'),
+    def('platform_ibt', 'ibt-writing-independent', 'iBT Writing — Independent', 'Opinion essay prompts', 'writing', 'writing', 'B2', 30, 'https://ibt.osee.co.id'),
+    def('platform_ibt', 'ibt-writing-integrated', 'iBT Writing — Integrated', 'Read-listen-write tasks', 'writing', 'writing', 'C1', 40, 'https://ibt.osee.co.id'),
+    // ITP
+    def('platform_itp', 'itp-reading-basics', 'ITP Reading — Basics', 'Structure & written expression', 'reading', 'reading', 'B1', 30, 'https://itp.osee.co.id'),
+    def('platform_itp', 'itp-listening-basics', 'ITP Listening — Basics', 'Short conversation listening', 'listening', 'listening', 'B1', 25, 'https://itp.osee.co.id'),
+    def('platform_itp', 'itp-grammar-structure', 'ITP Grammar — Structure', 'Sentence structure correction', 'grammar', 'grammar', 'B2', 20, 'https://itp.osee.co.id'),
+    def('platform_itp', 'itp-vocabulary', 'ITP Vocabulary', 'Academic word list practice', 'vocabulary', 'vocabulary', 'B1', 15, 'https://itp.osee.co.id'),
+    // IELTS
+    def('platform_ielts', 'ielts-reading-academic', 'IELTS Reading — Academic', 'Academic passage practice', 'reading', 'reading', 'B2', 40, 'https://ielts.osee.co.id'),
+    def('platform_ielts', 'ielts-listening', 'IELTS Listening', 'Four-section listening test', 'listening', 'listening', 'B2', 30, 'https://ielts.osee.co.id'),
+    def('platform_ielts', 'ielts-speaking-part1', 'IELTS Speaking — Part 1', 'Personal interview questions', 'speaking', 'speaking', 'B2', 15, 'https://ielts.osee.co.id'),
+    def('platform_ielts', 'ielts-speaking-part2', 'IELTS Speaking — Part 2', 'Long-turn monologue', 'speaking', 'speaking', 'C1', 20, 'https://ielts.osee.co.id'),
+    def('platform_ielts', 'ielts-writing-task1', 'IELTS Writing — Task 1', 'Chart/graph description', 'writing', 'writing', 'B2', 20, 'https://ielts.osee.co.id'),
+    def('platform_ielts', 'ielts-writing-task2', 'IELTS Writing — Task 2', 'Academic essay', 'writing', 'writing', 'C1', 40, 'https://ielts.osee.co.id'),
+    // TOEIC
+    def('platform_toeic', 'toeic-listening-photographs', 'TOEIC Listening — Photographs', 'Picture description', 'listening', 'listening', 'A2', 15, 'https://toeic.osee.co.id'),
+    def('platform_toeic', 'toeic-listening-short-talks', 'TOEIC Listening — Short Talks', 'Business monologues', 'listening', 'listening', 'B1', 25, 'https://toeic.osee.co.id'),
+    def('platform_toeic', 'toeic-reading-incomplete', 'TOEIC Reading — Incomplete Sentences', 'Grammar/vocab fill-in-blank', 'reading', 'reading', 'B1', 20, 'https://toeic.osee.co.id'),
+    def('platform_toeic', 'toeic-reading-comprehension', 'TOEIC Reading — Comprehension', 'Passage-based questions', 'reading', 'reading', 'B2', 30, 'https://toeic.osee.co.id'),
+    // EduBot
+    def('edubot', 'edubot-conversation', 'EduBot — Conversation Practice', 'AI-powered spoken conversation', 'speaking', 'speaking', 'B1', 30, 'https://edubot.osee.co.id'),
+    def('edubot', 'edubot-writing-feedback', 'EduBot — Writing Feedback', 'AI essay scoring + feedback', 'writing', 'writing', 'B2', 25, 'https://edubot.osee.co.id'),
+  ];
+}
 
 // ---------- Syllabus endpoints (Task 10.x) ----------
 

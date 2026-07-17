@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/ui_components.dart';
@@ -98,7 +99,7 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
                 Clipboard.setData(ClipboardData(text: '${_classroom?['id']}'));
                 Navigator.pop(ctx);
               },
-              child: const Text('Copy'),
+              child: const Text('Copy classroom ID'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx),
@@ -114,8 +115,8 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
           SnackBar(
             content: Text(
               msg.contains('404')
-                ? 'No report available for this student yet'
-                : 'Failed to load report',
+                  ? 'No report available for this student yet'
+                  : 'Failed to load report',
             ),
           ),
         );
@@ -201,7 +202,9 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
     final url =
         'https://osee-prep-hub-worker.edubot-leonardus.workers.dev'
         '/api/teacher/classrooms/${widget.classroomId}/report/html';
-    await showDialog(
+    await launchUrl(Uri.parse(url));
+    if (!mounted) return;
+    showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Classroom Report'),
@@ -211,16 +214,17 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Open this URL in your browser to view/print the report:',
-              ),
+              const Text('The report opened in a new tab.'),
               const SizedBox(height: 8),
               SelectableText(
                 url,
                 style: const TextStyle(fontSize: 12, color: Colors.blue),
               ),
               const SizedBox(height: 12),
-              const Text('Make sure you are logged in (auth cookie needed).'),
+              const Text(
+                'If it didn\'t open, copy the URL above and paste it in a '
+                'browser where you\'re logged in to the hub.',
+              ),
             ],
           ),
         ),
@@ -265,8 +269,9 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
             IconButton(
               icon: const Icon(Icons.grid_on),
               tooltip: 'Heatmap report',
-              onPressed: () =>
-                  context.go('/teacher/classrooms/${widget.classroomId}/report'),
+              onPressed: () => context.go(
+                '/teacher/classrooms/${widget.classroomId}/report',
+              ),
             ),
             IconButton(
               icon: const Icon(Icons.picture_as_pdf),
@@ -328,7 +333,8 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
               child: ListTile(
                 leading: const Icon(Icons.person),
                 title: Text(
-                  ((s as Map)['student'] as Map?)?['display_name'] as String? ?? '',
+                  ((s as Map)['student'] as Map?)?['display_name'] as String? ??
+                      '',
                 ),
                 subtitle: Text(
                   (s['student'] as Map?)?['email'] as String? ?? '',
@@ -336,7 +342,8 @@ class _ClassroomDetailPageState extends State<ClassroomDetailPage> {
                 trailing: const Icon(Icons.picture_as_pdf),
                 onTap: () => _viewStudentReport(
                   (s['student'] as Map?)?['id'] as String? ?? '',
-                  (s['student'] as Map?)?['display_name'] as String? ?? 'Student',
+                  (s['student'] as Map?)?['display_name'] as String? ??
+                      'Student',
                 ),
               ),
             ),

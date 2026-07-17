@@ -45,7 +45,7 @@ function buildSignature(env: Env, merchantRef: string, amount: number, expiredTi
   const data = env.TRIPAY_MERCHANT_CODE + merchantRef + amount + (expiredTime ?? '');
   // Cloudflare Workers support crypto.subtle for SHA, but MD5 is not in WebCrypto.
   // TriPay accepts MD5 — implement via a small pure-JS MD5 (or use the official Node-like API).
-  // For now, we use a pure-JS md5 implementation.
+  // Uses a pure-JS md5 implementation since WebCrypto lacks MD5.
   return md5(env.TRIPAY_PRIVATE_KEY + data);
 }
 

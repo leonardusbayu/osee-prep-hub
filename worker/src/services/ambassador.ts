@@ -13,6 +13,12 @@ export interface AmbassadorStats {
   total_bonus_earned: number;
   this_month_bonus: number;
   downline_activity: number;
+  // Ambassador obligation tracking (Blueprint line 2926: recruit 5 teachers in
+  // first 3 months). Status: 'met' | 'pending' | 'failed' | 'not_applicable'.
+  obligation_status: 'met' | 'pending' | 'failed' | 'not_applicable';
+  obligation_required_count: number;
+  obligation_recruited_count: number;
+  obligation_deadline: string | null;
 }
 
 /** Get ambassador stats for a teacher. */
@@ -22,11 +28,13 @@ export async function getAmbassadorStats(env: Env, userId: string): Promise<Amba
   // Check if ambassador — query teacher_profiles.is_ambassador (not role, which doesn't have 'ambassador')
   const { data: teacherProfile } = await supabase
     .from('teacher_profiles')
-    .select('is_ambassador')
+    .select('is_ambassador, ambassador_recruited_at')
     .eq('user_id', userId)
     .maybeSingle();
 
-  const isAmbassador = Boolean((teacherProfile as Record<string, unknown> | null)?.is_ambassador);
+  const tp = (teacherProfile as Record<string, unknown> | null) ?? {};
+  const isAmbassador = Boolean(tp.is_ambassador);
+  const recruitedAt = tp.ambassador_recruited_at as string | null;
 
   // Count recruited teachers (referred_by = userId)
   const { count: recruitedCount } = await supabase
@@ -34,6 +42,24 @@ export async function getAmbassadorStats(env: Env, userId: string): Promise<Amba
     .select('id', { count: 'exact', head: true })
     .eq('referred_by', userId)
     .eq('role', 'teacher');
+
+  const recruitedCountNum = recruitedCount ?? 0;
+
+  // Ambassador obligation: 5 teachers in first 3 months (Blueprint line 2926).
+  let obligationStatus: 'met' | 'pending' | 'failed' | 'not_applicable' = 'not_applicable';
+  let obligationDeadline: string | null = null;
+  if (isAmbassador && recruitedAt) {
+    const recruitedDate = new Date(recruitedAt);
+    const deadline = new Date(recruitedDate.getTime() + 90 * 24 * 60 * 60 * 1000); // 3 months
+    obligationDeadline = deadline.toISOString();
+    if (recruitedCountNum >= 5) {
+      obligationStatus = 'met';
+    } else if (Date.now() < deadline.getTime()) {
+      obligationStatus = 'pending';
+    } else {
+      obligationStatus = 'failed';
+    }
+  }
 
   // Sum ALL commission earned by this ambassador (no action filter — ambassador 2x is via multiplier)
   const { data: commissions } = await supabase
@@ -54,10 +80,14 @@ export async function getAmbassadorStats(env: Env, userId: string): Promise<Amba
 
   return {
     is_ambassador: isAmbassador,
-    recruited_teachers: recruitedCount ?? 0,
+    recruited_teachers: recruitedCountNum,
     total_bonus_earned: totalBonus,
     this_month_bonus: thisMonthBonus,
-    downline_activity: recruitedCount ?? 0,
+    downline_activity: recruitedCountNum,
+    obligation_status: obligationStatus,
+    obligation_required_count: 5,
+    obligation_recruited_count: recruitedCountNum,
+    obligation_deadline: obligationDeadline,
   };
 }
 

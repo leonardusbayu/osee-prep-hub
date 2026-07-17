@@ -83,6 +83,32 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final password = _passwordController.text;
     final name = _nameController.text.trim();
 
+    // Validate required fields before hitting the API.
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _errorMsg = 'Please enter a valid email address.');
+      return;
+    }
+    if (password.length < 8) {
+      setState(() => _errorMsg = 'Password must be at least 8 characters.');
+      return;
+    }
+    if (name.isEmpty) {
+      setState(() => _errorMsg = 'Please enter your name.');
+      return;
+    }
+    if (_role == UserRole.partner &&
+        _institutionNameController.text.trim().isEmpty) {
+      setState(() => _errorMsg = 'Institution name is required for partners.');
+      return;
+    }
+    if (!_agreedToTerms) {
+      setState(
+        () =>
+            _errorMsg = 'Please accept the Terms & Privacy Policy to continue.',
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMsg = null;
@@ -390,8 +416,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             size: 20,
                             color: OseeTheme.textMuted,
                           ),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
                       obscureText: _obscure,
@@ -408,9 +433,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 250),
                                 height: 3,
-                                margin: EdgeInsets.only(
-                                  right: i < 3 ? 4 : 0,
-                                ),
+                                margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
                                 decoration: BoxDecoration(
                                   color: i < _passwordStrength
                                       ? _strengthColor
@@ -531,7 +554,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       height: 52,
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: _isLoading ? null : _submit,
+                        onPressed: (_isLoading || !_agreedToTerms)
+                            ? null
+                            : _submit,
                         style: FilledButton.styleFrom(
                           backgroundColor: OseeTheme.primary,
                           shape: RoundedRectangleBorder(

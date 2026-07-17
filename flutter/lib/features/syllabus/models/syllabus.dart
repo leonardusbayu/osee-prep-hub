@@ -94,7 +94,7 @@ class SyllabusItem {
   final String? temperatureTag; // hot | cold
   final DateTime? unlockedAt;
 
-  // ----- Planka-style client-only fields (not persisted to backend yet) -----
+  // ----- Teacher annotations (persisted to backend) -----
   /// IDs of [SyllabusLabel]s applied to this item.
   final List<String> labelIds;
 
@@ -143,6 +143,7 @@ class SyllabusItem {
     unlockedAt: json['unlocked_at'] != null
         ? DateTime.parse(json['unlocked_at'] as String)
         : null,
+    labelIds: (json['label_ids'] as List?)?.cast<String>() ?? const [],
   );
 
   /// JSON payload for `PUT /api/teacher/syllabi/:id/items` (no id / created_at).
@@ -160,6 +161,7 @@ class SyllabusItem {
     'flavor_tag': flavorTag,
     'temperature_tag': temperatureTag,
     'unlocked_at': unlockedAt?.toIso8601String(),
+    'label_ids': labelIds,
   };
 
   SyllabusItem copyWith({

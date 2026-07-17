@@ -12,25 +12,79 @@ class RightPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dashState = ref.watch(dashboardProvider);
     final upcoming = ref.watch(upcomingEventsProvider);
     final top = ref.watch(topCoursesProvider);
+
+    // Show a loading indicator while the dashboard is loading.
+    final isLoading = dashState.isLoading;
+    // Show an error retry if the dashboard failed to load.
+    final dashError = dashState.error;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _PanelCard(
           title: 'Upcoming Events',
-          child: Column(
-            children: upcoming.map((e) => _UpcomingTile(event: e)).toList(),
-          ),
+          child: isLoading
+              ? const _LoadingHint()
+              : dashError != null
+              ? _ErrorHint(message: 'Failed to load events')
+              : Column(
+                  children: upcoming
+                      .map((e) => _UpcomingTile(event: e))
+                      .toList(),
+                ),
         ),
         const SizedBox(height: TeacherSpacing.md),
         _PanelCard(
           title: 'Top Performing Courses',
-          child: Column(
-            children: top.map((c) => _TopCourseTile(course: c)).toList(),
-          ),
+          child: isLoading
+              ? const _LoadingHint()
+              : dashError != null
+              ? _ErrorHint(message: 'Failed to load courses')
+              : Column(
+                  children: top.map((c) => _TopCourseTile(course: c)).toList(),
+                ),
         ),
       ],
+    );
+  }
+}
+
+class _LoadingHint extends StatelessWidget {
+  const _LoadingHint();
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 24),
+      child: Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: TeacherTheme.primaryBlue,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorHint extends StatelessWidget {
+  const _ErrorHint({required this.message});
+  final String message;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: Text(
+          message,
+          style: TextStyle(fontSize: 13, color: TeacherTheme.textMuted),
+        ),
+      ),
     );
   }
 }
@@ -55,10 +109,7 @@ class _PanelCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            title,
-            style: TeacherTheme.panelTitle(),
-          ),
+          Text(title, style: TeacherTheme.panelTitle()),
           const SizedBox(height: 12),
           child,
         ],

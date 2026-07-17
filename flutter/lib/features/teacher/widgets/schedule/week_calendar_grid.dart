@@ -21,27 +21,28 @@ class WeekCalendarGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final week = ref.watch(selectedWeekProvider);
     final events = ref.watch(filteredScheduleEventsProvider);
+    final dashState = ref.watch(dashboardProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = MediaQuery.sizeOf(context).width;
         final isDesktop = screenWidth >= 1200;
         final isTablet = screenWidth >= 840 && screenWidth < 1200;
-        
+
         final minDayColWidth = isDesktop ? 120.0 : (isTablet ? 100.0 : 80.0);
         final minTotalWidth = minDayColWidth * 7 + _hourAxisWidth;
 
         // Determine available width (accounting for margins)
         // Margin is TeacherSpacing.md (16) on both sides = 32
         final availableWidth = constraints.maxWidth - (TeacherSpacing.md * 2);
-        
+
         double dayColWidth;
         if (availableWidth > minTotalWidth) {
           dayColWidth = (availableWidth - _hourAxisWidth) / 7;
         } else {
           dayColWidth = minDayColWidth;
         }
-        
+
         final totalWidth = dayColWidth * 7 + _hourAxisWidth;
 
         return Container(
@@ -60,42 +61,81 @@ class WeekCalendarGrid extends ConsumerWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(TeacherTheme.radiusCard),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: totalWidth,
-                child: Column(
-                  children: [
-                    _DayHeaderRow(week: week, dayColWidth: dayColWidth),
-                    const Divider(height: 1, color: TeacherTheme.dividerSubtle),
-                    Expanded(
-                      child: SingleChildScrollView(
+            child: Stack(
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: totalWidth,
+                    child: Column(
+                      children: [
+                        _DayHeaderRow(week: week, dayColWidth: dayColWidth),
+                        const Divider(
+                          height: 1,
+                          color: TeacherTheme.dividerSubtle,
+                        ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: SizedBox(
+                              height: (_hourEnd - _hourStart) * _hourHeight,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _HourAxis(),
+                                  ...List.generate(7, (i) {
+                                    final day = week.add(Duration(days: i));
+                                    final dayEvents = events
+                                        .where((e) => e.weekdayIndex == i)
+                                        .toList();
+                                    return _DayColumn(
+                                      date: day,
+                                      events: dayEvents,
+                                      isToday: _isToday(day),
+                                      colWidth: dayColWidth,
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Loading/error overlay
+                if (dashState.isLoading)
+                  const Positioned.fill(
+                    child: ColoredBox(
+                      color: Color(0x80FFFFFF),
+                      child: Center(
                         child: SizedBox(
-                          height: (_hourEnd - _hourStart) * _hourHeight,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _HourAxis(),
-                              ...List.generate(7, (i) {
-                                final day = week.add(Duration(days: i));
-                                final dayEvents = events
-                                    .where((e) => e.weekdayIndex == i)
-                                    .toList();
-                                return _DayColumn(
-                                  date: day,
-                                  events: dayEvents,
-                                  isToday: _isToday(day),
-                                  colWidth: dayColWidth,
-                                );
-                              }),
-                            ],
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: TeacherTheme.primaryBlue,
                           ),
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
+                  )
+                else if (dashState.error != null)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: const Color(0x80FFFFFF),
+                      child: Center(
+                        child: Text(
+                          'Failed to load schedule',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: TeacherTheme.textMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         );
@@ -238,7 +278,10 @@ class _DayColumn extends StatelessWidget {
               top: i * _hourHeight,
               left: 0,
               right: 0,
-              child: const Divider(height: 1, color: TeacherTheme.dividerSubtle),
+              child: const Divider(
+                height: 1,
+                color: TeacherTheme.dividerSubtle,
+              ),
             );
           }),
           ...events.map((e) {
@@ -246,8 +289,10 @@ class _DayColumn extends StatelessWidget {
                 (e.start.hour - _hourStart) * 60 + e.start.minute;
             final durationMinutes = e.duration.inMinutes;
             final top = startMinutes * _hourHeight / 60;
-            final cardHeight =
-                (durationMinutes * _hourHeight / 60).clamp(28.0, 120.0);
+            final cardHeight = (durationMinutes * _hourHeight / 60).clamp(
+              28.0,
+              120.0,
+            );
             return Positioned(
               top: top + 1,
               left: 3,

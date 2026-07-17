@@ -66,7 +66,8 @@ studentRoutes.get('/progress', cache({ ttl: 30 }), async (c) => {
   });
 });
 
-/** GET /api/student/dashboard — student dashboard data (Task 11.1) */
+/** GET /api/student/dashboard — student dashboard data (Task 11.1, Blueprint line 1490).
+ *  Returns: { syllabus, progress, readiness, upcoming_classes, recommendations } */
 studentRoutes.get('/dashboard', cache({ ttl: 30 }), async (c) => {
   const user = getAuthedUser(c);
   const supabase = getSupabase(c.env);
@@ -81,6 +82,27 @@ studentRoutes.get('/dashboard', cache({ ttl: 30 }), async (c) => {
   // Get enrolled classrooms
   const classrooms = await getStudentClassrooms(c.env, user.id);
 
+  // Get assigned syllabi (Blueprint: syllabus field)
+  const classroomIds = classrooms.map((cl) => cl.id);
+  let syllabus: unknown[] = [];
+  if (classroomIds.length > 0) {
+    const { data: syllabi } = await supabase
+      .from('syllabi')
+      .select('*, syllabus_items(*)')
+      .in('classroom_id', classroomIds)
+      .eq('is_published', true);
+    syllabus = syllabi ?? [];
+  }
+
+  // Get upcoming live classes (Blueprint: upcoming_classes field)
+  const { data: upcomingClassesRaw } = await supabase
+    .from('live_classes')
+    .select('id, title, starts_at, teacher:unified_profiles!live_classes_teacher_id_fkey(display_name)')
+    .gte('starts_at', new Date().toISOString())
+    .order('starts_at', { ascending: true })
+    .limit(5);
+  const upcoming_classes = (upcomingClassesRaw ?? []) as unknown[];
+
   // Calculate readiness (simple heuristic)
   const p = (progress as Record<string, unknown>) ?? {};
   const scores = [
@@ -92,12 +114,34 @@ studentRoutes.get('/dashboard', cache({ ttl: 30 }), async (c) => {
   const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
   const readiness = Math.min(100, Math.round(avgScore));
 
+  // Generate simple recommendations based on readiness + scores (Blueprint: recommendations field)
+  const recommendations: string[] = [];
+  if (scores.length === 0) {
+    recommendations.push('Take a diagnostic test to assess your starting level.');
+  } else {
+    if (readiness < 40) {
+      recommendations.push('Focus on foundational practice — your scores are below target. Use the syllabus materials your teacher assigned.');
+    } else if (readiness < 70) {
+      recommendations.push('You are on track. Practice daily to push your score into the target range.');
+    } else {
+      recommendations.push('Excellent progress! Book an official test — you are ready.');
+    }
+    if (p.ibt_latest_score !== null && (p.ibt_latest_score as number) < 80) {
+      recommendations.push('Your iBT score is below 80 — focus on reading and listening practice.');
+    }
+    if (p.ielts_latest_band !== null && (p.ielts_latest_band as number) < 6.5) {
+      recommendations.push('Your IELTS band is below 6.5 — work on speaking and writing with the AI grader.');
+    }
+  }
+
   return c.json({
     student: { id: user.id, name: user.display_name, email: user.email },
+    syllabus,
     progress: progress ?? {},
-    classrooms,
     readiness,
-    note: 'Full student dashboard — Task 11.1 (Flutter UI)',
+    upcoming_classes,
+    recommendations,
+    classrooms,
   });
 });
 
@@ -257,8 +301,7 @@ studentRoutes.get('/book-test', async (c) => {
 
   return c.json({
     ready_to_book: canBook,
-    osee_booking_url: 'https://osee.co.id',
-    available_dates: [],  // populated when osee.co.id booking API is integrated
+    osee_booking_url: c.env.OSEE_BOOKING_API_URL ?? 'https://osee.co.id',
     note: canBook
       ? 'You are ready to book your official test.'
       : 'Continue practicing until your readiness reaches 80%.',

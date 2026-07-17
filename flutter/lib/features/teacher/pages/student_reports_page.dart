@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api_client.dart';
 import '../../../shared/widgets/ui_components.dart';
@@ -48,7 +49,7 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
     final url =
         'https://osee-prep-hub-worker.edubot-leonardus.workers.dev'
         '/api/teacher/students/$studentId/report/html';
-    Clipboard.setData(ClipboardData(text: url));
+    launchUrl(Uri.parse(url));
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -59,7 +60,7 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Open in browser to view/print:'),
+              const Text('The report opened in a new tab.'),
               const SizedBox(height: 8),
               SelectableText(
                 url,
@@ -67,12 +68,17 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'You must be logged in to the hub (cookie sent automatically).',
+                'If it didn\'t open, copy the URL above and paste it in a '
+                'browser where you\'re logged in to the hub.',
               ),
             ],
           ),
         ),
         actions: [
+          TextButton(
+            onPressed: () => Clipboard.setData(ClipboardData(text: url)),
+            child: const Text('Copy URL'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close'),
@@ -91,49 +97,47 @@ class _StudentReportsPageState extends State<StudentReportsPage> {
         : RefreshIndicator(
             onRefresh: _load,
             child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (_classrooms?.isEmpty ?? true)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'No classrooms yet. Create one first.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (_classrooms?.isEmpty ?? true)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'No classrooms yet. Create one first.',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                    )
-                  else
-                    for (final cr in _classrooms!)
-                      Card(
-                        child: ExpansionTile(
-                          leading: const Icon(Icons.class_),
-                          title: Text((cr as Map)['name'] as String? ?? ''),
-                          subtitle: Text(
-                            'Join code: ${cr['join_code'] ?? '—'}',
-                          ),
-                          children: [
-                            // For each student in classroom, show row
-                            for (final s
-                                in (cr['students'] as List?) ?? <dynamic>[])
-                              ListTile(
-                                leading: const Icon(Icons.person_outline),
-                                title: Text(
-                                  (s as Map)['display_name'] as String? ?? '',
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.picture_as_pdf),
-                                  onPressed: () => _copyReportUrl(
-                                    s['id'] as String,
-                                    s['display_name'] as String? ?? 'Student',
-                                  ),
+                    ),
+                  )
+                else
+                  for (final cr in _classrooms!)
+                    Card(
+                      child: ExpansionTile(
+                        leading: const Icon(Icons.class_),
+                        title: Text((cr as Map)['name'] as String? ?? ''),
+                        subtitle: Text('Join code: ${cr['join_code'] ?? '—'}'),
+                        children: [
+                          // For each student in classroom, show row
+                          for (final s
+                              in (cr['students'] as List?) ?? <dynamic>[])
+                            ListTile(
+                              leading: const Icon(Icons.person_outline),
+                              title: Text(
+                                (s as Map)['display_name'] as String? ?? '',
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.picture_as_pdf),
+                                onPressed: () => _copyReportUrl(
+                                  s['id'] as String,
+                                  s['display_name'] as String? ?? 'Student',
                                 ),
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
-                ],
+                    ),
+              ],
             ),
-        );
+          );
   }
 }

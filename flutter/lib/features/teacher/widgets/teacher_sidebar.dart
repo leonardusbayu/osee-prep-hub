@@ -15,7 +15,6 @@ class _NavItem {
 const _navItems = <_NavItem>[
   _NavItem(Icons.dashboard_outlined, 'Dashboard', '/teacher'),
   _NavItem(Icons.calendar_today_outlined, 'My Schedule', '/teacher/schedule'),
-  _NavItem(Icons.chat_bubble_outline_rounded, 'Messages', '/teacher'),
   _NavItem(Icons.groups_2_outlined, 'Students', '/teacher/reports'),
   _NavItem(Icons.menu_book_outlined, 'Courses', '/teacher/syllabi'),
   _NavItem(Icons.folder_outlined, 'Resources', '/teacher/generator'),
@@ -28,11 +27,7 @@ const _navItems = <_NavItem>[
   _NavItem(Icons.settings_outlined, 'Settings', '/teacher/settings'),
 ];
 
-const _logoutItem = _NavItem(
-  Icons.logout_rounded,
-  'Log Out',
-  '/login',
-);
+const _logoutItem = _NavItem(Icons.logout_rounded, 'Log Out', '/login');
 
 /// Teacher sidebar — mirrors the Figma "Dashboard" sidebar (white, 260w, right
 /// border, drop shadow offset -16,0 blur 34).
@@ -148,8 +143,11 @@ class _Logo extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
             ),
-            child: const Icon(Icons.color_lens_rounded,
-                size: 18, color: Colors.white),
+            child: const Icon(
+              Icons.color_lens_rounded,
+              size: 18,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(width: 10),
           Text('Teach.', style: TeacherTheme.logo()),
@@ -159,11 +157,16 @@ class _Logo extends StatelessWidget {
   }
 }
 
-class _ProfileCard extends StatelessWidget {
+class _ProfileCard extends ConsumerWidget {
   const _ProfileCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider).user;
+    final name = user?.displayName ?? 'Teacher';
+    final role = user?.role.label ?? 'teacher';
+    final initials = _initialsFor(name);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -174,7 +177,7 @@ class _ProfileCard extends StatelessWidget {
             height: 38,
             child: Stack(
               children: [
-                const _Avatar(initials: 'JC', size: 38),
+                _Avatar(initials: initials, size: 38),
                 // Online status green dot
                 Positioned(
                   right: 0,
@@ -185,10 +188,7 @@ class _ProfileCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: TeacherTheme.successGreen,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: TeacherTheme.surface,
-                        width: 2,
-                      ),
+                      border: Border.all(color: TeacherTheme.surface, width: 2),
                     ),
                   ),
                 ),
@@ -200,9 +200,9 @@ class _ProfileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Jone Copper', style: TeacherTheme.userName()),
+                Text(name, style: TeacherTheme.userName()),
                 const SizedBox(height: 2),
-                Text('UI Designer', style: TeacherTheme.userRole()),
+                Text(role, style: TeacherTheme.userRole()),
               ],
             ),
           ),
@@ -210,6 +210,14 @@ class _ProfileCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _initialsFor(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  if (parts.length >= 2) {
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+  return name.isNotEmpty ? name[0].toUpperCase() : '?';
 }
 
 class _Avatar extends StatelessWidget {
@@ -229,8 +237,9 @@ class _Avatar extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         initials,
-        style: TeacherTheme.userName(TeacherTheme.primaryBlue)
-            .copyWith(fontSize: size * 0.4),
+        style: TeacherTheme.userName(
+          TeacherTheme.primaryBlue,
+        ).copyWith(fontSize: size * 0.4),
       ),
     );
   }
@@ -258,8 +267,9 @@ class _NavTileState extends State<_NavTile> {
   @override
   Widget build(BuildContext context) {
     final active = widget.active;
-    final color =
-        active ? TeacherTheme.primaryBlue : TeacherTheme.textSecondary;
+    final color = active
+        ? TeacherTheme.primaryBlue
+        : TeacherTheme.textSecondary;
 
     // Determine background: active > hover > transparent
     Color bgColor;

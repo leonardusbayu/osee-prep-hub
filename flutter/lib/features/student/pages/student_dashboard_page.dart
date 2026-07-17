@@ -122,24 +122,24 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
     return _isLoading
-        ? const Center(child: CircularProgressIndicator(color: StudentTheme.primary))
+        ? const Center(
+            child: CircularProgressIndicator(color: StudentTheme.primary),
+          )
         : _error != null
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(_error!,
-                        style: StudentTheme.cardLabel(
-                            StudentTheme.textSecondary)),
-                    const SizedBox(height: StudentSpacing.lg),
-                    ElevatedButton(
-                      onPressed: _load,
-                      child: const Text('Retry'),
-                    ),
-                  ],
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _error!,
+                  style: StudentTheme.cardLabel(StudentTheme.textSecondary),
                 ),
-              )
-            : _buildContent(isDesktop);
+                const SizedBox(height: StudentSpacing.lg),
+                ElevatedButton(onPressed: _load, child: const Text('Retry')),
+              ],
+            ),
+          )
+        : _buildContent(isDesktop);
   }
 
   Widget _buildContent(bool isDesktop) {
@@ -152,8 +152,7 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
     final subtitle = _readiness?['target_exam'] as String? ?? 'OSEE Prep';
 
     final practiceCount = (progress['total_practice_count'] as num?) ?? 0;
-    final recommendations =
-        (_readiness?['recommendations'] as List?) ?? [];
+    final recommendations = (_readiness?['recommendations'] as List?) ?? [];
 
     return ListView(
       padding: const EdgeInsets.all(StudentSpacing.xl),
@@ -170,7 +169,9 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildLeftColumn(classrooms, readiness, practiceCount)),
+              Expanded(
+                child: _buildLeftColumn(classrooms, readiness, practiceCount),
+              ),
               const SizedBox(width: StudentSpacing.gap),
               SizedBox(width: 293, child: _buildRightColumn(recommendations)),
             ],
@@ -182,7 +183,7 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
               const SizedBox(height: StudentSpacing.xxl),
               _buildCoursesSection(classrooms),
               const SizedBox(height: StudentSpacing.xxl),
-              _buildInstructorsSection(),
+              _buildInstructorsSection(classrooms),
               const SizedBox(height: StudentSpacing.xxl),
               _buildNoticeSection(recommendations),
               const SizedBox(height: StudentSpacing.xxl),
@@ -228,7 +229,11 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
     );
   }
 
-  List<Widget> _buildStatRow(List classrooms, num readiness, num practiceCount) {
+  List<Widget> _buildStatRow(
+    List classrooms,
+    num readiness,
+    num practiceCount,
+  ) {
     final classCount = classrooms.length.toString();
     return [
       const StudentSectionHeader(
@@ -270,9 +275,10 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
   Widget _buildCoursesSection(List classrooms) {
     final cards = classrooms.take(2).map<Widget>((c) {
       final map = c as Map<String, dynamic>;
+      final pct = (map['syllabus_completion_pct'] as num?)?.toDouble() ?? 0.0;
       return StudentCourseCard(
         title: map['name'] as String? ?? 'Class',
-        progress: 0.45, // Placeholder progress
+        progress: pct / 100,
         onView: () => context.go('/student/syllabus'),
       );
     }).toList();
@@ -285,10 +291,7 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
       );
     }
     while (cards.length < 2) {
-      cards.add(const StudentCourseCard(
-        title: 'No class yet',
-        onView: null,
-      ));
+      cards.add(const StudentCourseCard(title: 'No class yet', onView: null));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,16 +313,25 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
     );
   }
 
-  Widget _buildInstructorsSection() {
-    return const Column(
+  Widget _buildInstructorsSection(List classrooms) {
+    // Derive instructors from the enrolled classrooms' teacher_name field.
+    final instructors = classrooms
+        .map((c) => (c as Map<String, dynamic>)['teacher_name'] as String?)
+        .where((n) => n != null && n.isNotEmpty)
+        .toSet()
+        .toList();
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        StudentSectionHeader(
+        const StudentSectionHeader(
           title: 'Course Instructors',
           icon: Icons.people_alt_rounded,
         ),
-        SizedBox(height: StudentSpacing.lg),
-        InstructorRow(count: 3),
+        const SizedBox(height: StudentSpacing.lg),
+        InstructorRow(
+          count: instructors.length,
+          names: instructors.cast<String>(),
+        ),
       ],
     );
   }
@@ -344,26 +356,34 @@ class _StudentDashboardPageState extends ConsumerState<StudentDashboardPage> {
   List<NoticeItem> _buildNotices(List recommendations) {
     final notices = <NoticeItem>[];
     if (recommendations.isEmpty) {
-      notices.add(const NoticeItem(
-        title: 'Prelim payment due',
-        body: 'Please complete your prelim payment before next week.',
-        isImportant: true,
-        icon: Icons.payments_rounded,
-      ));
-    } else {
-      notices.add(NoticeItem(
+      // No server-side recommendations yet — show a gentle empty-state prompt
+      // instead of a fabricated notice the student can't act on.
+      notices.add(
+        const NoticeItem(
+          title: 'No notices right now',
+          body:
+              'Complete a practice test to get personalised recommendations here.',
+          icon: Icons.lightbulb_outline_rounded,
+        ),
+      );
+      return notices;
+    }
+    notices.add(
+      NoticeItem(
         title: 'Recommendation',
         body: recommendations.first.toString(),
         icon: Icons.lightbulb_outline_rounded,
-      ));
+      ),
+    );
+    if (recommendations.length > 1) {
+      notices.add(
+        NoticeItem(
+          title: 'Exam schedule',
+          body: recommendations[1].toString(),
+          icon: Icons.event_available_rounded,
+        ),
+      );
     }
-    notices.add(NoticeItem(
-      title: 'Exam schedule',
-      body: recommendations.length > 1
-          ? recommendations[1].toString()
-          : 'Your next mock exam is scheduled for this Friday. Prepare well!',
-      icon: Icons.event_available_rounded,
-    ));
     return notices;
   }
 }

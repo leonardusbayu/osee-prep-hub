@@ -168,6 +168,45 @@ videoRoutes.post('/lessons/:id/complete', async (c) => {
       completed: true,
       quiz_score: quizScore,
     });
+
+    // Notify the student's teacher(s) that they completed a video lesson
+    // (Blueprint line 1466: "Notifies teacher if student in classroom").
+    // The student's teacher(s) are the teachers of the classrooms the
+    // student is enrolled in.
+    try {
+      const { data: enrollments } = await supabase
+        .from('classroom_enrollments')
+        .select('classroom:classrooms!classroom_enrollments_classroom_id_fkey(teacher:unified_profiles!classrooms_teacher_id_fkey(teacher_id, telegram_id, display_name))')
+        .eq('student_id', user.id)
+        .eq('is_active', true);
+      const teachers = ((enrollments ?? []) as Array<Record<string, unknown>>)
+        .map((row) => row.classroom as Record<string, unknown>)
+        .map((cl) => cl?.teacher as Record<string, unknown> | undefined)
+        .filter((t): t is Record<string, unknown> => t !== undefined);
+      const teacherIds = [...new Set(teachers.map((t) => t.teacher_id as string))];
+      const teacherChatIds = teachers
+        .map((t) => t.telegram_id as string | null)
+        .filter((id): id is string => id !== null);
+
+      if (c.env.TELEGRAM_BOT_TOKEN && teacherChatIds.length > 0) {
+        const msg = `${user.display_name} completed a video lesson (quiz score: ${quizScore ?? 'n/a'}).`;
+        for (const chatId of teacherChatIds) {
+          await fetch(`https://api.telegram.org/bot${c.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: msg }),
+          }).catch(() => {});
+        }
+      }
+      // Log the notification for teachers without telegram
+      if (teacherIds.length > 0) {
+        console.log(`video complete: notified teacher(s) ${teacherIds.join(',')} that ${user.id} completed lesson ${c.req.param('id')}`);
+      }
+    } catch (notifErr) {
+      // Notification is best-effort; don't fail the completion.
+      console.error('notify teacher failed:', notifErr);
+    }
+
     return c.json({ success: true, quiz_score: quizScore });
   } catch (err) {
     return c.json({ error: { code: 'TRACK_FAILED', message: (err as Error).message } }, 500);

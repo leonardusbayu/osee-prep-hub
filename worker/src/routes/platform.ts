@@ -9,9 +9,9 @@ import { getSupabase } from '../services/supabase';
  * Aggregates materials and scores across all practice platforms
  * (ibt.osee.co.id, test.osee.co.id, ielts.osee.co.id, toeic.osee.co.id, EduBot).
  *
- * For now, materials are read from the Hub database (syllabus_items + ai_generation_queue +
- * video_lessons). When practice platforms expose a materials API, this route can
- * proxy those calls.
+ * Materials are read from the Hub database (syllabus_items + ai_generation_queue +
+ * video_lessons) with filters pushed into the Supabase queries. When practice
+ * platforms expose a materials API, this route can proxy those calls.
  */
 export const platformRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -26,24 +26,36 @@ platformRoutes.get('/materials', async (c) => {
 
   const supabase = getSupabase(c.env);
 
-  // Combine: syllabus_items (published) + video_lessons (published) + ai_generation_queue (completed)
+  // Combine: syllabus_items (published) + video_lessons (published) + ai_generation_queue (completed).
+  // Filters are pushed into the Supabase queries (.eq) so the DB does the work
+  // and we only transfer matching rows over the wire.
+  const syllabusQuery = supabase
+    .from('syllabus_items')
+    .select('id, title, description, item_type, source_type, section, difficulty, source_platform_url')
+    .eq('source_type', 'teacher_custom')
+    .limit(limit);
+  if (type) syllabusQuery.eq('item_type', type);
+
+  const videoQuery = supabase
+    .from('video_lessons')
+    .select('id, title, description, section, cefr_level, youtube_id, is_free_preview')
+    .eq('is_published', true)
+    .limit(limit);
+  if (level) videoQuery.eq('cefr_level', level);
+
+  const aiQuery = supabase
+    .from('ai_generation_queue')
+    .select('id, generation_type, exam_type, cefr_level, topic, generated_content')
+    .eq('status', 'completed')
+    .limit(limit);
+  if (type) aiQuery.eq('generation_type', type);
+  if (exam) aiQuery.eq('exam_type', exam);
+  if (level) aiQuery.eq('cefr_level', level);
+
   const [syllabusItems, videoLessons, aiGenerated] = await Promise.all([
-    supabase
-      .from('syllabus_items')
-      .select('id, title, description, item_type, source_type, section, difficulty, source_platform_url')
-      .eq('item_type', type)
-      .eq('source_type', 'teacher_custom')
-      .limit(limit),
-    supabase
-      .from('video_lessons')
-      .select('id, title, description, section, cefr_level, youtube_id, is_free_preview')
-      .eq('is_published', true)
-      .limit(limit),
-    supabase
-      .from('ai_generation_queue')
-      .select('id, generation_type, exam_type, cefr_level, topic, generated_content')
-      .eq('status', 'completed')
-      .limit(limit),
+    syllabusQuery,
+    videoQuery,
+    aiQuery,
   ]);
 
   type Material = {
@@ -98,13 +110,11 @@ platformRoutes.get('/materials', async (c) => {
     });
   }
 
-  // Filter by query params
-  const filtered = materials.filter((m) => {
-    if (type && m.type !== type && m.type !== 'video') return false;
-    if (exam && m.exam && m.exam !== exam) return false;
-    if (level && m.level && m.level !== level) return false;
-    return true;
-  });
+  // Video materials are always type 'video' — apply the type filter to them
+  // only when the caller explicitly asked for video (matches prior behavior).
+  const filtered = type && type !== 'video'
+    ? materials.filter((m) => m.source !== 'video')
+    : materials;
 
   return c.json({ materials: filtered.slice(0, limit) });
 });
@@ -149,5 +159,27 @@ platformRoutes.get('/scores', async (c) => {
       accuracy_rate: p.edubot_accuracy_rate ?? null,
       last_active: p.edubot_last_active ?? null,
     },
+  });
+});
+/** GET /api/platform-links — deep links to all practice platforms + EduBot
+ *  (Goal 6). Reads from the platform_links table so links are configurable
+ *  without a code deploy. */
+platformRoutes.get('/platform-links', async (c) => {
+  const supabase = getSupabase(c.env);
+  const { data, error } = await supabase
+    .from('platform_links')
+    .select('platform, exam_type, url, label')
+    .eq('is_active', true)
+    .order('platform', { ascending: true });
+  if (error) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: error.message } }, 500);
+  }
+  return c.json({
+    links: (data ?? []).map((r: Record<string, unknown>) => ({
+      platform: r.platform,
+      exam_type: r.exam_type,
+      url: r.url,
+      label: r.label,
+    })),
   });
 });

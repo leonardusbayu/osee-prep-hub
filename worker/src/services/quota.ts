@@ -10,12 +10,14 @@ import { getSupabase } from './supabase';
  *   - Partner tier: unlimited (institution license)
  *   - Admin: unlimited
  *
- * Quota bonus (Task 12.4 — placeholder): teachers earn +5 credits per student
- * who completes first practice.
+ * Quota bonus (Task 12.4): teachers earn +5 generation credits per student
+ * who registers via referral, +5 per first practice test, +10 per official
+ * booking, +10 per EduBot premium subscription. (See awardQuotaBonus below.)
  */
 
 const FREE_GRADING_LIMIT = 50;
 const FREE_GENERATION_LIMIT = 10;
+const FREE_REPORT_LIMIT = 10; // Blueprint line 646: free tier report quota = 10/month
 
 export interface QuotaStatus {
   used: number;
@@ -24,7 +26,7 @@ export interface QuotaStatus {
   reset_at: string; // ISO timestamp — start of next month
 }
 
-export type QuotaType = 'grading' | 'generation' | 'speaking';
+export type QuotaType = 'grading' | 'generation' | 'speaking' | 'report';
 
 /** Check if a teacher has an active Pro/Institution subscription OR is an ambassador (Appendix B). */
 async function isTeacherPro(env: Env, userId: string): Promise<boolean> {
@@ -127,13 +129,22 @@ export async function getQuotaLimit(
       const isPro = await isTeacherPro(env, userId);
       if (isPro) return -1;
       const dbBonus = bonusCredits > 0 ? bonusCredits : await getEarnedBonus(env, userId, quotaType);
-      const base = quotaType === 'generation' ? FREE_GENERATION_LIMIT : FREE_GRADING_LIMIT;
+      const base = quotaType === 'generation'
+        ? FREE_GENERATION_LIMIT
+        : quotaType === 'report'
+          ? FREE_REPORT_LIMIT
+          : FREE_GRADING_LIMIT;
       return base + dbBonus;
     }
     case 'student':
     default: {
       const dbBonus = bonusCredits > 0 ? bonusCredits : await getEarnedBonus(env, userId, quotaType);
-      return (quotaType === 'generation' ? FREE_GENERATION_LIMIT : FREE_GRADING_LIMIT) + dbBonus;
+      const base = quotaType === 'generation'
+        ? FREE_GENERATION_LIMIT
+        : quotaType === 'report'
+          ? FREE_REPORT_LIMIT
+          : FREE_GRADING_LIMIT;
+      return base + dbBonus;
     }
   }
 }

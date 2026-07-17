@@ -5,6 +5,10 @@ import type { Env } from '../types';
  *
  * Uploads audio/video files to Cloudflare R2 buckets.
  * Used for: speaking recordings (R2_AUDIO), video lessons (R2_VIDEOS).
+ *
+ * Presigned URLs are generated via the S3 Signature V4 algorithm using
+ * the Web Crypto API (HMAC-SHA256) — no external SDK required. R2's
+ * S3-compatible API endpoint is https://<account_id>.r2.cloudflarestorage.com.
  */
 
 const AUDIO_ALLOWED_TYPES = ['audio/webm', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a'];
@@ -91,16 +95,92 @@ export async function uploadVideo(
   };
 }
 
-/** Get a presigned URL for direct upload from client (CORS-safe). */
-export function getPresignedUploadUrl(
+// ---------- S3 Signature V4 presigned URL generation ----------
+
+/**
+ * Get a presigned URL for direct upload from client (CORS-safe).
+ * Uses the AWS Signature V4 algorithm against R2's S3-compatible API.
+ * Requires R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY env vars (S3 tokens,
+ * not the Wrangler binding). The client PUTs directly to R2, bypassing
+ * the Worker — reducing Worker CPU time and latency for large uploads.
+ */
+export async function getPresignedUploadUrl(
   env: Env,
   bucket: 'audio' | 'video',
   key: string,
   contentType: string,
   expiresIn = 3600
-): string {
-  // In production, this would use R2's S3-compatible API to generate a presigned URL.
-  // For now, return the upload endpoint URL — the worker handles the actual upload.
-  const bucketPath = bucket === 'audio' ? 'audio' : 'video';
-  return `${env.WEBAPP_URL}/api/upload/${bucketPath}?key=${encodeURIComponent(key)}&content_type=${encodeURIComponent(contentType)}&expires=${expiresIn}`;
+): Promise<string> {
+  const accessKeyId = (env as unknown as Record<string, unknown>).R2_ACCESS_KEY_ID as string | undefined;
+  const secretAccessKey = (env as unknown as Record<string, unknown>).R2_SECRET_ACCESS_KEY as string | undefined;
+  const accountId = (env as unknown as Record<string, unknown>).R2_ACCOUNT_ID as string | undefined;
+
+  if (!accessKeyId || !secretAccessKey || !accountId) {
+    // Fallback: if S3 creds aren't configured, return the worker-mediated
+    // upload endpoint so the app still works (the worker proxies the upload).
+    const bucketPath = bucket === 'audio' ? 'audio' : 'video';
+    return `${env.WEBAPP_URL}/api/upload/${bucketPath}?key=${encodeURIComponent(key)}&content_type=${encodeURIComponent(contentType)}&expires=${expiresIn}`;
+  }
+
+  const bucketName = bucket === 'audio' ? 'osee-audio' : 'osee-videos';
+  const region = 'auto';
+  const service = 's3';
+  const host = `${bucketName}.${accountId}.r2.cloudflarestorage.com`;
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const dateStamp = amzDate.slice(0, 8);
+
+  // Canonical request
+  const canonicalUri = `/${key}`;
+  const canonicalQueryString = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expiresIn)],
+    ['X-Amz-SignedHeaders', 'content-type;host'],
+  ].map(([k, v]) => `${uriEncode(k)}=${uriEncode(v)}`).join('&');
+
+  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\n`;
+  const signedHeaders = 'content-type;host';
+  const payloadHash = 'UNSIGNED-PAYLOAD';
+  const canonicalRequest = [
+    'PUT', canonicalUri, canonicalQueryString, canonicalHeaders, signedHeaders, payloadHash,
+  ].join('\n');
+
+  // String to sign
+  const scope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const stringToSign = [
+    'AWS4-HMAC-SHA256', amzDate, scope, await sha256Hex(canonicalRequest),
+  ].join('\n');
+
+  // Signing key
+  const kDate = await hmacSha256(`AWS4${secretAccessKey}`, dateStamp);
+  const kRegion = await hmacSha256Hex(kDate, region);
+  const kService = await hmacSha256Hex(kRegion, service);
+  const kSigning = await hmacSha256Hex(kService, 'aws4_request');
+  const signature = await hmacSha256Hex(kSigning, stringToSign);
+
+  return `https://${host}${canonicalUri}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
+}
+
+function uriEncode(s: string): string {
+  return encodeURIComponent(s).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
+async function sha256Hex(data: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+  return bufToHex(buf);
+}
+
+async function hmacSha256(key: string | ArrayBuffer, data: string): Promise<ArrayBuffer> {
+  const keyBytes = typeof key === 'string' ? new TextEncoder().encode(key) : key;
+  return crypto.subtle.sign('HMAC', await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']), new TextEncoder().encode(data));
+}
+
+async function hmacSha256Hex(key: string | ArrayBuffer, data: string): Promise<string> {
+  return bufToHex(await hmacSha256(key, data));
+}
+
+function bufToHex(buf: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 }

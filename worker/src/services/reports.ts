@@ -382,6 +382,30 @@ export async function getTeacherEffectiveness(
 
   const progresses = (progressRows ?? []) as Array<Record<string, unknown>>;
 
+  // Fetch score history for improvement calc (latest − first per student).
+  const { data: historyRows } = await supabase
+    .from('student_progress_history')
+    .select('student_id, exam_type, score, completed_at')
+    .in('student_id', studentIds)
+    .order('completed_at', { ascending: true });
+
+  // Group history by student → per-exam first + last score.
+  const historyByStudent = new Map<string, Map<string, { first: number; last: number }>>();
+  for (const h of (historyRows ?? []) as Array<Record<string, unknown>>) {
+    const sid = h.student_id as string;
+    const exam = (h.exam_type as string) ?? 'unknown';
+    const score = h.score as number | null;
+    if (score === null) continue;
+    let examMap = historyByStudent.get(sid);
+    if (!examMap) { examMap = new Map(); historyByStudent.set(sid, examMap); }
+    const entry = examMap.get(exam);
+    if (!entry) {
+      examMap.set(exam, { first: score, last: score });
+    } else {
+      entry.last = score;
+    }
+  }
+
   let activeCount = 0;
   let totalScore = 0;
   let scoreCount = 0;
@@ -412,8 +436,21 @@ export async function getTeacherEffectiveness(
       totalScore += avg;
       scoreCount++;
 
-      // Improvement = latest score - first recorded score (from history)
-      // For now, use readiness_pct as proxy
+      // Real improvement = latest − first (per exam, averaged).
+      const examMap = historyByStudent.get(p.student_id as string);
+      if (examMap) {
+        let studentImprovement = 0;
+        let examImprovements = 0;
+        for (const entry of examMap.values()) {
+          studentImprovement += entry.last - entry.first;
+          examImprovements++;
+        }
+        if (examImprovements > 0) {
+          totalImprovement += studentImprovement / examImprovements;
+          improvementCount++;
+        }
+      }
+
       const readiness = (p.readiness_pct as number) ?? 0;
       if (readiness >= 80) topPerformers++;
       if (readiness < 40 || practiceCount === 0) needsAttention++;

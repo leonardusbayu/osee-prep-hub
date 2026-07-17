@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api/client';
+import { formatRupiah } from '../utils/format';
 
 interface Teacher {
   id: string;
@@ -105,12 +106,4 @@ function tierBadgeClass(tier: string): string {
     default:
       return 'bg-gray-100 text-gray-800';
   }
-}
-
-function formatRupiah(value: number) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(value);
 }

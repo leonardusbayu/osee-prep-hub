@@ -368,6 +368,99 @@ adminRoutes.post('/ambassadors/promote', async (c) => {
   return c.json({ success: true, ambassador: data });
 });
 
+/** POST /api/admin/ambassadors/revoke — revoke ambassador status from a teacher */
+adminRoutes.post('/ambassadors/revoke', async (c) => {
+  let body: { teacher_id?: string };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.teacher_id) {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'teacher_id required' } }, 400);
+  }
+  const supabase = getSupabase(c.env);
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('teacher_profiles')
+    .update({
+      is_ambassador: false,
+      ambassador_recruited_at: null,
+      badge: null,
+      updated_at: now,
+    })
+    .eq('user_id', body.teacher_id)
+    .select()
+    .maybeSingle();
+  if (error || !data) {
+    return c.json({ error: { code: 'REVOKE_FAILED', message: error?.message ?? 'teacher not found' } }, 500);
+  }
+  return c.json({ success: true, ambassador: data });
+});
+
+// ---------- Orders management (Goal 3/9) ----------
+
+/** GET /api/admin/orders — list all orders across users (filter by ?status=) */
+adminRoutes.get('/orders', async (c) => {
+  const status = c.req.query('status') ?? undefined;
+  try {
+    const { listAllOrders } = await import('../services/orders');
+    const orders = await listAllOrders(c.env, status);
+    return c.json({ orders });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** POST /api/admin/orders/:id/refund — refund a paid/fulfilled order + void vouchers */
+adminRoutes.post('/orders/:id/refund', async (c) => {
+  const orderId = c.req.param('id');
+  try {
+    const { refundOrder } = await import('../services/orders');
+    await refundOrder(c.env, orderId);
+    return c.json({ success: true, message: 'Order refunded and vouchers voided' });
+  } catch (err) {
+    return c.json({ error: { code: 'REFUND_FAILED', message: (err as Error).message } }, 400);
+  }
+});
+
+/** POST /api/admin/orders/:id/retry-fulfill — retry fulfillment for failed/pending items */
+adminRoutes.post('/orders/:id/retry-fulfill', async (c) => {
+  const orderId = c.req.param('id');
+  try {
+    const { retryFulfill } = await import('../services/orders');
+    const result = await retryFulfill(c.env, orderId);
+    return c.json({ success: true, ...result });
+  } catch (err) {
+    return c.json({ error: { code: 'FULFILL_FAILED', message: (err as Error).message } }, 400);
+  }
+});
+
+/** POST /api/admin/orders/:id/cancel — admin cancels an order (pending or unpaid). */
+adminRoutes.post('/orders/:id/cancel', async (c) => {
+  const orderId = c.req.param('id');
+  try {
+    const { cancelOrderAdmin } = await import('../services/orders');
+    await cancelOrderAdmin(c.env, orderId);
+    return c.json({ success: true, message: 'Order cancelled' });
+  } catch (err) {
+    return c.json({ error: { code: 'CANCEL_FAILED', message: (err as Error).message } }, 400);
+  }
+});
+
+/** POST /api/admin/orders/:id/mark-paid — manually mark a pending order as paid
+ *  (for offline payments like bank transfer that bypass TriPay webhook). */
+adminRoutes.post('/orders/:id/mark-paid', async (c) => {
+  const orderId = c.req.param('id');
+  let body: { payment_method?: string } = {};
+  try { body = await c.req.json(); } catch { /* ok if no body */ }
+  try {
+    const { markOrderPaidAdmin } = await import('../services/orders');
+    await markOrderPaidAdmin(c.env, orderId, body.payment_method ?? 'manual');
+    return c.json({ success: true, message: 'Order marked paid + fulfilled' });
+  } catch (err) {
+    return c.json({ error: { code: 'MARK_PAID_FAILED', message: (err as Error).message } }, 400);
+  }
+});
+
 // ---------- Knowledge base ----------
 
 /** GET /api/admin/knowledge-base/documents — list KB documents (filter by ?category=&active=) */

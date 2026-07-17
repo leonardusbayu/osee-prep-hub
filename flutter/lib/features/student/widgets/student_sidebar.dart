@@ -15,16 +15,23 @@ const _navItems = <_NavItem>[
   _NavItem(Icons.dashboard_rounded, 'Dashboard', '/student'),
   _NavItem(Icons.bar_chart_rounded, 'Progress', '/student/progress'),
   _NavItem(Icons.menu_book_rounded, 'Syllabus', '/student/syllabus'),
+  _NavItem(Icons.library_books_rounded, 'Materials', '/student/materials'),
   _NavItem(Icons.verified_rounded, 'Readiness', '/student/readiness'),
   _NavItem(Icons.video_library_rounded, 'Videos', '/student/videos'),
   _NavItem(Icons.videocam_rounded, 'Live', '/student/classes'),
+  _NavItem(Icons.link_rounded, 'Platforms', '/student/platforms'),
   _NavItem(Icons.compare_arrows_rounded, 'Cross-Exam', '/student/cross-exam'),
   _NavItem(Icons.event_rounded, 'Book Test', '/student/book-test'),
 ];
 
 /// Student sidebar — dark navy premium styling.
 class StudentSidebar extends StatelessWidget {
-  const StudentSidebar({super.key, this.onNavigate, this.onLogout, this.activeIndex});
+  const StudentSidebar({
+    super.key,
+    this.onNavigate,
+    this.onLogout,
+    this.activeIndex,
+  });
 
   final VoidCallback? onNavigate;
   final VoidCallback? onLogout;
@@ -79,11 +86,17 @@ class StudentSidebar extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  StudentSpacing.md, 0, StudentSpacing.md, StudentSpacing.xxl),
-              child: _LogoutTile(onTap: () {
-                onNavigate?.call();
-                onLogout?.call();
-              }),
+                StudentSpacing.md,
+                0,
+                StudentSpacing.md,
+                StudentSpacing.xxl,
+              ),
+              child: _LogoutTile(
+                onTap: () {
+                  onNavigate?.call();
+                  onLogout?.call();
+                },
+              ),
             ),
           ],
         ),
@@ -191,7 +204,9 @@ class _NavTileState extends State<_NavTile> {
                   width: 3,
                   height: active ? 24 : 0,
                   decoration: BoxDecoration(
-                    color: active ? StudentTheme.primaryLight : Colors.transparent,
+                    color: active
+                        ? StudentTheme.primaryLight
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -238,16 +253,14 @@ class _LogoutTileState extends State<_LogoutTile> {
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 15),
           decoration: BoxDecoration(
-            color: _hovered ? Colors.white.withValues(alpha: 0.05) : Colors.transparent,
+            color: _hovered
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(StudentTheme.radiusNav),
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.logout_rounded,
-                size: 22,
-                color: color,
-              ),
+              Icon(Icons.logout_rounded, size: 22, color: color),
               const SizedBox(width: 14),
               Text(
                 'Logout',

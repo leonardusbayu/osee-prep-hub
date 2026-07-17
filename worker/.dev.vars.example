@@ -37,4 +37,10 @@ TELEGRAM_CHANNEL_ID=-1003884450070
 OSEE_BOOKING_API_URL=https://osee.co.id/api/hub
 OSEE_BOOKING_API_SECRET=placeholder
 
+# Email (Resend) — for report delivery + partner teacher invitations.
+# Dev: use Resend's sandbox sender onboarding@resend.dev (no DNS needed).
+# Production: verify osee.co.id in the Resend dashboard and set MAIL_FROM.
+RESEND_API_KEY=placeholder
+MAIL_FROM=OSEE Prep Hub <noreply@osee.co.id>
+
 ENVIRONMENT=development

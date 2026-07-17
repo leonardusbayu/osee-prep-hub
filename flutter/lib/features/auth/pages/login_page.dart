@@ -31,6 +31,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
+  void _showForgotPasswordDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset your password'),
+        content: const Text(
+          'Password reset is handled by your institution administrator or the OSEE team. '
+          'Email help@osee.co.id from your registered address and we\'ll help you regain access.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final ok = await ref
@@ -247,7 +266,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () => _showForgotPasswordDialog(context),
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               minimumSize: const Size(0, 0),

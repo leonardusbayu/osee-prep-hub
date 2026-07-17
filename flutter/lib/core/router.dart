@@ -15,6 +15,8 @@ import '../features/student/pages/video_lessons_page.dart';
 import '../features/student/pages/live_classes_page.dart';
 import '../features/student/pages/cross_exam_page.dart';
 import '../features/student/pages/book_test_page.dart';
+import '../features/student/pages/materials_page.dart';
+import '../features/student/pages/platform_links_page.dart';
 import '../features/student/widgets/student_shell.dart';
 import '../features/teacher/pages/teacher_dashboard_page.dart';
 import '../features/teacher/pages/teacher_schedule_page.dart';
@@ -33,9 +35,24 @@ import '../features/teacher/widgets/teacher_shell.dart';
 import '../features/syllabus/pages/syllabus_list_page.dart';
 import '../features/syllabus/pages/syllabus_builder_page.dart';
 import '../features/partner/pages/partner_dashboard_page.dart';
+import '../features/partner/pages/partner_teachers_page.dart';
+import '../features/partner/pages/partner_students_page.dart';
+import '../features/partner/pages/partner_orders_page.dart';
+import '../features/partner/pages/partner_commission_page.dart';
+import '../features/partner/widgets/partner_shell.dart';
 import '../features/ambassador/pages/ambassador_dashboard_page.dart';
 import '../features/ambassador/pages/ambassador_recruitment_page.dart';
 import '../features/admin/pages/admin_page.dart';
+
+/// A [ChangeNotifier] that bridges Riverpod auth state changes into
+/// go_router's `refreshListenable`, so the redirect guard re-evaluates when
+/// auth flips (e.g. on 401-logout or startup-verify failure) — redirecting
+/// the user to /login without waiting for the next navigation.
+class _AuthRefreshListenable extends ChangeNotifier {
+  _AuthRefreshListenable(Ref ref) {
+    ref.listen<AuthState>(authProvider, (_, _) => notifyListeners());
+  }
+}
 
 /// App router — go_router with role-based auth guards (Task 1.8).
 ///
@@ -45,6 +62,7 @@ import '../features/admin/pages/admin_page.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/login',
+    refreshListenable: _AuthRefreshListenable(ref),
     redirect: (context, state) {
       final auth = ref.read(authProvider);
       final path = state.uri.path.isEmpty
@@ -80,6 +98,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (c, s) => const LandingPage()),
       GoRoute(path: '/login', builder: (c, s) => const LoginPage()),
       GoRoute(path: '/register', builder: (c, s) => const RegisterPage()),
+      // Blueprint "RegisterViaReferral" (line 1606) — student registration
+      // via teacher referral code. Implemented as RegisterPage with a
+      // referralCode param rather than a separate widget (same UX, no
+      // duplication): /r/:code pre-fills the referral code field.
       GoRoute(
         path: '/r/:code',
         builder: (c, s) => RegisterPage(referralCode: s.pathParameters['code']),
@@ -90,25 +112,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, navigationShell) =>
             TeacherShell(navigationShell: navigationShell),
         branches: [
-          // 0: /teacher — My Schedule (default landing)
+          // 0: /teacher — Dashboard (default landing)
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/teacher',
-                builder: (c, s) => const TeacherSchedulePage(),
-              ),
-            ],
-          ),
-          // 1: /teacher/legacy — old dashboard
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/teacher/legacy',
                 builder: (c, s) => const TeacherDashboardPage(),
               ),
             ],
           ),
-          // 2: /teacher/orders
+          // 1: /teacher/orders
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -181,8 +194,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: '/teacher/classrooms/:id/report',
-                builder: (c, s) => ClassroomReportPage(
-                    classroomId: s.pathParameters['id']!),
+                builder: (c, s) =>
+                    ClassroomReportPage(classroomId: s.pathParameters['id']!),
               ),
             ],
           ),
@@ -294,11 +307,70 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/student/materials',
+                builder: (c, s) => const MaterialsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/student/platforms',
+                builder: (c, s) => const PlatformLinksPage(),
+              ),
+            ],
+          ),
         ],
       ),
-      GoRoute(
-        path: '/partner',
-        builder: (c, s) => const PartnerDashboardPage(),
+      // ---- Partner: persistent shell (sidebar) — Goal 2/3/9 ----
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            PartnerShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/partner',
+                builder: (c, s) => const PartnerDashboardPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/partner/teachers',
+                builder: (c, s) => const PartnerTeachersPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/partner/students',
+                builder: (c, s) => const PartnerStudentsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/partner/orders',
+                builder: (c, s) => const PartnerOrdersPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/partner/commission',
+                builder: (c, s) => const PartnerCommissionPage(),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/ambassador',

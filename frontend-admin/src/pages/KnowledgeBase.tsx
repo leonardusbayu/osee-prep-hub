@@ -34,7 +34,7 @@ const CATEGORIES = [
 
 const CEFR_LEVELS = ['', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
-export function Content() {
+export function KnowledgeBase() {
   const [documents, setDocuments] = useState<KbDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

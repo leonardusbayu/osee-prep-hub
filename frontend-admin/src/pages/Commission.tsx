@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api/client';
+import { formatRupiah } from '../utils/format';
 
 interface CommissionRate {
   id: string;
@@ -188,12 +189,4 @@ function Card({ label, value }: { label: string; value: string }) {
       <div className="stat-value">{value}</div>
     </div>
   );
-}
-
-function formatRupiah(value: number) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(value);
 }

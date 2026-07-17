@@ -112,7 +112,9 @@ export function generateRefreshToken(): string {
   return base64UrlEncode(bytes);
 }
 
-/** Validate that a role string is a valid UserRole. */
+/** Validate that a role string is a valid UserRole.
+ *  Accepts 'institution' as an alias for 'partner' (Blueprint line 359 uses
+ *  'institution'; implementation uses 'partner' for the same concept). */
 export function isValidRole(role: string): role is UserRole {
-  return role === 'student' || role === 'teacher' || role === 'partner' || role === 'admin';
+  return role === 'student' || role === 'teacher' || role === 'partner' || role === 'admin' || role === 'institution';
 }

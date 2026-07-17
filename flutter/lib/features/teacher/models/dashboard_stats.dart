@@ -1,4 +1,4 @@
-/// Simple dashboard stats model — placeholder for richer views.
+/// Teacher dashboard stats — parsed from GET /api/teacher/dashboard response.
 class DashboardStats {
   const DashboardStats({
     this.commissionThisMonth = 0,

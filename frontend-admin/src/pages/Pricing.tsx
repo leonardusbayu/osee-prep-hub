@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api/client';
+import { formatRupiah } from '../utils/format';
 
 interface PricingEntry {
   id: string;
@@ -172,6 +173,3 @@ export function Pricing() {
   );
 }
 
-function formatRupiah(value: number) {
-  return new Intl.NumberFormat('id-ID').format(value);
-}

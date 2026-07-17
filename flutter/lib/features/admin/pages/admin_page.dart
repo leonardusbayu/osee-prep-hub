@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:js' as js;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api_client.dart';
 import '../../../app/theme.dart';
@@ -56,13 +56,8 @@ class _AdminPageState extends ConsumerState<AdminPage> {
   }
 
   void _openAdminPanel() {
-    // The admin React app — replace with the actual deployed URL.
     const url = 'https://prep.osee.co.id/admin';
-    try {
-      js.context.callMethod('open', [url, '_blank']);
-    } catch (_) {
-      // Non-web fallback
-    }
+    launchUrl(Uri.parse(url));
   }
 
   @override

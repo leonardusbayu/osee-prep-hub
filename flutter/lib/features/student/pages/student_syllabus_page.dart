@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -13,7 +14,8 @@ class StudentSyllabusPage extends ConsumerStatefulWidget {
   const StudentSyllabusPage({super.key});
 
   @override
-  ConsumerState<StudentSyllabusPage> createState() => _StudentSyllabusPageState();
+  ConsumerState<StudentSyllabusPage> createState() =>
+      _StudentSyllabusPageState();
 }
 
 class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
@@ -28,13 +30,22 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final dio = ApiClient.create();
       final r = await dio.get('/student/syllabus');
-      setState(() { _syllabi = (r.data as Map)['syllabi'] as List? ?? []; _isLoading = false; });
+      setState(() {
+        _syllabi = (r.data as Map)['syllabi'] as List? ?? [];
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _error = 'Failed to load'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load';
+        _isLoading = false;
+      });
     }
   }
 
@@ -44,19 +55,31 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
       final r = await dio.post('/student/syllabus/$itemId/start', data: {});
       final deepLink = (r.data as Map)['deep_link'] as String?;
       if (deepLink != null && deepLink.isNotEmpty && mounted) {
-        // Open deep link in new tab
+        // Open the deep link immediately, with a SnackBar re-open fallback.
+        await launchUrl(Uri.parse(deepLink));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: StudentTheme.primary,
-            content: Text('Opening: $deepLink', style: StudentTheme.cardLabel(Colors.white)),
-            action: SnackBarAction(label: 'Open', textColor: Colors.white, onPressed: () {}),
+            content: Text(
+              'Opening: $deepLink',
+              style: StudentTheme.cardLabel(Colors.white),
+            ),
+            action: SnackBarAction(
+              label: 'Re-open',
+              textColor: Colors.white,
+              onPressed: () => launchUrl(Uri.parse(deepLink)),
+            ),
           ),
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: StudentTheme.successGreen,
-            content: Text('Started! No external link for this item.', style: StudentTheme.cardLabel(Colors.white)),
+            content: Text(
+              'Started! No external link for this item.',
+              style: StudentTheme.cardLabel(Colors.white),
+            ),
           ),
         );
       }
@@ -65,7 +88,10 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: StudentTheme.danger,
-            content: Text('Failed: $e', style: StudentTheme.cardLabel(Colors.white)),
+            content: Text(
+              'Failed: $e',
+              style: StudentTheme.cardLabel(Colors.white),
+            ),
           ),
         );
       }
@@ -80,7 +106,10 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: StudentTheme.successGreen,
-            content: Text('Completed! ✓', style: StudentTheme.cardLabel(Colors.white)),
+            content: Text(
+              'Completed! ✓',
+              style: StudentTheme.cardLabel(Colors.white),
+            ),
           ),
         );
       }
@@ -90,7 +119,10 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: StudentTheme.danger,
-            content: Text('Failed: $e', style: StudentTheme.cardLabel(Colors.white)),
+            content: Text(
+              'Failed: $e',
+              style: StudentTheme.cardLabel(Colors.white),
+            ),
           ),
         );
       }
@@ -107,22 +139,24 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
     return _isLoading
-        ? const Center(child: CircularProgressIndicator(color: StudentTheme.primary))
+        ? const Center(
+            child: CircularProgressIndicator(color: StudentTheme.primary),
+          )
         : _error != null
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(_error!, style: StudentTheme.cardLabel(StudentTheme.textSecondary)),
-                    const SizedBox(height: StudentSpacing.lg),
-                    ElevatedButton(
-                      onPressed: _load,
-                      child: const Text('Retry'),
-                    ),
-                  ],
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _error!,
+                  style: StudentTheme.cardLabel(StudentTheme.textSecondary),
                 ),
-              )
-            : _buildContent(isDesktop);
+                const SizedBox(height: StudentSpacing.lg),
+                ElevatedButton(onPressed: _load, child: const Text('Retry')),
+              ],
+            ),
+          )
+        : _buildContent(isDesktop);
   }
 
   Widget _buildContent(bool isDesktop) {
@@ -137,13 +171,18 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
           StudentTopBar(
             name: 'Student',
             subtitle: 'My Syllabus',
-            onMenuTap: isDesktop ? null : () => Scaffold.of(context).openDrawer(),
+            onMenuTap: isDesktop
+                ? null
+                : () => Scaffold.of(context).openDrawer(),
           ),
           const SizedBox(height: StudentSpacing.xxl),
-          
+
           if (isEmpty)
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 64, horizontal: StudentSpacing.xl),
+              padding: const EdgeInsets.symmetric(
+                vertical: 64,
+                horizontal: StudentSpacing.xl,
+              ),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: StudentTheme.surface,
@@ -153,11 +192,22 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.view_kanban_outlined, size: 64, color: StudentTheme.textSecondary.withValues(alpha: 0.5)),
+                  Icon(
+                    Icons.view_kanban_outlined,
+                    size: 64,
+                    color: StudentTheme.textSecondary.withValues(alpha: 0.5),
+                  ),
                   const SizedBox(height: StudentSpacing.lg),
-                  Text('No syllabus assigned yet', style: StudentTheme.courseTitle()),
+                  Text(
+                    'No syllabus assigned yet',
+                    style: StudentTheme.courseTitle(),
+                  ),
                   const SizedBox(height: 8),
-                  Text('Ask your teacher to assign a syllabus to your classroom.', style: StudentTheme.cardLabel(), textAlign: TextAlign.center),
+                  Text(
+                    'Ask your teacher to assign a syllabus to your classroom.',
+                    style: StudentTheme.cardLabel(),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
             )
@@ -175,7 +225,7 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
               ),
               const SizedBox(height: StudentSpacing.md),
             ],
-          ]
+          ],
         ],
       ),
     );
@@ -183,7 +233,11 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
 }
 
 class _SyllabusCard extends StatelessWidget {
-  const _SyllabusCard({required this.syllabus, required this.onStart, required this.onComplete});
+  const _SyllabusCard({
+    required this.syllabus,
+    required this.onStart,
+    required this.onComplete,
+  });
   final Map<String, dynamic> syllabus;
   final void Function(String) onStart;
   final void Function(String) onComplete;
@@ -207,7 +261,11 @@ class _SyllabusCard extends StatelessWidget {
             color: StudentTheme.primarySurface,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(Icons.view_kanban_rounded, color: StudentTheme.primary, size: 28),
+          child: const Icon(
+            Icons.view_kanban_rounded,
+            color: StudentTheme.primary,
+            size: 28,
+          ),
         ),
         title: Text(
           syllabus['name'] as String? ?? '',
@@ -241,7 +299,11 @@ class _SyllabusCard extends StatelessWidget {
 }
 
 class _SyllabusItemTile extends StatelessWidget {
-  const _SyllabusItemTile({required this.item, required this.onStart, required this.onComplete});
+  const _SyllabusItemTile({
+    required this.item,
+    required this.onStart,
+    required this.onComplete,
+  });
   final Map<String, dynamic> item;
   final VoidCallback onStart;
   final VoidCallback onComplete;
@@ -267,7 +329,9 @@ class _SyllabusItemTile extends StatelessWidget {
           Expanded(
             child: Text(
               item['title'] as String? ?? '',
-              style: StudentTheme.noticeTitle().copyWith(fontWeight: FontWeight.normal),
+              style: StudentTheme.noticeTitle().copyWith(
+                fontWeight: FontWeight.normal,
+              ),
             ),
           ),
           const SizedBox(width: StudentSpacing.sm),
@@ -275,7 +339,10 @@ class _SyllabusItemTile extends StatelessWidget {
             onPressed: onStart,
             style: TextButton.styleFrom(
               foregroundColor: StudentTheme.primary,
-              textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
             child: const Text('Start'),
@@ -286,7 +353,10 @@ class _SyllabusItemTile extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               foregroundColor: StudentTheme.textSecondary,
               side: const BorderSide(color: StudentTheme.divider),
-              textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
             child: const Text('Done'),
@@ -298,16 +368,26 @@ class _SyllabusItemTile extends StatelessWidget {
 
   IconData _typeIcon(String type) {
     switch (type) {
-      case 'reading': return Icons.menu_book_rounded;
-      case 'listening': return Icons.headphones_rounded;
-      case 'speaking': return Icons.mic_rounded;
-      case 'writing': return Icons.edit_rounded;
-      case 'grammar': return Icons.spellcheck_rounded;
-      case 'vocabulary': return Icons.translate_rounded;
-      case 'mock_test': return Icons.quiz_rounded;
-      case 'video': return Icons.video_library_rounded;
-      case 'live_class': return Icons.videocam_rounded;
-      default: return Icons.assignment_rounded;
+      case 'reading':
+        return Icons.menu_book_rounded;
+      case 'listening':
+        return Icons.headphones_rounded;
+      case 'speaking':
+        return Icons.mic_rounded;
+      case 'writing':
+        return Icons.edit_rounded;
+      case 'grammar':
+        return Icons.spellcheck_rounded;
+      case 'vocabulary':
+        return Icons.translate_rounded;
+      case 'mock_test':
+        return Icons.quiz_rounded;
+      case 'video':
+        return Icons.video_library_rounded;
+      case 'live_class':
+        return Icons.videocam_rounded;
+      default:
+        return Icons.assignment_rounded;
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../teacher_theme.dart';
 
@@ -45,8 +46,10 @@ class TeacherTopbar extends StatelessWidget {
                 children: [
                   if (isCompact)
                     IconButton(
-                      icon: const Icon(Icons.menu_rounded,
-                          color: TeacherTheme.textSecondary),
+                      icon: const Icon(
+                        Icons.menu_rounded,
+                        color: TeacherTheme.textSecondary,
+                      ),
                       onPressed: onMenuTap,
                     ),
                   // Title left-aligned
@@ -57,7 +60,7 @@ class TeacherTopbar extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  
+
                   if (showSearch) ...[
                     const _SearchField(),
                     const SizedBox(width: 12),
@@ -71,10 +74,7 @@ class TeacherTopbar extends StatelessWidget {
                     const SizedBox(width: 12),
                   ],
                   if (showNotifMsg) ...[
-                    const _IconBadge(
-                      icon: Icons.notifications_none_rounded,
-                      count: 3,
-                    ),
+                    const _IconBadge(icon: Icons.notifications_none_rounded),
                     const SizedBox(width: 12),
                     const _IconBadge(icon: Icons.chat_bubble_outline_rounded),
                     const SizedBox(width: 12),
@@ -103,8 +103,11 @@ class _SearchField extends StatelessWidget {
         decoration: InputDecoration(
           hintText: 'Search',
           hintStyle: TeacherTheme.searchPlaceholder(),
-          prefixIcon: const Icon(Icons.search_rounded,
-              size: 18, color: TeacherTheme.textMuted),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: TeacherTheme.textMuted,
+          ),
           filled: true,
           fillColor: const Color(0xFFF5F6FA),
           contentPadding: EdgeInsets.zero,
@@ -131,7 +134,7 @@ class _NewUploadButton extends StatelessWidget {
       color: TeacherTheme.primaryBlueSoft,
       borderRadius: BorderRadius.circular(TeacherTheme.radiusButton),
       child: InkWell(
-        onTap: () {},
+        onTap: () => context.go('/teacher/syllabi'),
         borderRadius: BorderRadius.circular(TeacherTheme.radiusButton),
         child: Container(
           height: 34,
@@ -139,13 +142,17 @@ class _NewUploadButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.add_rounded,
-                  size: 16, color: TeacherTheme.primaryBlue),
+              const Icon(
+                Icons.add_rounded,
+                size: 16,
+                color: TeacherTheme.primaryBlue,
+              ),
               const SizedBox(width: 6),
               Text(
                 'New',
-                style: TeacherTheme.userName(TeacherTheme.primaryBlue)
-                    .copyWith(fontSize: 14),
+                style: TeacherTheme.userName(
+                  TeacherTheme.primaryBlue,
+                ).copyWith(fontSize: 14),
               ),
             ],
           ),
@@ -196,7 +203,10 @@ class _IconBadgeState extends State<_IconBadge> {
                     color: TeacherTheme.badgeDanger,
                     shape: BoxShape.circle,
                   ),
-                  constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+                  constraints: const BoxConstraints(
+                    minWidth: 15,
+                    minHeight: 15,
+                  ),
                   alignment: Alignment.center,
                   child: Text(
                     '${widget.count}',
@@ -232,14 +242,15 @@ class _ProfileChipState extends State<_ProfileChip> {
       onExit: (_) => setState(() => _hovered = false),
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          onTap: () {},
-          borderRadius: BorderRadius.circular(TeacherTheme.radiusButton),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
           child: AnimatedContainer(
             duration: TeacherTheme.animFast,
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
-              color: _hovered ? TeacherTheme.backgroundSecondary : Colors.transparent,
+              color: _hovered
+                  ? TeacherTheme.backgroundSecondary
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(TeacherTheme.radiusButton),
             ),
             child: Row(
@@ -263,8 +274,11 @@ class _ProfileChipState extends State<_ProfileChip> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(Icons.keyboard_arrow_down_rounded,
-                    size: 18, color: TeacherTheme.textSecondary),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                  color: TeacherTheme.textSecondary,
+                ),
               ],
             ),
           ),

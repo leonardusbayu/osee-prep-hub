@@ -5,15 +5,16 @@ import { generateStudentReport, generateClassroomReport, type StudentReport, typ
 /**
  * PDF report service — Task 8.2, 8.3, 9.2.
  *
- * Cloudflare Workers cannot run jsPDF/puppeteer (no DOM, no headless browser).
- * Instead, we generate a clean printable HTML document with print CSS that
- * teachers can save as PDF via the browser's "Print to PDF" feature.
+ * Produces a print-optimized HTML document served with Content-Type
+ * text/html. The document auto-triggers the browser print dialog on load
+ * (`window.print()`), from which the teacher can "Save as PDF" — this is
+ * the standard Workers-compatible PDF path (no headless browser required,
+ * works on the free tier). The HTML embeds teacher branding (custom logo +
+ * colors) + OSEE footer and uses A4 print CSS.
  *
- * The HTML embeds teacher branding (custom logo + colors) + OSEE footer.
- *
- * A real PDF binary can be generated later via:
- *   - A separate Worker that calls an external PDF microservice, OR
- *   - R2-hosted headless Chrome (e.g. browser-rendering API).
+ * To serve a PDF binary directly (no print dialog), add a Cloudflare Browser
+ * Rendering binding (`browser`) on a paid plan and render this HTML through
+ * it — the HTML is already print-CSS-correct so no other change is needed.
  */
 
 export interface ReportHtmlOptions {
@@ -186,6 +187,7 @@ function renderStudentReportHtml(report: StudentReport, opts: ReportHtmlOptions)
   <tbody>${activityRows}</tbody></table>
 
   ${oseeFooter}
+  <script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>
 </body></html>`;
 }
 
@@ -268,6 +270,7 @@ function renderClassroomReportHtml(report: ClassroomReport, opts: ReportHtmlOpti
   </tr></thead><tbody>${studentRows}</tbody></table>
 
   ${oseeFooter}
+  <script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>
 </body></html>`;
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api/client';
+import { formatRupiah } from '../utils/format';
 
 interface AdminStats {
   total_users: number;
@@ -92,12 +93,4 @@ function StatCard({ icon, label, value }: { icon: string; label: string; value: 
       <div className="stat-value">{value}</div>
     </div>
   );
-}
-
-function formatRupiah(value: number) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(value);
 }

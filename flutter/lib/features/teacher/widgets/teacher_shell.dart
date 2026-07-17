@@ -11,10 +11,7 @@ import 'teacher_topbar.dart';
 /// `StatefulShellRoute.indexedStack`. The sidebar + topbar stay mounted across
 /// navigation; only the body (navigationShell) swaps.
 class TeacherShell extends ConsumerStatefulWidget {
-  const TeacherShell({
-    super.key,
-    required this.navigationShell,
-  });
+  const TeacherShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
@@ -91,22 +88,21 @@ class _TeacherShellState extends ConsumerState<TeacherShell> {
   int _navIndexFromShellIndex(int shellIndex) {
     // Shell branch → nav item route → nav index
     const shellToRoute = <String>[
-      '/teacher',                  // 0
-      '/teacher/legacy',           // 1
-      '/teacher/orders',           // 2
-      '/teacher/schedule',         // 3
-      '/teacher/ai-grader',        // 4
-      '/teacher/speaking-grader',  // 5
-      '/teacher/generator',        // 6
-      '/teacher/syllabi',          // 7
-      '/teacher/syllabi',          // 8 (builder, same nav highlight)
-      '/teacher/classrooms',       // 9
-      '/teacher/classrooms',       // 10 (detail, same nav highlight)
-      '/teacher/classrooms',       // 11 (report, same nav highlight)
-      '/teacher/commission',       // 12
-      '/teacher/reports',          // 13
-      '/teacher/settings',         // 14
-      '/teacher/upgrade',          // 15
+      '/teacher', // 0
+      '/teacher/orders', // 1
+      '/teacher/schedule', // 2
+      '/teacher/ai-grader', // 3
+      '/teacher/speaking-grader', // 4
+      '/teacher/generator', // 5
+      '/teacher/syllabi', // 6
+      '/teacher/syllabi', // 7 (builder, same nav highlight)
+      '/teacher/classrooms', // 8
+      '/teacher/classrooms', // 9 (detail, same nav highlight)
+      '/teacher/classrooms', // 10 (report, same nav highlight)
+      '/teacher/commission', // 11
+      '/teacher/reports', // 12
+      '/teacher/settings', // 13
+      '/teacher/upgrade', // 14
     ];
     if (shellIndex >= shellToRoute.length) return 0;
     final route = shellToRoute[shellIndex];
@@ -161,12 +157,7 @@ class _TeacherShellState extends ConsumerState<TeacherShell> {
 }
 
 class _RouteMeta {
-  const _RouteMeta({
-    required this.title,
-    this.actions,
-    this.bottom,
-    this.fab,
-  });
+  const _RouteMeta({required this.title, this.actions, this.bottom, this.fab});
 
   final String title;
   final List<Widget>? actions;

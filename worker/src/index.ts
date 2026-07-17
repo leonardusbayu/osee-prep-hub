@@ -18,6 +18,7 @@ import { ambassadorRoutes } from './routes/ambassador';
 import { adminRoutes } from './routes/admin';
 import { platformRoutes } from './routes/platform';
 import { brandingRoutes } from './routes/branding';
+import { reportRoutes } from './routes/reports';
 import type { Env, ContextVars } from './types';
 import { getPricingForRole } from './services/pricing';
 import { optionalAuth } from './middleware/auth';
@@ -60,6 +61,7 @@ app.route('/api/ambassador', ambassadorRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/platform', platformRoutes);
 app.route('/api/branding', brandingRoutes);
+app.route('/api/reports', reportRoutes); // Blueprint Section 5 lines 1391-1401
 
 // Blueprint alias endpoints (path compatibility — same handler, different path)
 // These mirror the blueprint Section 5 exact paths for client compatibility.
@@ -80,6 +82,17 @@ app.get('/api/teacher/ai-quota', requireAuth(), async (c) => {
   const grading = await getQuotaStatus(c.env, user.id, user.role, 'grading');
   const generation = await getQuotaStatus(c.env, user.id, user.role, 'generation');
   return c.json({ grading, generation });
+});
+
+// Blueprint Section 5 top-level /api/commission/* namespace (lines 1407-1416).
+// Aliases to the /api/teacher/commission/* handlers for Blueprint path compliance.
+app.route('/api/commission', commissionRoutes);
+// /api/commission/earnings → same as /dashboard
+app.get('/api/commission/earnings', requireAuth(), async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: { code: 'UNAUTHORIZED' } }, 401);
+  const { getCommissionStats } = await import('./services/commission-dashboard');
+  return c.json(await getCommissionStats(c.env, user.id));
 });
 
 // Root
@@ -130,6 +143,7 @@ app.onError((err, c) => {
 // trigger `scheduled`, so this is defence-in-depth.
 import { processWebhookBatch } from './services/webhook-processor';
 import { sendUpcomingClassReminders } from './services/live-class';
+import { creditRecurringPremiumCommission } from './services/premium-recurring';
 
 const scheduledHandler: ExportedHandlerScheduledHandler<Env> = async (_event, env, ctx) => {
   // 1. Process webhook events in FIFO batches
@@ -151,6 +165,19 @@ const scheduledHandler: ExportedHandlerScheduledHandler<Env> = async (_event, en
       })
       .catch((err) => {
         console.error('[cron] class reminder failed:', err);
+      })
+  );
+
+  // 3. Credit recurring monthly premium commission (Blueprint line 64)
+  ctx.waitUntil(
+    creditRecurringPremiumCommission(env)
+      .then((result) => {
+        if (result.credited > 0) {
+          console.log(`[cron] premium recurring commission credited: ${result.credited} students`);
+        }
+      })
+      .catch((err) => {
+        console.error('[cron] premium recurring commission failed:', err);
       })
   );
 };

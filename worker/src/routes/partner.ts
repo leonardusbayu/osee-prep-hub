@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
-import { getPartnerDashboard, getPartnerTeachers, inviteTeacher } from '../services/partner';
+import { getPartnerDashboard, getPartnerTeachers, getPartnerStudents, inviteTeacher } from '../services/partner';
 
 export const partnerRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -57,6 +57,17 @@ partnerRoutes.post('/teachers/invite', async (c) => {
   }
 });
 
+/** GET /api/partner/students — list students in the institution (Goal 2) */
+partnerRoutes.get('/students', async (c) => {
+  const user = getAuthedUser(c);
+  try {
+    const students = await getPartnerStudents(c.env, user.id);
+    return c.json({ students });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
 /** GET /api/partner/orders — list all orders by institution */
 partnerRoutes.get('/orders', async (c) => {
   const user = getAuthedUser(c);
@@ -89,8 +100,10 @@ partnerRoutes.get('/teachers/:id/activity', async (c) => {
     }
 
     const t = teacher as Record<string, unknown>;
-    // Check teacher belongs to this partner (via referred_by or institution)
-    if (t.referred_by !== user.id) {
+    // Check teacher belongs to this partner (via referred_by or institution).
+    const { getPartnerTeacherIds } = await import('../services/partner');
+    const ids = await getPartnerTeacherIds(c.env, user.id);
+    if (!ids.includes(teacherId)) {
       return c.json({ error: { code: 'FORBIDDEN', message: 'Teacher not in your institution' } }, 403);
     }
 
@@ -139,12 +152,13 @@ partnerRoutes.get('/teachers/:id/activity', async (c) => {
   }
 });
 
-/** GET /api/partner/commission — partner commission summary (Goal 9) */
+/** GET /api/partner/commission — partner commission summary aggregated across
+ *  all the institution's teachers (Goal 9). */
 partnerRoutes.get('/commission', async (c) => {
   const user = getAuthedUser(c);
-  const { getCommissionStats } = await import('../services/commission-dashboard');
   try {
-    const stats = await getCommissionStats(c.env, user.id);
+    const { getPartnerCommissionStats } = await import('../services/commission-dashboard');
+    const stats = await getPartnerCommissionStats(c.env, user.id);
     return c.json(stats);
   } catch (err) {
     return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);

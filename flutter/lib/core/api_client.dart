@@ -16,7 +16,22 @@ class ApiClient {
   /// `pages.dev` <-> `workers.dev` boundary.
   static String? currentToken;
 
+  /// Invoked once when any Dio response returns 401 Unauthorized. Set up in
+  /// `main()` from the ProviderContainer so it can drive a Riverpod logout +
+  /// router redirect to `/login` without the interceptor needing a BuildContext.
+  /// Mirrors the `setUnauthorizedHandler` pattern used by frontend-admin.
+  static void Function()? onUnauthorized;
+
+  /// Test hook: when set, [create] returns this Dio instance instead of
+  /// building a fresh one. Lets widget tests inject a mock adapter so no real
+  /// network call is made (which would otherwise leave a pending Timer and
+  /// hang the flutter_test binding). Null in production.
+  static Dio? testDioOverride;
+
   static Dio create({String? baseUrl, String? authToken}) {
+    if (testDioOverride != null) {
+      return testDioOverride!;
+    }
     final dio = Dio(
       BaseOptions(
         baseUrl: baseUrl ?? _defaultBaseUrl,
@@ -53,5 +68,22 @@ class _AuthInterceptor extends Interceptor {
       options.headers['Authorization'] = 'Bearer $token';
     }
     handler.next(options);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    // Surface 401s globally so the app can clear the stale token + redirect
+    // to login. We only fire the callback once per process to avoid looping
+    // when many requests fail in parallel.
+    if (err.response?.statusCode == 401 && ApiClient.onUnauthorized != null) {
+      final void Function() cb = ApiClient.onUnauthorized!;
+      // Null first so concurrent 401s don't all invoke it.
+      ApiClient.onUnauthorized = null;
+      // The callback is responsible for re-arming onUnauthorized (it does
+      // so after clearing state + redirecting, so the next 401 post-login
+      // is handled again).
+      cb();
+    }
+    handler.next(err);
   }
 }

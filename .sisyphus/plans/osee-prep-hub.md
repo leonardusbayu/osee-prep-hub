@@ -71,16 +71,16 @@ Build a production-deployed AI Teaching Assistant platform at prep.osee.co.id th
 - Production deployment at prep.osee.co.id
 
 ### Definition of Done
-- [ ] `wrangler deploy` succeeds for worker
-- [ ] `flutter build web` succeeds for portals
-- [ ] All API endpoints respond correctly (verified via curl)
-- [ ] Auth flow works end-to-end (register → login → SSO cookie → protected route)
-- [ ] Webhook receiver accepts and processes events from all 6 platforms
-- [ ] AI grader returns graded results for sample essay
-- [ ] Commission calculated correctly on webhook events
-- [ ] Student portal shows syllabus + progress + deep links to practice platforms
-- [ ] EduBot bridge syncs progress bidirectionally
-- [ ] prep.osee.co.id accessible with valid SSL
+- [x] `wrangler deploy` succeeds for worker
+- [x] `flutter build web` succeeds for portals
+- [x] All API endpoints respond correctly (verified via curl)
+- [x] Auth flow works end-to-end (register → login → SSO cookie → protected route)
+- [x] Webhook receiver accepts and processes events from all 6 platforms
+- [x] AI grader returns graded results for sample essay
+- [x] Commission calculated correctly on webhook events
+- [x] Student portal shows syllabus + progress + deep links to practice platforms
+- [x] EduBot bridge syncs progress bidirectionally
+- [x] prep.osee.co.id accessible with valid SSL
 
 ### Must Have
 - All 80+ tasks from blueprint Section 12 implemented
@@ -334,7 +334,7 @@ Max Concurrent: 9 (Wave 1)
 
 ## TODOs
 
-- [ ] 0.1. Project initialization + git + scaffolding
+- [x] 0.1. Project initialization + git + scaffolding
 
   **What to do**:
   - Initialize git repo in `D:\osee hub` (`git init`)
@@ -410,7 +410,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: all created files
   - Pre-commit: none (no code yet)
 
-- [ ] 0.2. Audit EduBot vitest setup + replicate config for Hub worker
+- [x] 0.2. Audit EduBot vitest setup + replicate config for Hub worker
 
   **What to do**:
   - Read `D:\claude telegram bot\worker\vitest.config.ts` — understand config (test environment, include patterns, coverage settings)
@@ -486,7 +486,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: docs/TESTING.md, worker/vitest.config.ts, worker/package.json, worker/src/smoke.test.ts
   - Pre-commit: `cd worker && npx vitest run`
 
-- [ ] 1.1. Supabase schema — create schema.sql and run DDL
+- [x] 1.1. Supabase schema — create schema.sql and run DDL
 
   **What to do**:
   - Read blueprint Section 4 (lines 337-1236) — full Supabase PostgreSQL schema DDL
@@ -616,7 +616,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: schema.sql, scripts/verify-schema.ts
   - Pre-commit: `npx tsx scripts/verify-schema.ts`
 
-- [ ] 1.2. Cloudflare Workers project setup (worker/)
+- [x] 1.2. Cloudflare Workers project setup (worker/)
 
   **What to do**:
   - Create `worker/src/index.ts` — main entry with Hono app, health check route
@@ -712,7 +712,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/index.ts, worker/src/types.ts, worker/tsconfig.json, worker/wrangler.toml, worker/src/middleware/cors.ts, worker/src/services/supabase.ts, worker/src/services/jwt.ts
   - Pre-commit: `cd worker && npx tsc --noEmit`
 
-- [ ] 1.3. Auth routes — register, login, verify, refresh, logout
+- [x] 1.3. Auth routes — register, login, verify, refresh, logout
 
   **What to do**:
   - Create `worker/src/routes/auth.ts` with Hono routes:
@@ -818,7 +818,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/routes/auth.ts, worker/src/middleware/auth.ts, worker/src/routes/auth.test.ts, worker/src/index.ts (route registration)
   - Pre-commit: `cd worker && npx vitest run src/routes/auth.test.ts`
 
-- [ ] 1.4. SSO cookie — set cookie domain to .osee.co.id
+- [x] 1.4. SSO cookie — set cookie domain to .osee.co.id
 
   **What to do**:
   - Update auth routes (from 1.3) to set cookies with:
@@ -894,7 +894,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/services/cookie.ts, worker/src/routes/auth.ts (update)
   - Pre-commit: `cd worker && npx vitest run`
 
-- [ ] 1.5. Flutter project init — architecture, state, routing, HTTP
+- [x] 1.5. Flutter project init — architecture, state, routing, HTTP
 
   **What to do**:
   - Initialize Flutter project in `flutter/` directory: `flutter create . --project-name osee_prep_hub --platforms web`
@@ -997,7 +997,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/ (entire project)
   - Pre-commit: `cd flutter && flutter analyze && flutter test`
 
-- [ ] 1.9. Admin React project init (frontend-admin/)
+- [x] 1.9. Admin React project init (frontend-admin/)
 
   **What to do**:
   - Create `frontend-admin/package.json` with React + Vite + TypeScript + Tailwind
@@ -1074,7 +1074,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: frontend-admin/ (entire project)
   - Pre-commit: `cd frontend-admin && npm run build`
 
-- [ ] 1.6. Registration page (Flutter) with referral code support
+- [x] 1.6. Registration page (Flutter) with referral code support
 
   **What to do**:
   - Create `flutter/lib/features/auth/pages/register_page.dart` — registration form with fields: email, password, confirm password, name, role selector (teacher/student), referral code (optional, pre-filled from URL param)
@@ -1163,7 +1163,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/lib/features/auth/ (pages, providers, models), flutter/test/features/auth/register_page_test.dart
   - Pre-commit: `cd flutter && flutter test`
 
-- [ ] 1.7. Login page (Flutter)
+- [x] 1.7. Login page (Flutter)
 
   **What to do**:
   - Create `flutter/lib/features/auth/pages/login_page.dart` — login form with: email, password, "Login" button, "Register" link
@@ -1236,7 +1236,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/lib/features/auth/pages/login_page.dart, flutter/test/features/auth/login_page_test.dart
   - Pre-commit: `cd flutter && flutter test`
 
-- [ ] 1.8. Auth guard router — role-based routing (Flutter go_router)
+- [x] 1.8. Auth guard router — role-based routing (Flutter go_router)
 
   **What to do**:
   - Update `flutter/lib/core/router.dart` with go_router redirect logic:
@@ -1321,7 +1321,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/lib/core/router.dart (update), flutter/lib/features/auth/providers/auth_state_provider.dart, flutter/test/features/auth/auth_guard_test.dart
   - Pre-commit: `cd flutter && flutter test`
 
-- [ ] 2.1. Teacher dashboard page (Flutter)
+- [x] 2.1. Teacher dashboard page (Flutter)
 
   **What to do**:
   - Create `flutter/lib/features/teacher/pages/teacher_dashboard_page.dart` — stats overview:
@@ -1403,7 +1403,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/lib/features/teacher/pages/teacher_dashboard_page.dart, flutter/lib/features/teacher/providers/dashboard_provider.dart, flutter/lib/features/teacher/models/dashboard_stats.dart, worker/src/routes/teacher.ts, worker/src/routes/teacher.test.ts
   - Pre-commit: `cd worker && npx vitest run && cd ../flutter && flutter test`
 
-- [ ] 2.2. Classroom creation + join code generation
+- [x] 2.2. Classroom creation + join code generation
 
   **What to do**:
   - Add to `worker/src/routes/teacher.ts`:
@@ -1481,7 +1481,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/routes/teacher.ts (update), worker/src/services/classroom.ts, worker/src/routes/teacher.test.ts (update), flutter/lib/features/teacher/pages/classroom_create_page.dart, flutter/lib/features/teacher/pages/classroom_list_page.dart
   - Pre-commit: `cd worker && npx vitest run`
 
-- [ ] 2.3. Student registration via referral link (/r/CODE)
+- [x] 2.3. Student registration via referral link (/r/CODE)
 
   **What to do**:
   - Add route in Flutter router: `/r/:code` → redirects to /register with referral code pre-filled
@@ -1550,7 +1550,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/lib/core/router.dart (update), worker/src/routes/auth.ts (update), worker/src/services/referral.ts, worker/src/routes/auth.test.ts (update)
   - Pre-commit: `cd worker && npx vitest run`
 
-- [ ] 2.4. Classroom enrollment system
+- [x] 2.4. Classroom enrollment system
 
   **What to do**:
   - Add to `worker/src/routes/student.ts` (create if not exists):
@@ -1617,7 +1617,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/routes/student.ts, worker/src/services/classroom.ts (update), worker/src/routes/student.test.ts, flutter/lib/features/student/pages/classroom_join_page.dart, flutter/lib/features/student/pages/my_classrooms_page.dart
   - Pre-commit: `cd worker && npx vitest run`
 
-- [ ] 2.5. OSEE branding widget component (Flutter)
+- [x] 2.5. OSEE branding widget component (Flutter)
 
   **What to do**:
   - Create `flutter/lib/shared/widgets/osee_branding_widget.dart` — reusable widget showing OSEE logo + tagline "Powered by OSEE Education Hub"
@@ -1668,7 +1668,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/lib/shared/widgets/osee_branding_widget.dart, flutter/assets/ (logo placeholder)
   - Pre-commit: `cd flutter && flutter analyze`
 
-- [ ] 2.6. Tutor Bot link component (floating CTA)
+- [x] 2.6. Tutor Bot link component (floating CTA)
 
   **What to do**:
   - Create `flutter/lib/shared/widgets/tutor_bot_fab.dart` — floating action button linking to Telegram EduBot
@@ -1729,7 +1729,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/lib/shared/widgets/tutor_bot_fab.dart
   - Pre-commit: `cd flutter && flutter analyze`
 
-- [ ] 3.1. Webhook receiver endpoints (6 platforms)
+- [x] 3.1. Webhook receiver endpoints (6 platforms)
 
   **What to do**:
   - Create `worker/src/routes/webhook.ts` with 6 POST endpoints:
@@ -1812,7 +1812,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/routes/webhook.ts, worker/src/routes/webhook.test.ts, worker/src/types.ts (update)
   - Pre-commit: `cd worker && npx vitest run src/routes/webhook.test.ts`
 
-- [ ] 3.2. Webhook event processing pipeline
+- [x] 3.2. Webhook event processing pipeline
 
   **What to do**:
   - Create `worker/src/services/webhook-processor.ts` — process unprocessed webhook_events
@@ -1885,7 +1885,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/services/webhook-processor.ts, worker/src/services/webhook-processor.test.ts, worker/src/routes/webhook.ts (update)
   - Pre-commit: `cd worker && npx vitest run`
 
-- [ ] 3.3. Student progress unified table updates
+- [x] 3.3. Student progress unified table updates
 
   **What to do**:
   - Create `worker/src/services/student-progress.ts` — update student_progress_unified table from webhook events
@@ -1937,7 +1937,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/services/student-progress.ts, worker/src/routes/student.ts (update), worker/src/routes/teacher.ts (update), worker/src/services/student-progress.test.ts
   - Pre-commit: `cd worker && npx vitest run`
 
-- [ ] 3.4. Commission trigger on webhook events
+- [x] 3.4. Commission trigger on webhook events
 
   **What to do**:
   - Create `worker/src/services/commission.ts` — commission calculation engine
@@ -2028,7 +2028,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/services/commission.ts, worker/src/services/commission.test.ts, worker/src/routes/teacher.ts (update)
   - Pre-commit: `cd worker && npx vitest run src/services/commission.test.ts`
 
-- [ ] 3.5. Webhook secret authentication
+- [x] 3.5. Webhook secret authentication
 
   **What to do**:
   - Create `worker/src/middleware/webhook-auth.ts` — middleware that verifies X-Webhook-Secret header against env var for each platform
@@ -2090,7 +2090,7 @@ Max Concurrent: 9 (Wave 1)
 
 > **PHASE 1 BOUNDARY**: After Task 3.5, create git tag `phase-1-complete`. All Phase 1 tasks (1.1-1.9, 2.1-2.6, 3.1-3.5) must be complete and committed before starting Phase 2.
 
-- [ ] 4.1. Enable pgvector extension in Supabase
+- [x] 4.1. Enable pgvector extension in Supabase
 
   **What to do**:
   - Verify pgvector extension already enabled (Task 1.1 should have done this)
@@ -2124,7 +2124,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(4.1): enable pgvector + create documents table with vector index`
 
-- [ ] 4.2. Document ingestion script
+- [x] 4.2. Document ingestion script
 
   **What to do**:
   - Create `scripts/ingest-knowledge-base.ts` — TypeScript script that:
@@ -2182,7 +2182,7 @@ Max Concurrent: 9 (Wave 1)
   **Commit**: YES | `task(4.2): document ingestion script with chunking + OpenAI embeddings`
   - Files: scripts/ingest-knowledge-base.ts, scripts/ingest-knowledge-base.test.ts
 
-- [ ] 4.3. Ingest Tier 1 materials (CEFR, Kurikulum Merdeka, ETS specs)
+- [x] 4.3. Ingest Tier 1 materials (CEFR, Kurikulum Merdeka, ETS specs)
 
   **What to do**:
   - Create `docs/knowledge-base/tier1/` directory
@@ -2227,7 +2227,7 @@ Max Concurrent: 9 (Wave 1)
   **Commit**: YES | `task(4.3): ingest Tier 1 materials - CEFR, Kurikulum Merdeka, ETS specs`
   - Files: docs/knowledge-base/tier1/*, (no code changes)
 
-- [ ] 4.4. Ingest EduBot error pattern data
+- [x] 4.4. Ingest EduBot error pattern data
 
   **What to do**:
   - Create `scripts/ingest-edubot-errors.ts` — query EduBot's D1 database (or export) for common student error patterns
@@ -2266,7 +2266,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(4.4): ingest EduBot error pattern data into RAG knowledge base`
 
-- [ ] 4.5. Vector search function (match_documents)
+- [x] 4.5. Vector search function (match_documents)
 
   **What to do**:
   - Create Supabase SQL function `match_documents`:
@@ -2324,7 +2324,7 @@ Max Concurrent: 9 (Wave 1)
   **Commit**: YES | `task(4.5): create match_documents vector search function with cosine similarity`
   - Files: schema.sql (update), scripts/test-vector-search.ts
 
-- [ ] 4.6. RAG search API endpoint
+- [x] 4.6. RAG search API endpoint
 
   **What to do**:
   - Create `worker/src/routes/ai.ts` (or `rag.ts`) with:
@@ -2370,7 +2370,7 @@ Max Concurrent: 9 (Wave 1)
 
 > **PHASE 2A BOUNDARY**: Tasks 4.1-4.6 complete. Continue to Phase 2B (AI Writing Grader).
 
-- [ ] 5.1. gradeWriting service (GPT-4o-mini + RAG)
+- [x] 5.1. gradeWriting service (GPT-4o-mini + RAG)
 
   **What to do**:
   - Create `worker/src/services/ai-grading.ts` — gradeWriting(essay, rubric, examType, level):
@@ -2416,7 +2416,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(5.1): gradeWriting service with GPT-4o-mini + RAG context`
 
-- [ ] 5.2. Grading queue system (pending → processing → completed)
+- [x] 5.2. Grading queue system (pending → processing → completed)
 
   **What to do**:
   - Use ai_grading_queue table from schema
@@ -2453,7 +2453,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(5.2): grading queue system with async processing`
 
-- [ ] 5.3. AI grader UI page (Flutter)
+- [x] 5.3. AI grader UI page (Flutter)
 
   **What to do**:
   - Create `flutter/lib/features/teacher/pages/ai_grader_page.dart`:
@@ -2495,7 +2495,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(5.3): AI grader UI page (Flutter) - essay input, rubric, results`
 
-- [ ] 5.4. Quota checking (free: 50/month, pro: unlimited)
+- [x] 5.4. Quota checking (free: 50/month, pro: unlimited)
 
   **What to do**:
   - Create `worker/src/services/quota.ts` — checkQuota(userId, type): count this month's usage, compare to limit
@@ -2531,7 +2531,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(5.4): quota checking - free 50/month, pro unlimited`
 
-- [ ] 5.5. Store results in ai_grading_queue table
+- [x] 5.5. Store results in ai_grading_queue table
 
   **What to do**:
   - Update gradeWriting service to store full result JSON in ai_grading_queue.result column
@@ -2563,7 +2563,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(5.5): store grading results + history endpoint`
 
-- [ ] 5.6. Bridge to EduBot writing route (alternative path)
+- [x] 5.6. Bridge to EduBot writing route (alternative path)
 
   **What to do**:
   - Add `POST /api/ai/grade-writing/edubot` — proxy to EduBot's writing evaluation endpoint
@@ -2598,7 +2598,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(5.6): bridge to EduBot writing evaluation route`
 
-- [ ] 6.1. generateMaterial service (GPT-4o-mini + RAG)
+- [x] 6.1. generateMaterial service (GPT-4o-mini + RAG)
 
   **What to do**:
   - Create `worker/src/services/ai-generation.ts` — generateMaterial(type, exam, level, topic, options):
@@ -2631,7 +2631,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(6.1): generateMaterial service with GPT-4o-mini + RAG`
 
-- [ ] 6.2. Generation queue system
+- [x] 6.2. Generation queue system
 
   **What to do**: Same pattern as 5.2 but for generation. Use generation queue table.
 
@@ -2652,7 +2652,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(6.2): generation queue system`
 
-- [ ] 6.3. Material generator UI page (Flutter)
+- [x] 6.3. Material generator UI page (Flutter)
 
   **What to do**: Create `flutter/lib/features/teacher/pages/material_generator_page.dart` with: type selector, exam selector, level selector, topic input, options, generate button, preview of result, "Add to syllabus" button (links to Task 6.5).
 
@@ -2673,7 +2673,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(6.3): material generator UI page (Flutter)`
 
-- [ ] 6.4. Content validation pipeline (reuse EduBot's contentValidator pattern)
+- [x] 6.4. Content validation pipeline (reuse EduBot's contentValidator pattern)
 
   **What to do**:
   - Create `worker/src/services/content-validator.ts` — validate generated content for: appropriateness, accuracy, format compliance, bias
@@ -2700,7 +2700,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(6.4): content validation pipeline (adapted from EduBot)`
 
-- [ ] 6.5. Generated material preview + add to syllabus
+- [x] 6.5. Generated material preview + add to syllabus
 
   **What to do**: Update generator UI (6.3) with "Add to Syllabus" button that creates syllabus_item with source_type='ai_generated'. Requires syllabus to exist (Phase 3 Task 10.1) — add minimal syllabus creation endpoint if needed.
 
@@ -2721,7 +2721,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(6.5): generated material preview + add to syllabus`
 
-- [ ] 6.6. Quota checking (free: 10/month)
+- [x] 6.6. Quota checking (free: 10/month)
 
   **What to do**: Update quota service (5.4) to support generation quota: free 10/month, pro unlimited. Add to generation route.
 
@@ -2742,7 +2742,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(6.6): generation quota checking - free 10/month`
 
-- [ ] 7.1. Bridge to EduBot speaking evaluation (Whisper + GPT)
+- [x] 7.1. Bridge to EduBot speaking evaluation (Whisper + GPT)
 
   **What to do**:
   - Create `POST /api/ai/grade-speaking` — accepts audio URL (from R2, Task 7.3), proxies to EduBot's speaking route
@@ -2768,7 +2768,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(7.1): bridge to EduBot speaking evaluation`
 
-- [ ] 7.2. Speaking grader UI (Flutter)
+- [x] 7.2. Speaking grader UI (Flutter)
 
   **What to do**: Create `flutter/lib/features/teacher/pages/speaking_grader_page.dart` — record audio (Flutter mic), upload to R2, submit for grading, display results.
 
@@ -2789,7 +2789,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(7.2): speaking grader UI (Flutter)`
 
-- [ ] 7.3. R2 audio upload pipeline
+- [x] 7.3. R2 audio upload pipeline
 
   **What to do**:
   - Create `worker/src/routes/upload.ts` — POST /api/upload/audio — accepts audio file, uploads to R2 bucket, returns R2 URL
@@ -2813,7 +2813,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(7.3): R2 audio upload pipeline`
 
-- [ ] 7.4. Quota checking for speaking
+- [x] 7.4. Quota checking for speaking
 
   **What to do**: Update quota service to support speaking quota: free 10/month, pro unlimited.
 
@@ -2836,7 +2836,7 @@ Max Concurrent: 9 (Wave 1)
 
 > **PHASE 2 BOUNDARY**: Tasks 4.1-7.4 complete. Git tag `phase-2-complete`.
 
-- [ ] 8.1. Report generation service
+- [x] 8.1. Report generation service
 
   **What to do**:
   - Create `worker/src/services/reports.ts` — generateStudentReport(studentId): aggregate progress, scores, weaknesses, recommendations
@@ -2861,7 +2861,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(8.1): student report generation service`
 
-- [ ] 8.2. Student report PDF template
+- [x] 8.2. Student report PDF template
 
   **What to do**:
   - Create `worker/src/services/pdf.ts` — PDF generation library (use puppeteer or jsPDF or @react-pdf/renderer)
@@ -2887,7 +2887,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(8.2): student report PDF template with teacher branding`
 
-- [ ] 8.3. Report viewer page (Flutter)
+- [x] 8.3. Report viewer page (Flutter)
 
   **What to do**: Create `flutter/lib/features/teacher/pages/report_viewer_page.dart` — displays report (from 8.1) in formatted view, download PDF button (from 8.2).
 
@@ -2908,7 +2908,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(8.3): report viewer page (Flutter)`
 
-- [ ] 8.4. Batch report generation (all students in classroom)
+- [x] 8.4. Batch report generation (all students in classroom)
 
   **What to do**: Add `POST /api/teacher/classrooms/:id/reports` — generate reports for all students, return array. Add batch PDF generation.
 
@@ -2929,7 +2929,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(8.4): batch report generation for classroom`
 
-- [ ] 8.5. Report download/email feature
+- [x] 8.5. Report download/email feature
 
   **What to do**: Add email sending (use Cloudflare Email Workers or external service), `POST /api/teacher/students/:id/report/email` — sends PDF to parent/student email.
 
@@ -2950,7 +2950,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(8.5): report download/email feature`
 
-- [ ] 9.1. Classroom report aggregation service
+- [x] 9.1. Classroom report aggregation service
 
   **What to do**: Create `worker/src/services/classroom-reports.ts` — aggregate all students' progress in a classroom: average scores, common weaknesses, progress trends. Add `GET /api/teacher/classrooms/:id/report`.
 
@@ -2971,7 +2971,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(9.1): classroom report aggregation service`
 
-- [ ] 9.2. Classroom report PDF template
+- [x] 9.2. Classroom report PDF template
 
   **What to do**: Extend pdf.ts service with classroom report template: all students summary, charts, weakness distribution.
 
@@ -2992,7 +2992,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(9.2): classroom report PDF template`
 
-- [ ] 9.3. Weakness heatmap visualization (Flutter)
+- [x] 9.3. Weakness heatmap visualization (Flutter)
 
   **What to do**: Create `flutter/lib/features/teacher/widgets/weakness_heatmap.dart` — visualize weakness areas across classroom as heatmap grid (sections × students, color-coded by weakness severity).
 
@@ -3013,7 +3013,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(9.3): weakness heatmap visualization (Flutter)`
 
-- [ ] 9.4. Teacher effectiveness metrics
+- [x] 9.4. Teacher effectiveness metrics
 
   **What to do**: Add to classroom report: teacher effectiveness metrics (student improvement rate, engagement, completion rate).
 
@@ -3034,7 +3034,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(9.4): teacher effectiveness metrics in classroom report`
 
-- [ ] 10.1. Material library component (Flutter — left column)
+- [x] 10.1. Material library component (Flutter — left column)
 
   **What to do**: Create `flutter/lib/features/teacher/pages/syllabus_builder_page.dart` with two-column layout. Left column: material library (browsable list of materials from all platforms + AI-generated). Fetches from `GET /api/teacher/materials` which aggregates from platform bridge API.
 
@@ -3055,7 +3055,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(10.1): material library component (Flutter)`
 
-- [ ] 10.2. Syllabus timeline component (Flutter — right column)
+- [x] 10.2. Syllabus timeline component (Flutter — right column)
 
   **What to do**: Right column of syllabus builder: timeline/list of syllabus items in order, with drag handles (for 10.3), unlock logic indicators, flavor tags.
 
@@ -3076,7 +3076,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(10.2): syllabus timeline component (Flutter)`
 
-- [ ] 10.3. Drag-and-drop implementation (Flutter ReorderableList)
+- [x] 10.3. Drag-and-drop implementation (Flutter ReorderableList)
 
   **What to do**: Implement drag-and-drop using Flutter's `ReorderableListView` (blueprint says @dndkit which is React — use Flutter equivalent). Drag items from material library (left) to timeline (right), reorder within timeline. On drop, update sort_order.
 
@@ -3105,7 +3105,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(10.3): drag-and-drop syllabus builder (Flutter ReorderableList)`
 
-- [ ] 10.4. Batch save (PUT syllabus items)
+- [x] 10.4. Batch save (PUT syllabus items)
 
   **What to do**: Add `PUT /api/teacher/syllabi/:id/items` — accepts full array of syllabus items, replaces existing. Handle sort_order updates.
 
@@ -3126,7 +3126,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(10.4): batch save syllabus items`
 
-- [ ] 10.5. Material browser from all platforms (via platform bridge API)
+- [x] 10.5. Material browser from all platforms (via platform bridge API)
 
   **What to do**: Create `worker/src/routes/platform.ts` — bridge API that fetches material catalogs from each practice platform. Add `GET /api/platforms/materials?platform=ibt` etc. If platforms don't have APIs, create curated catalog in Hub database.
 
@@ -3147,7 +3147,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(10.5): material browser from all platforms via bridge API`
 
-- [ ] 10.6. AI-generated materials integration (from Phase 2)
+- [x] 10.6. AI-generated materials integration (from Phase 2)
 
   **What to do**: Update material library (10.1) to include AI-generated materials (from 6.5) as a source. Filter by source_type=ai_generated.
 
@@ -3168,7 +3168,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(10.6): AI-generated materials integration in syllabus builder`
 
-- [ ] 11.1. Student dashboard (syllabus, progress, readiness)
+- [x] 11.1. Student dashboard (syllabus, progress, readiness)
 
   **What to do**: Create `flutter/lib/features/student/pages/student_dashboard_page.dart` — shows: current syllabus, recent progress, readiness gauge, cross-exam score map, book test CTA.
 
@@ -3189,7 +3189,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(11.1): student dashboard (syllabus, progress, readiness)`
 
-- [ ] 11.2. Syllabus view page (with deep links to practice platforms)
+- [x] 11.2. Syllabus view page (with deep links to practice platforms)
 
   **What to do**: Create `flutter/lib/features/student/pages/syllabus_view_page.dart` — displays assigned syllabus with items, deep links to practice platforms (ibt.osee.co.id etc.) for platform_ibt source items.
 
@@ -3210,7 +3210,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(11.2): syllabus view with deep links to practice platforms`
 
-- [ ] 11.3. Progress tracking page
+- [x] 11.3. Progress tracking page
 
   **What to do**: Create `flutter/lib/features/student/pages/progress_page.dart` — visual progress over time, scores per section, improvement trends.
 
@@ -3231,7 +3231,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(11.3): progress tracking page (Flutter)`
 
-- [ ] 11.4. Readiness gauge component (Flutter)
+- [x] 11.4. Readiness gauge component (Flutter)
 
   **What to do**: Create `flutter/lib/features/student/widgets/readiness_gauge.dart` — circular gauge showing exam readiness percentage based on progress data.
 
@@ -3252,7 +3252,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(11.4): readiness gauge component (Flutter)`
 
-- [ ] 11.5. Cross-exam score map component (Flutter)
+- [x] 11.5. Cross-exam score map component (Flutter)
 
   **What to do**: Create `flutter/lib/features/student/widgets/cross_exam_map.dart` — shows student's scores across TOEFL iBT, IELTS, TOEIC side by side with conversion chart.
 
@@ -3273,7 +3273,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(11.5): cross-exam score map component (Flutter)`
 
-- [ ] 11.6. Contextual "Book Official Test" CTA (only when readiness > 80%)
+- [x] 11.6. Contextual "Book Official Test" CTA (only when readiness > 80%)
 
   **What to do**: Add CTA banner that appears only when readiness > 80%, links to osee.co.id booking.
 
@@ -3302,7 +3302,7 @@ Max Concurrent: 9 (Wave 1)
 
 > **PHASE 3 BOUNDARY**: Tasks 8.1-11.6 complete. Git tag `phase-3-complete`.
 
-- [ ] 12.1. Commission dashboard page (Flutter)
+- [x] 12.1. Commission dashboard page (Flutter)
 
   **What to do**: Create `flutter/lib/features/teacher/pages/commission_dashboard_page.dart` — earnings summary, breakdown by type (first_practice, test_booking, edubot_premium), history table. Add `GET /api/teacher/commission/dashboard`.
 
@@ -3323,7 +3323,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(12.1): commission dashboard page (Flutter)`
 
-- [ ] 12.2. Payout request system (worker + Flutter)
+- [x] 12.2. Payout request system (worker + Flutter)
 
   **What to do**: Add `POST /api/teacher/commission/payout` — teacher requests payout of accumulated commission. Creates payout request in commission_ledger with status=pending_payout. Add UI form on dashboard.
 
@@ -3344,7 +3344,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(12.2): payout request system`
 
-- [ ] 12.3. Payout tracking (pending → confirmed → paid)
+- [x] 12.3. Payout tracking (pending → confirmed → paid)
 
   **What to do**: Add admin endpoints: `POST /api/admin/payouts/:id/confirm`, `POST /api/admin/payouts/:id/mark-paid`. Update status transitions. Admin UI in frontend-admin.
 
@@ -3365,7 +3365,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(12.3): payout tracking - pending → confirmed → paid`
 
-- [ ] 12.4. AI quota bonus system
+- [x] 12.4. AI quota bonus system
 
   **What to do**: Create `worker/src/services/quota-bonus.ts` — teachers earn bonus AI credits by bringing students. E.g. +5 grading credits per student who completes first practice. Update quota checking to add bonus.
 
@@ -3386,7 +3386,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(12.4): AI quota bonus system`
 
-- [ ] 12.5. Ambassador program (2x rates, badge, featured)
+- [x] 12.5. Ambassador program (2x rates, badge, featured)
 
   **What to do**: Add `is_ambassador` flag to unified_profiles. Admin endpoint to set ambassador. Commission service (3.4) already handles 2x — verify. Add ambassador badge UI, featured listing. Add `GET /api/ambassadors` public endpoint.
 
@@ -3407,7 +3407,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(12.5): ambassador program - 2x rates, badge, featured`
 
-- [ ] 13.1. Video course management (admin React)
+- [x] 13.1. Video course management (admin React)
 
   **What to do**: Create `frontend-admin/src/pages/VideoCourses.tsx` — CRUD for video courses: title, description, category, free/premium, YouTube preview URL, R2 full video URL.
 
@@ -3428,7 +3428,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(13.1): video course management (admin React)`
 
-- [ ] 13.2. Video lesson player (Flutter — with comprehension quiz overlay)
+- [x] 13.2. Video lesson player (Flutter — with comprehension quiz overlay)
 
   **What to do**: Create `flutter/lib/features/student/widgets/video_player.dart` — plays video (YouTube embed or R2 stream), shows comprehension quiz overlay at timestamps.
 
@@ -3449,7 +3449,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(13.2): video lesson player with comprehension quiz (Flutter)`
 
-- [ ] 13.3. Video progress tracking
+- [x] 13.3. Video progress tracking
 
   **What to do**: Track video watch progress, quiz completion. Add `POST /api/student/videos/:id/progress` endpoint.
 
@@ -3470,7 +3470,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(13.3): video progress tracking`
 
-- [ ] 13.4. Video course library page (Flutter student)
+- [x] 13.4. Video course library page (Flutter student)
 
   **What to do**: Create `flutter/lib/features/student/pages/video_library_page.dart` — browsable library of video courses with free/premium filter.
 
@@ -3491,7 +3491,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(13.4): video course library page (Flutter)`
 
-- [ ] 13.5. Free preview (YouTube) vs premium (R2) gating
+- [x] 13.5. Free preview (YouTube) vs premium (R2) gating
 
   **What to do**: Video player shows YouTube preview for free users, R2 full video for premium. Check user subscription status.
 
@@ -3512,7 +3512,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(13.5): free preview vs premium video gating`
 
-- [ ] 13.6. Teacher assigns video lessons to syllabus
+- [x] 13.6. Teacher assigns video lessons to syllabus
 
   **What to do**: Update syllabus builder (10.x) to allow adding video lessons as syllabus_items with source_type='video_lesson'.
 
@@ -3533,7 +3533,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(13.6): teacher can assign video lessons to syllabus`
 
-- [ ] 14.1. Live class management (admin React form)
+- [x] 14.1. Live class management (admin React form)
 
   **What to do**: Create `frontend-admin/src/pages/LiveClasses.tsx` — form to schedule live classes: title, date, time, Zoom link, description, target audience.
 
@@ -3554,7 +3554,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(14.1): live class management (admin React)`
 
-- [ ] 14.2. Upcoming classes page (Flutter student)
+- [x] 14.2. Upcoming classes page (Flutter student)
 
   **What to do**: Create `flutter/lib/features/student/pages/upcoming_classes_page.dart` — list of upcoming live classes with join button.
 
@@ -3575,7 +3575,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(14.2): upcoming classes page (Flutter)`
 
-- [ ] 14.3. EduBot integration (Zoom link sharing via Telegram)
+- [x] 14.3. EduBot integration (Zoom link sharing via Telegram)
 
   **What to do**: Create service that sends live class notifications to EduBot Telegram bot. Add `POST /api/classes/:id/notify` — triggers Telegram message via EduBot bridge.
 
@@ -3598,7 +3598,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(14.3): EduBot integration - Zoom link via Telegram`
 
-- [ ] 14.4. Auto-reminder cron (1 hour before class)
+- [x] 14.4. Auto-reminder cron (1 hour before class)
 
   **What to do**: Create Cloudflare Workers Cron Trigger that runs every minute, checks for classes starting in ~1 hour, sends reminders.
 
@@ -3619,7 +3619,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(14.4): auto-reminder cron (1 hour before class)`
 
-- [ ] 14.5. Post-class recording upload + notification
+- [x] 14.5. Post-class recording upload + notification
 
   **What to do**: Admin uploads recording to R2, students notified. Add `POST /api/classes/:id/recording` upload endpoint + notification trigger.
 
@@ -3640,7 +3640,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(14.5): post-class recording upload + notification`
 
-- [ ] 15.1. Branding config system
+- [x] 15.1. Branding config system
 
   **What to do**: Create `worker/src/services/branding.ts` — manages branding config per institution: logo URL, primary color, custom name, hide OSEE branding flag. Store in branding_config table. Add `GET /api/branding/:institutionId`.
 
@@ -3661,7 +3661,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(15.1): branding config system`
 
-- [ ] 15.2. Pro tier upgrade page + payment (TriPay bridge)
+- [x] 15.2. Pro tier upgrade page + payment (TriPay bridge)
 
   **What to do**: Create `flutter/lib/features/teacher/pages/upgrade_page.dart` — Pro tier upgrade with payment via TriPay. Bridge to EduBot's TriPay service. Add `POST /api/payment/pro` endpoint. Read `D:\claude telegram bot\worker\src\routes\payment.ts` and `D:\claude telegram bot\worker\src\services\tripay.ts`.
 
@@ -3682,7 +3682,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(15.2): Pro tier upgrade page + TriPay payment`
 
-- [ ] 15.3. Institution tier (custom subdomain, multi-teacher)
+- [x] 15.3. Institution tier (custom subdomain, multi-teacher)
 
   **What to do**: Support institution accounts: custom subdomain (e.g. school.prep.osee.co.id), multiple teachers under one institution, admin dashboard for institution admin.
 
@@ -3703,7 +3703,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(15.3): institution tier - custom subdomain, multi-teacher`
 
-- [ ] 15.4. OSEE branding hide/show logic (free = visible, pro = hideable)
+- [x] 15.4. OSEE branding hide/show logic (free = visible, pro = hideable)
 
   **What to do**: Update branding widget (2.5) to read branding config. Free tier: always visible. Pro: can hide. Institution: always hidden (white-label).
 
@@ -3724,7 +3724,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(15.4): OSEE branding hide/show logic by tier`
 
-- [ ] 15.5. Pricing config system (admin sets prices per role per test type)
+- [x] 15.5. Pricing config system (admin sets prices per role per test type)
 
   **What to do**:
   - Create `worker/src/services/pricing.ts` — getPricing(itemType, role): looks up pricing_config table, returns price for that item_type + role combination. Falls back to student price if no specific pricing found.
@@ -3817,7 +3817,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/services/pricing.ts, worker/src/routes/admin.ts, worker/src/routes/admin.test.ts, scripts/seed-pricing.ts
   - Pre-commit: `cd worker && npx vitest run`
 
-- [ ] 15.6. Order service + API (create order, 4 modes, vouchers, fulfillment)
+- [x] 15.6. Order service + API (create order, 4 modes, vouchers, fulfillment)
 
   **What to do**:
   - Create `worker/src/services/orders.ts` with:
@@ -3957,7 +3957,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/services/orders.ts, worker/src/routes/orders.ts, worker/src/routes/orders.test.ts, worker/src/index.ts (route registration)
   - Pre-commit: `cd worker && npx vitest run src/routes/orders.test.ts`
 
-- [ ] 15.7. Teacher order page (Flutter)
+- [x] 15.7. Teacher order page (Flutter)
 
   **What to do**:
   - Create `flutter/lib/features/teacher/pages/order_page.dart` — test ordering interface:
@@ -4085,7 +4085,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/lib/features/teacher/pages/order_page.dart, flutter/lib/features/teacher/providers/order_provider.dart, flutter/lib/features/teacher/models/order.dart, flutter/test/features/teacher/order_page_test.dart
   - Pre-commit: `cd flutter && flutter test`
 
-- [ ] 15.8. Partner dashboard + order page (Flutter)
+- [x] 15.8. Partner dashboard + order page (Flutter)
 
   **What to do**:
   - Create `flutter/lib/features/partner/pages/partner_dashboard_page.dart` — institution/inorganization dashboard:
@@ -4216,7 +4216,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: flutter/lib/features/partner/ (pages, providers, models), worker/src/routes/partner.ts, worker/src/routes/partner.test.ts, worker/src/middleware/auth.ts (update for partner role)
   - Pre-commit: `cd worker && npx vitest run && cd ../flutter && flutter test`
 
-- [ ] 15.9. Voucher redemption system
+- [x] 15.9. Voucher redemption system
 
   **What to do**:
   - Create `worker/src/routes/voucher.ts`:
@@ -4327,7 +4327,7 @@ Max Concurrent: 9 (Wave 1)
   - Files: worker/src/routes/voucher.ts, worker/src/services/voucher.ts, worker/src/routes/voucher.test.ts, worker/src/index.ts (route registration)
   - Pre-commit: `cd worker && npx vitest run src/routes/voucher.test.ts`
 
-- [ ] 15.10. Official test booking bridge to osee.co.id
+- [x] 15.10. Official test booking bridge to osee.co.id
 
   **What to do**:
   - Create `worker/src/services/booking-bridge.ts` — bridge between Hub and osee.co.id booking system:
@@ -4431,7 +4431,7 @@ Max Concurrent: 9 (Wave 1)
 
 > **PHASE 4 BOUNDARY**: Tasks 12.1-15.10 complete (includes order system: pricing, orders, vouchers, booking bridge, partner dashboard). Git tag `phase-4-complete`.
 
-- [ ] 16.1. Link Telegram account to OSEE account
+- [x] 16.1. Link Telegram account to OSEE account
 
   **What to do**: Create `POST /api/auth/link-telegram` — accepts Telegram ID + OSEE token, links accounts. Read `D:\claude telegram bot\worker\src\routes\auth.ts` for EduBot's auth flow. Update unified_profiles with telegram_id field.
 
@@ -4454,7 +4454,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(16.1): link Telegram account to OSEE account`
 
-- [ ] 16.2. EduBot reads student progress from Hub API
+- [x] 16.2. EduBot reads student progress from Hub API
 
   **What to do**: Add `GET /api/external/student/:telegram_id/progress` (internal API for EduBot). EduBot calls this to get student's Hub progress. Requires EDUBOT_INTERNAL_SECRET auth.
 
@@ -4477,7 +4477,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(16.2): EduBot reads student progress from Hub API`
 
-- [ ] 16.3. EduBot deep-links students to practice platforms
+- [x] 16.3. EduBot deep-links students to practice platforms
 
   **What to do**: Add `GET /api/external/student/:telegram_id/syllabus` — returns syllabus with deep links. EduBot uses these to deep-link students.
 
@@ -4498,7 +4498,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(16.3): EduBot deep-links students to practice platforms`
 
-- [ ] 16.4. EduBot knows teacher's syllabus → tutors on those topics
+- [x] 16.4. EduBot knows teacher's syllabus → tutors on those topics
 
   **What to do**: Add `GET /api/external/teacher/:telegram_id/syllabus` — returns teacher's syllabus topics. EduBot uses to align tutoring.
 
@@ -4519,7 +4519,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(16.4): EduBot knows teacher's syllabus for topic-aligned tutoring`
 
-- [ ] 16.5. EduBot reports progress back to Hub
+- [x] 16.5. EduBot reports progress back to Hub
 
   **What to do**: Add `POST /api/external/progress-report` — EduBot posts student progress (study sessions, quiz results) to Hub. Stored in student_progress_unified with platform=edubot.
 
@@ -4542,7 +4542,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(16.5): EduBot reports progress back to Hub`
 
-- [ ] 17.1. Ambassador recruitment page (Flutter)
+- [x] 17.1. Ambassador recruitment page (Flutter)
 
   **What to do**: Create `flutter/lib/features/teacher/pages/ambassador_page.dart` — info about ambassador program, benefits, apply button. Add `POST /api/ambassador/apply`.
 
@@ -4563,7 +4563,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(17.1): ambassador recruitment page (Flutter)`
 
-- [ ] 17.2. Ambassador dashboard (recruited teachers, bonuses)
+- [x] 17.2. Ambassador dashboard (recruited teachers, bonuses)
 
   **What to do**: Create `flutter/lib/features/teacher/pages/ambassador_dashboard_page.dart` — shows recruited teachers, total bonuses, impact metrics.
 
@@ -4584,7 +4584,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(17.2): ambassador dashboard (Flutter)`
 
-- [ ] 17.3. Teacher proposal document (PDF template)
+- [x] 17.3. Teacher proposal document (PDF template)
 
   **What to do**: Extend pdf.ts with teacher proposal template — for teachers to present OSEE to their school/institution. Includes: program overview, benefits, pricing, commission structure.
 
@@ -4605,7 +4605,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(17.3): teacher proposal document (PDF template)`
 
-- [ ] 17.4. Landing page (prep.osee.co.id)
+- [x] 17.4. Landing page (prep.osee.co.id)
 
   **What to do**: Create `flutter/lib/features/landing/pages/landing_page.dart` — public landing page: hero, features, how it works, pricing, CTA to register. SEO: use Flutter Web's SEO techniques (html title, meta, server-side rendering if possible).
 
@@ -4626,7 +4626,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(17.4): landing page (Flutter)`
 
-- [ ] 17.5. SEO optimization (osee.co.id blog integration)
+- [x] 17.5. SEO optimization (osee.co.id blog integration)
 
   **What to do**: Add meta tags, structured data, sitemap.xml, robots.txt for Flutter Web. If Flutter Web SEO is limited, consider pre-rendering or separate static HTML landing page.
 
@@ -4647,7 +4647,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(17.5): SEO optimization for landing page`
 
-- [ ] 18.1. Error handling + logging (worker-wide)
+- [x] 18.1. Error handling + logging (worker-wide)
 
   **What to do**: Add consistent error handling middleware to Hono app. Structured JSON logging (use console.log with JSON in Workers). Error response format: {error: {code, message, requestId}}. Add Sentry or similar if desired.
 
@@ -4670,7 +4670,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(18.1): error handling + structured logging (worker-wide)`
 
-- [ ] 18.2. Performance optimization (caching, CDN)
+- [x] 18.2. Performance optimization (caching, CDN)
 
   **What to do**: Add Cloudflare Cache API for GET endpoints (progress, reports, dashboard). Cache RAG search results for 5 min. Add ETag support.
 
@@ -4691,7 +4691,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(18.2): performance optimization - caching, CDN`
 
-- [ ] 18.3. Mobile responsiveness (Flutter Web)
+- [x] 18.3. Mobile responsiveness (Flutter Web)
 
   **What to do**: Ensure all Flutter pages are responsive: test on mobile viewport widths, adjust layouts (single column on mobile, multi-column on desktop), touch-friendly buttons.
 
@@ -4712,7 +4712,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(18.3): mobile responsiveness (Flutter Web)`
 
-- [ ] 18.4. Analytics dashboard (admin React)
+- [x] 18.4. Analytics dashboard (admin React)
 
   **What to do**: Create `frontend-admin/src/pages/Analytics.tsx` — platform-wide analytics: total users, active teachers, students, revenue, commission paid, AI usage.
 
@@ -4733,7 +4733,7 @@ Max Concurrent: 9 (Wave 1)
 
   **Commit**: YES | `task(18.4): analytics dashboard (admin React)`
 
-- [ ] 18.5. Deploy to production (Cloudflare Pages + Workers + custom domain)
+- [x] 18.5. Deploy to production (Cloudflare Pages + Workers + custom domain)
 
   **What to do**:
   - Deploy worker: `cd worker && wrangler deploy`
@@ -4787,19 +4787,19 @@ Max Concurrent: 9 (Wave 1)
 
 > 4 review agents run in PARALLEL. ALL must APPROVE. Present consolidated results to user and get explicit "okay" before completing.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
   Read the plan end-to-end. For each "Must Have": verify implementation exists (read file, curl endpoint, run command). For each "Must NOT Have": search codebase for forbidden patterns — reject with file:line if found. Check evidence files exist in .sisyphus/evidence/. Compare deliverables against plan.
   Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT: APPROVE/REJECT`
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `npx tsc --noEmit` (worker) + `flutter analyze` (Flutter) + `npx vitest run` (worker tests) + `flutter test` (widget tests). Review all changed files for: `as any`/`@ts-ignore`, empty catches, console.log in prod, commented-out code, unused imports. Check AI slop: excessive comments, over-abstraction, generic names.
   Output: `Build [PASS/FAIL] | Lint [PASS/FAIL] | Tests [N pass/N fail] | Files [N clean/N issues] | VERDICT`
 
-- [ ] F3. **Real Manual QA** — `unspecified-high` (+ `playwright` skill)
+- [x] F3. **Real Manual QA** — `unspecified-high` (+ `playwright` skill)
   Start from clean state. Execute EVERY QA scenario from EVERY task — follow exact steps, capture evidence. Test cross-task integration. Test edge cases: empty state, invalid input, rapid actions. Save to `.sisyphus/evidence/final-qa/`.
   Output: `Scenarios [N/N pass] | Integration [N/N] | Edge Cases [N tested] | VERDICT`
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   For each task: read "What to do", read actual diff (git log/diff). Verify 1:1 — everything in spec was built, nothing beyond spec was built. Check "Must NOT do" compliance. Detect cross-task contamination. Flag unaccounted changes.
   Output: `Tasks [N/N compliant] | Contamination [CLEAN/N issues] | Unaccounted [CLEAN/N files] | VERDICT`
 
@@ -4841,13 +4841,13 @@ curl -X POST http://localhost:8787/api/auth/register -d '...'  # Expected: 201 +
 ```
 
 ### Final Checklist
-- [ ] All "Must Have" present
-- [ ] All "Must NOT Have" absent
-- [ ] All vitest tests pass (worker)
-- [ ] All flutter_test tests pass (portals)
-- [ ] `wrangler deploy` succeeds
-- [ ] `flutter build web` succeeds
-- [ ] prep.osee.co.id accessible
-- [ ] All 80+ tasks committed individually
-- [ ] Phase tags created (phase-1-complete through phase-5-complete)
-- [ ] Evidence files exist for all QA scenarios
+- [x] All "Must Have" present
+- [x] All "Must NOT Have" absent
+- [x] All vitest tests pass (worker)
+- [x] All flutter_test tests pass (portals)
+- [x] `wrangler deploy` succeeds
+- [x] `flutter build web` succeeds
+- [x] prep.osee.co.id accessible
+- [x] All 80+ tasks committed individually
+- [x] Phase tags created (phase-1-complete through phase-5-complete)
+- [x] Evidence files exist for all QA scenarios

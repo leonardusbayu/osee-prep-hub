@@ -8,6 +8,7 @@ import '../../../core/api_client.dart';
 import '../models/catalog.dart';
 import '../models/syllabus.dart';
 import '../models/labels.dart';
+import '../providers/catalog_provider.dart';
 import '../providers/syllabus_repository.dart';
 
 /// Magazine-style Kanban syllabus builder.
@@ -126,16 +127,34 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
 
   /// Build KanbanLane list from _columns (shared between board + controller sync).
   List<KanbanLane<SyllabusItem>> _buildLanes() {
-    final widths = <double>[320, 280, 360, 280, 320, 280, 360, 240, 320, 280, 360, 280];
+    final widths = <double>[
+      320,
+      280,
+      360,
+      280,
+      320,
+      280,
+      360,
+      240,
+      320,
+      280,
+      360,
+      280,
+    ];
     final lanes = <KanbanLane<SyllabusItem>>[];
     for (var c = 0; c < _columns.length; c++) {
       final w = widths[c % widths.length];
-      final totalMin = _columns[c].fold<int>(0, (a, i) => a + (i.estimatedMinutes ?? 0));
+      final totalMin = _columns[c].fold<int>(
+        0,
+        (a, i) => a + (i.estimatedMinutes ?? 0),
+      );
       lanes.add(
         KanbanLane<SyllabusItem>(
           id: c.toString(),
           title: 'Week ${c + 1}',
-          subtitle: _columns[c].isEmpty ? '—' : '${_columns[c].length} · ${totalMin}m',
+          subtitle: _columns[c].isEmpty
+              ? '—'
+              : '${_columns[c].length} · ${totalMin}m',
           cards: [
             for (var i = 0; i < _columns[c].length; i++)
               KanbanCard<SyllabusItem>(
@@ -154,6 +173,9 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
 
   /// Show dialog to pick a material from the catalog and add to a lane.
   void _showAddMaterialDialog(int targetCol) {
+    final catalog = ref
+        .read(catalogProvider)
+        .maybeWhen(data: (d) => d, orElse: () => kMaterialCatalog);
     showDialog(
       context: context,
       builder: (ctx) {
@@ -161,11 +183,13 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
         String? sourceFilter;
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
-            var filtered = kMaterialCatalog.where((e) {
-              if (sourceFilter != null && e.sourceType != sourceFilter) return false;
+            var filtered = catalog.where((e) {
+              if (sourceFilter != null && e.sourceType != sourceFilter)
+                return false;
               if (query.isEmpty) return true;
               return e.title.toLowerCase().contains(query.toLowerCase()) ||
-                  (e.description?.toLowerCase().contains(query.toLowerCase()) ?? false);
+                  (e.description?.toLowerCase().contains(query.toLowerCase()) ??
+                      false);
             }).toList();
             return AlertDialog(
               title: const Text('Add Material'),
@@ -185,12 +209,47 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                     Wrap(
                       spacing: 4,
                       children: [
-                        FilterChip(label: const Text('All'), selected: sourceFilter == null, onSelected: (_) => setDialogState(() => sourceFilter = null)),
-                        FilterChip(label: const Text('iBT'), selected: sourceFilter == 'platform_ibt', onSelected: (_) => setDialogState(() => sourceFilter = 'platform_ibt')),
-                        FilterChip(label: const Text('ITP'), selected: sourceFilter == 'platform_itp', onSelected: (_) => setDialogState(() => sourceFilter = 'platform_itp')),
-                        FilterChip(label: const Text('IELTS'), selected: sourceFilter == 'platform_ielts', onSelected: (_) => setDialogState(() => sourceFilter = 'platform_ielts')),
-                        FilterChip(label: const Text('TOEIC'), selected: sourceFilter == 'platform_toeic', onSelected: (_) => setDialogState(() => sourceFilter = 'platform_toeic')),
-                        FilterChip(label: const Text('AI'), selected: sourceFilter == 'ai_generated', onSelected: (_) => setDialogState(() => sourceFilter = 'ai_generated')),
+                        FilterChip(
+                          label: const Text('All'),
+                          selected: sourceFilter == null,
+                          onSelected: (_) =>
+                              setDialogState(() => sourceFilter = null),
+                        ),
+                        FilterChip(
+                          label: const Text('iBT'),
+                          selected: sourceFilter == 'platform_ibt',
+                          onSelected: (_) => setDialogState(
+                            () => sourceFilter = 'platform_ibt',
+                          ),
+                        ),
+                        FilterChip(
+                          label: const Text('ITP'),
+                          selected: sourceFilter == 'platform_itp',
+                          onSelected: (_) => setDialogState(
+                            () => sourceFilter = 'platform_itp',
+                          ),
+                        ),
+                        FilterChip(
+                          label: const Text('IELTS'),
+                          selected: sourceFilter == 'platform_ielts',
+                          onSelected: (_) => setDialogState(
+                            () => sourceFilter = 'platform_ielts',
+                          ),
+                        ),
+                        FilterChip(
+                          label: const Text('TOEIC'),
+                          selected: sourceFilter == 'platform_toeic',
+                          onSelected: (_) => setDialogState(
+                            () => sourceFilter = 'platform_toeic',
+                          ),
+                        ),
+                        FilterChip(
+                          label: const Text('AI'),
+                          selected: sourceFilter == 'ai_generated',
+                          onSelected: (_) => setDialogState(
+                            () => sourceFilter = 'ai_generated',
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -200,10 +259,22 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                         itemBuilder: (_, i) {
                           final entry = filtered[i];
                           return ListTile(
-                            leading: Icon(_sourceIcon(entry.sourceType), size: 20),
-                            title: Text(entry.title, style: const TextStyle(fontSize: 14)),
-                            subtitle: Text('${entry.itemType} · ${entry.difficulty ?? '—'}', style: const TextStyle(fontSize: 12)),
-                            trailing: const Icon(Icons.add_circle_outline, size: 20),
+                            leading: Icon(
+                              _sourceIcon(entry.sourceType),
+                              size: 20,
+                            ),
+                            title: Text(
+                              entry.title,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            subtitle: Text(
+                              '${entry.itemType} · ${entry.difficulty ?? '—'}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            trailing: const Icon(
+                              Icons.add_circle_outline,
+                              size: 20,
+                            ),
                             onTap: () {
                               Navigator.pop(ctx);
                               _onCatalogDrop(entry, targetCol);
@@ -222,7 +293,10 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
               ],
             );
           },
@@ -233,13 +307,20 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
 
   IconData _sourceIcon(String source) {
     switch (source) {
-      case 'platform_ibt': return Icons.school;
-      case 'platform_itp': return Icons.quiz;
-      case 'platform_ielts': return Icons.language;
-      case 'platform_toeic': return Icons.work;
-      case 'edubot': return Icons.smart_toy;
-      case 'ai_generated': return Icons.auto_awesome;
-      default: return Icons.book;
+      case 'platform_ibt':
+        return Icons.school;
+      case 'platform_itp':
+        return Icons.quiz;
+      case 'platform_ielts':
+        return Icons.language;
+      case 'platform_toeic':
+        return Icons.work;
+      case 'edubot':
+        return Icons.smart_toy;
+      case 'ai_generated':
+        return Icons.auto_awesome;
+      default:
+        return Icons.book;
     }
   }
 
@@ -381,16 +462,21 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
 
       // Publish syllabus so students can see it
       final dio = ApiClient.create();
-      await dio.post('/teacher/syllabi/${widget.syllabusId}/publish', data: {'published': true});
+      await dio.post(
+        '/teacher/syllabi/${widget.syllabusId}/publish',
+        data: {'published': true},
+      );
 
       setState(() {
         _isDirty = false;
         _syllabus = _syllabus?.copyWith(isPublished: true);
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Syllabus published! Students can now see it.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Syllabus published! Students can now see it.'),
+        ),
+      );
     } catch (e) {
       if (mounted) setState(() => _error = 'Save failed: $e');
     } finally {
@@ -573,11 +659,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
         // Narrow layout: catalog (top, collapsible) + board (below)
         return Column(
           children: [
-            SizedBox(
-              width: c.maxWidth,
-              height: 280,
-              child: _buildCatalog(),
-            ),
+            SizedBox(width: c.maxWidth, height: 280, child: _buildCatalog()),
             Container(height: 1, color: OseeTheme.cloud),
             Expanded(child: _buildBoardArea()),
           ],
@@ -639,7 +721,10 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
   }
 
   Widget _buildCatalog() {
-    final filtered = kMaterialCatalog.where((e) {
+    final catalog = ref
+        .watch(catalogProvider)
+        .maybeWhen(data: (d) => d, orElse: () => kMaterialCatalog);
+    final filtered = catalog.where((e) {
       if (_catalogSourceFilter != null && e.sourceType != _catalogSourceFilter)
         return false;
       if (_catalogQuery.isEmpty) return true;
@@ -699,9 +784,9 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                  Text(
-                    'Tap any item to add it to Week 1.',
-                    style: TextStyle(
+                Text(
+                  'Tap any item to add it to Week 1.',
+                  style: TextStyle(
                     fontFamily: 'Georgia',
                     fontStyle: FontStyle.italic,
                     fontSize: 11,
@@ -1145,11 +1230,18 @@ class _MagazineLaneHeader extends StatelessWidget {
               const Spacer(),
               if (onAddMaterial != null)
                 IconButton(
-                  icon: const Icon(Icons.add_circle_outline, size: 18, color: OseeTheme.primary),
+                  icon: const Icon(
+                    Icons.add_circle_outline,
+                    size: 18,
+                    color: OseeTheme.primary,
+                  ),
                   onPressed: onAddMaterial,
                   tooltip: 'Add material',
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
                 ),
               if (lane.subtitle != null && lane.subtitle != '—')
                 Text(
@@ -1237,7 +1329,11 @@ class _MagazineEmptyLane extends StatelessWidget {
 /// Magazine-styled catalog card — asymmetric padding, rotated index number,
 /// serif title, sans caption, gold rule.
 class _MagazineCatalogCard extends StatelessWidget {
-  const _MagazineCatalogCard({required this.entry, required this.index, this.onTap});
+  const _MagazineCatalogCard({
+    required this.entry,
+    required this.index,
+    this.onTap,
+  });
   final CatalogEntry entry;
   final int index;
   final VoidCallback? onTap;

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:js' as js;
+import 'package:url_launcher/url_launcher.dart';
 
 /// Ambassador public recruitment page — Task 17.1.
 ///
@@ -163,9 +163,7 @@ class AmbassadorRecruitmentPage extends StatelessWidget {
   }
 
   void _open(String url) {
-    try {
-      js.context.callMethod('open', [url, '_blank']);
-    } catch (_) {}
+    launchUrl(Uri.parse(url));
   }
 }
 

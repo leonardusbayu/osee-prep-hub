@@ -28,9 +28,7 @@ class StudentTopBar extends StatelessWidget {
             ),
             const SizedBox(width: StudentSpacing.sm),
           ],
-          Expanded(
-            child: _SearchField(),
-          ),
+          Expanded(child: _SearchField()),
           const SizedBox(width: StudentSpacing.lg),
           const _Bell(),
           const SizedBox(width: StudentSpacing.lg),
@@ -56,10 +54,7 @@ class _SearchField extends StatelessWidget {
         children: [
           const Icon(Icons.search_rounded, color: StudentTheme.textSecondary),
           const SizedBox(width: StudentSpacing.md),
-          Text(
-            'Search anything...',
-            style: StudentTheme.searchPlaceholder(),
-          ),
+          Text('Search anything...', style: StudentTheme.searchPlaceholder()),
         ],
       ),
     );
@@ -89,12 +84,18 @@ class _BellState extends State<_Bell> {
           color: _hovered ? StudentTheme.background : StudentTheme.surface,
           shape: BoxShape.circle,
           boxShadow: StudentTheme.cardShadow,
-          border: Border.all(color: _hovered ? StudentTheme.divider : Colors.transparent),
+          border: Border.all(
+            color: _hovered ? StudentTheme.divider : Colors.transparent,
+          ),
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            const Icon(Icons.notifications_none_rounded, size: 24, color: StudentTheme.textPrimary),
+            const Icon(
+              Icons.notifications_none_rounded,
+              size: 24,
+              color: StudentTheme.textPrimary,
+            ),
             Positioned(
               right: 12,
               top: 12,
@@ -162,10 +163,7 @@ class _ProfileChip extends StatelessWidget {
           children: [
             Text(name, style: StudentTheme.profileName()),
             if (subtitle != null)
-              Text(
-                subtitle!,
-                style: StudentTheme.profileYear(),
-              ),
+              Text(subtitle!, style: StudentTheme.profileYear()),
           ],
         ),
       ],
@@ -208,7 +206,10 @@ class WelcomeBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(100),
@@ -221,12 +222,16 @@ class WelcomeBanner extends StatelessWidget {
                     const SizedBox(height: StudentSpacing.lg),
                     Text(
                       '$greeting, $name! 👋',
-                      style: StudentTheme.pageTitle(Colors.white).copyWith(fontSize: 28),
+                      style: StudentTheme.pageTitle(
+                        Colors.white,
+                      ).copyWith(fontSize: 28),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Ready to crush your goals today? Let\'s get started.',
-                      style: StudentTheme.cardLabel(Colors.white.withValues(alpha: 0.8)),
+                      style: StudentTheme.cardLabel(
+                        Colors.white.withValues(alpha: 0.8),
+                      ),
                     ),
                   ],
                 ),
@@ -253,9 +258,19 @@ class WelcomeBanner extends StatelessWidget {
   }
 
   String _month(int m) => const [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December',
-      ][m - 1];
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ][m - 1];
 }
 
 /// Stat card — shows an icon, value, and label.
@@ -294,16 +309,19 @@ class _StudentStatCardState extends State<StudentStatCard> {
           duration: StudentTheme.animFast,
           height: 180,
           padding: const EdgeInsets.symmetric(
-              horizontal: StudentSpacing.lg, vertical: StudentSpacing.xl),
+            horizontal: StudentSpacing.lg,
+            vertical: StudentSpacing.xl,
+          ),
           decoration: BoxDecoration(
             color: _hovered ? StudentTheme.background : StudentTheme.surface,
             borderRadius: BorderRadius.circular(StudentTheme.radiusCard),
             border: Border.all(
-                color: widget.highlighted
-                    ? widget.accentColor
-                    : _hovered
-                        ? widget.accentColor.withValues(alpha: 0.3)
-                        : StudentTheme.divider),
+              color: widget.highlighted
+                  ? widget.accentColor
+                  : _hovered
+                  ? widget.accentColor.withValues(alpha: 0.3)
+                  : StudentTheme.divider,
+            ),
             boxShadow: _hovered || widget.highlighted
                 ? StudentTheme.glowShadow(widget.accentColor)
                 : StudentTheme.cardShadow,
@@ -321,10 +339,7 @@ class _StudentStatCardState extends State<StudentStatCard> {
                 child: Icon(widget.icon, color: widget.accentColor, size: 24),
               ),
               const SizedBox(height: StudentSpacing.lg),
-              Text(
-                widget.value,
-                style: StudentTheme.cardValue(),
-              ),
+              Text(widget.value, style: StudentTheme.cardValue()),
               const SizedBox(height: 4),
               Text(
                 widget.label,
@@ -373,8 +388,11 @@ class _StudentCourseCardState extends State<StudentCourseCard> {
             color: StudentTheme.surface,
             borderRadius: BorderRadius.circular(StudentTheme.radiusCard),
             border: Border.all(
-                color: _hovered ? StudentTheme.primary : StudentTheme.divider),
-            boxShadow: _hovered ? StudentTheme.glowShadow(StudentTheme.primary) : StudentTheme.cardShadow,
+              color: _hovered ? StudentTheme.primary : StudentTheme.divider,
+            ),
+            boxShadow: _hovered
+                ? StudentTheme.glowShadow(StudentTheme.primary)
+                : StudentTheme.cardShadow,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -395,7 +413,9 @@ class _StudentCourseCardState extends State<StudentCourseCard> {
                       LinearProgressIndicator(
                         value: widget.progress,
                         backgroundColor: StudentTheme.divider,
-                        valueColor: const AlwaysStoppedAnimation(StudentTheme.primary),
+                        valueColor: const AlwaysStoppedAnimation(
+                          StudentTheme.primary,
+                        ),
                         borderRadius: BorderRadius.circular(4),
                         minHeight: 6,
                       ),
@@ -411,12 +431,16 @@ class _StudentCourseCardState extends State<StudentCourseCard> {
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(StudentTheme.radiusButton),
+                            borderRadius: BorderRadius.circular(
+                              StudentTheme.radiusButton,
+                            ),
                           ),
                         ),
                         child: Text(
                           'View Course',
-                          style: StudentTheme.chipActive(StudentTheme.primary).copyWith(fontSize: 13),
+                          style: StudentTheme.chipActive(
+                            StudentTheme.primary,
+                          ).copyWith(fontSize: 13),
                         ),
                       ),
                     ),
@@ -452,11 +476,7 @@ class _StudentCourseCardState extends State<StudentCourseCard> {
 
 /// Daily notice panel.
 class DailyNoticePanel extends StatelessWidget {
-  const DailyNoticePanel({
-    super.key,
-    required this.items,
-    this.onSeeMore,
-  });
+  const DailyNoticePanel({super.key, required this.items, this.onSeeMore});
 
   final List<NoticeItem> items;
   final VoidCallback? onSeeMore;
@@ -496,7 +516,9 @@ class _NoticeBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.isImportant ? StudentTheme.warningOrange : StudentTheme.primary;
+    final color = item.isImportant
+        ? StudentTheme.warningOrange
+        : StudentTheme.primary;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -517,10 +539,7 @@ class _NoticeBlock extends StatelessWidget {
                 children: [
                   Icon(item.icon, size: 16, color: color),
                   const SizedBox(width: 6),
-                  Text(
-                    item.title,
-                    style: StudentTheme.noticeTitle(),
-                  ),
+                  Text(item.title, style: StudentTheme.noticeTitle()),
                 ],
               ),
               const SizedBox(height: 4),
@@ -536,9 +555,16 @@ class _NoticeBlock extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('See more', style: StudentTheme.link(StudentTheme.primary)),
+                    Text(
+                      'See more',
+                      style: StudentTheme.link(StudentTheme.primary),
+                    ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.arrow_forward_rounded, size: 14, color: StudentTheme.primary),
+                    const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 14,
+                      color: StudentTheme.primary,
+                    ),
                   ],
                 ),
               ),
@@ -553,8 +579,8 @@ class _NoticeBlock extends StatelessWidget {
 /// Notice item.
 class NoticeItem {
   const NoticeItem({
-    required this.title, 
-    required this.body, 
+    required this.title,
+    required this.body,
     this.isImportant = false,
     this.icon = Icons.info_outline_rounded,
   });
@@ -595,10 +621,7 @@ class StudentSectionHeader extends StatelessWidget {
               ),
               const SizedBox(width: 10),
             ],
-            Text(
-              title,
-              style: StudentTheme.sectionTitle(),
-            ),
+            Text(title, style: StudentTheme.sectionTitle()),
           ],
         ),
         if (onSeeAll != null)
@@ -606,9 +629,16 @@ class StudentSectionHeader extends StatelessWidget {
             onTap: onSeeAll,
             child: Row(
               children: [
-                Text('See all', style: StudentTheme.link(StudentTheme.textSecondary)),
+                Text(
+                  'See all',
+                  style: StudentTheme.link(StudentTheme.textSecondary),
+                ),
                 const SizedBox(width: 4),
-                const Icon(Icons.chevron_right_rounded, size: 16, color: StudentTheme.textSecondary),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: StudentTheme.textSecondary,
+                ),
               ],
             ),
           ),
@@ -617,38 +647,56 @@ class StudentSectionHeader extends StatelessWidget {
   }
 }
 
-/// Instructor avatar row.
+/// Instructor avatar row. Renders initials from [names] when available,
+/// falling back to generic person icons when count > names.length.
 class InstructorRow extends StatelessWidget {
-  const InstructorRow({super.key, this.count = 3});
+  const InstructorRow({super.key, this.count = 3, this.names = const []});
   final int count;
+  final List<String> names;
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 64,
-      child: Stack(
-        children: List.generate(
-          count,
-          (i) => Positioned(
-            left: i * 40.0,
-            child: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: StudentTheme.primarySurface,
-                shape: BoxShape.circle,
-                border: Border.all(color: StudentTheme.surface, width: 3),
-                boxShadow: StudentTheme.avatarShadow,
-              ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: StudentTheme.primary,
-                size: 24,
-              ),
+    final avatars = <Widget>[];
+    for (var i = 0; i < count; i++) {
+      final hasName = i < names.length;
+      avatars.add(
+        Positioned(
+          left: i * 40.0,
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: StudentTheme.primarySurface,
+              shape: BoxShape.circle,
+              border: Border.all(color: StudentTheme.surface, width: 3),
+              boxShadow: StudentTheme.avatarShadow,
             ),
+            child: hasName
+                ? Center(
+                    child: Text(
+                      _initials(names[i]),
+                      style: const TextStyle(
+                        color: StudentTheme.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                      ),
+                    ),
+                  )
+                : const Icon(
+                    Icons.person_rounded,
+                    color: StudentTheme.primary,
+                    size: 24,
+                  ),
           ),
         ),
-      ),
-    );
+      );
+    }
+    return SizedBox(height: 64, child: Stack(children: avatars));
   }
 }
