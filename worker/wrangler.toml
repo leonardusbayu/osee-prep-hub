@@ -37,3 +37,4 @@ bucket_name = "osee-audio"
 # LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL — for live classes
 # SENTRY_DSN   — for error tracking
 # OSEE_VALUATION_IDR  — for ambassador equity implied value
+# RESEND_API_KEY, MAIL_FROM (transactional email)

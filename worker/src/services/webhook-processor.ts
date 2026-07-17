@@ -2,6 +2,7 @@ import type { Env } from '../types';
 import { getSupabase } from './supabase';
 import { updateStudentProgress } from './student-progress';
 import { recordCommission } from './commission';
+import { awardQuotaBonus } from './quota';
 
 /**
  * Webhook event processing pipeline.
@@ -108,22 +109,37 @@ async function processSingleEvent(env: Env, event: WebhookEventRow): Promise<voi
         payload: event.payload,
       });
       // Also check for commission trigger (first practice = Rp 10k)
-      await recordCommission(env, {
+      const commissionRec1 = await recordCommissionAndReturnTeacher(env, {
         user_id: userId,
         event_type: event.event_type,
         platform: event.platform,
         payload: event.payload,
       });
+      // Award quota bonus to teacher (Task 12.4) — +5 generation credits
+      if (commissionRec1) {
+        await awardQuotaBonus(env, commissionRec1, 'test_completed').catch(() => {});
+      }
+      // Notify EduBot of progress (blueprint step 6 line 329)
+      const score = (event.payload.score as number) ?? (event.payload.total_score as number) ?? null;
+      await notifyEduBotOfProgress(env, userId, event.platform, score).catch(() => {});
+      // Check readiness + trigger "ready to book" notification (blueprint step 7 line 331)
+      await checkReadinessAndNotify(env, userId, event.platform, score).catch((err) => {
+        console.error('checkReadinessAndNotify failed (non-blocking):', err);
+      });
       break;
 
     case 'test_booked':
       // Booking triggers commission (Rp 50k to teacher)
-      await recordCommission(env, {
+      const commissionRec2 = await recordCommissionAndReturnTeacher(env, {
         user_id: userId,
         event_type: 'test_booked',
         platform: event.platform,
         payload: event.payload,
       });
+      // Award quota bonus — +10 generation credits for official booking
+      if (commissionRec2) {
+        await awardQuotaBonus(env, commissionRec2, 'official_booking').catch(() => {});
+      }
       break;
 
     case 'booking_confirmed':
@@ -135,6 +151,19 @@ async function processSingleEvent(env: Env, event: WebhookEventRow): Promise<voi
       // EduBot session — no commission, no progress update needed
       break;
 
+    case 'premium_subscribed':
+      // EduBot premium subscription — commission + quota bonus
+      const commissionRec3 = await recordCommissionAndReturnTeacher(env, {
+        user_id: userId,
+        event_type: 'premium_subscribed',
+        platform: event.platform,
+        payload: event.payload,
+      });
+      if (commissionRec3) {
+        await awardQuotaBonus(env, commissionRec3, 'premium_subscribed').catch(() => {});
+      }
+      break;
+
     default:
       // Unknown event type — log warning but don't fail
       console.warn(`Unknown webhook event_type: ${event.event_type}`);
@@ -143,6 +172,124 @@ async function processSingleEvent(env: Env, event: WebhookEventRow): Promise<voi
 
   // Mark as successfully processed
   await markProcessed(supabase, event.id, null);
+}
+
+/**
+ * Record commission and return the teacher_id who earned it (or null if no
+ * referring teacher). Wraps recordCommission with a lookup.
+ */
+async function recordCommissionAndReturnTeacher(
+  env: Env,
+  input: { user_id: string; event_type: string; platform: string; payload: Record<string, unknown> }
+): Promise<string | null> {
+  // Find the student's referring teacher
+  const supabase = getSupabase(env);
+  const { data: student } = await supabase
+    .from('unified_profiles')
+    .select('referred_by')
+    .eq('id', input.user_id)
+    .maybeSingle();
+  const teacherId = (student as Record<string, unknown> | null)?.referred_by as string | null;
+  if (!teacherId) return null;
+
+  // Record commission (idempotent)
+  await recordCommission(env, input).catch((err) => {
+    console.error('recordCommission failed:', err);
+  });
+  return teacherId;
+}
+
+/**
+ * Notify EduBot that a student's progress was updated (blueprint step 6 line 329).
+ * Calls the Hub's external endpoint which EduBot can poll, OR sends a webhook
+ * to EduBot's receive-progress endpoint. Best-effort — failures are logged.
+ */
+async function notifyEduBotOfProgress(
+  env: Env,
+  studentId: string,
+  platform: string,
+  score: number | null
+): Promise<void> {
+  if (!env.EDUBOT_API_URL) return;
+  try {
+    await fetch(`${env.EDUBOT_API_URL}/api/hub-progress-update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': env.EDUBOT_INTERNAL_SECRET,
+      },
+      body: JSON.stringify({
+        student_id: studentId,
+        platform,
+        score,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (err) {
+    console.error('notifyEduBotOfProgress failed (non-blocking):', err);
+  }
+}
+
+/**
+ * Check if student's latest score meets/exceeds their target_score.
+ * If yes, trigger a "ready to book" notification (blueprint step 7 line 331).
+ */
+async function checkReadinessAndNotify(
+  env: Env,
+  studentId: string,
+  platform: string,
+  score: number | null
+): Promise<void> {
+  if (score === null) return;
+  const supabase = getSupabase(env);
+
+  // Get student target
+  const { data: profile } = await supabase
+    .from('unified_profiles')
+    .select('target_exam, target_score, telegram_id')
+    .eq('id', studentId)
+    .maybeSingle();
+  const p = (profile as Record<string, unknown> | null) ?? {};
+  const targetExam = (p.target_exam as string) ?? null;
+  const targetScore = ((p.target_score as Record<string, unknown>) ?? {}).overall as number | undefined;
+  if (!targetExam || !targetScore) return;
+
+  // Map platform to exam_type
+  const platformExamMap: Record<string, string> = {
+    ibt: 'TOEFL_IBT', itp: 'TOEFL_ITP', ielts: 'IELTS', toeic: 'TOEIC',
+  };
+  const examForPlatform = platformExamMap[platform];
+  if (examForPlatform !== targetExam) return;
+
+  // Update readiness_pct
+  const readinessPct = Math.min(100, Math.round((score / targetScore) * 100));
+  const readinessStatus = readinessPct >= 80 ? 'ready' : readinessPct >= 60 ? 'almost_ready' : 'preparing';
+
+  await supabase
+    .from('student_progress_unified')
+    .update({
+      readiness_pct: readinessPct,
+      readiness_status: readinessStatus,
+      predicted_score: score,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('student_id', studentId);
+
+  // If ready → notify via Telegram (if student has telegram_id linked)
+  if (readinessStatus === 'ready' && p.telegram_id && env.TELEGRAM_BOT_TOKEN) {
+    try {
+      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: p.telegram_id,
+          text: `🎉 You're ready! Your latest ${targetExam} score (${score}) meets your target (${targetScore}). Book your official test at osee.co.id.`,
+        }),
+      });
+    } catch (err) {
+      console.error('Telegram readiness notify failed:', err);
+    }
+  }
 }
 
 /** Mark a webhook event as processed. error_message is null on success. */

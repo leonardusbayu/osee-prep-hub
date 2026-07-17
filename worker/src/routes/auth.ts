@@ -5,8 +5,17 @@ import { hashPassword, verifyPassword } from '../services/password';
 import { buildAuthCookie, buildClearAuthCookie, COOKIE_NAME } from '../services/cookie';
 import { getSupabase } from '../services/supabase';
 import { autoEnrollReferredStudent } from '../services/classroom';
+import { validateInvitation, acceptInvitation, InvitationError } from '../services/teacher-invitations';
+import { rateLimit } from '../middleware/rate-limit';
 
 export const authRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
+
+// Per-IP rate limit on login + register to stop brute-force / spam registration.
+const authRateLimit = rateLimit({
+  key: (c) => `auth:${c.req.header('cf-connecting-ip') ?? 'unknown'}`,
+  capacity: 10,
+  refillPerSecond: 0.2, // 12/min sustained — enough for legitimate use, blocks brute force
+});
 
 // ---------- Validation helpers ----------
 
@@ -18,6 +27,7 @@ interface RegisterBody {
   phone?: string;
   referral_code?: string;
   institution_name?: string; // required if role=partner
+  invite_token?: string; // optional: partner-issued invitation (links a teacher to an institution)
 }
 
 interface LoginBody {
@@ -43,7 +53,7 @@ function validatePassword(password: unknown): password is string {
 
 // ---------- Register ----------
 
-authRoutes.post('/register', async (c) => {
+authRoutes.post('/register', authRateLimit, async (c) => {
   let body: RegisterBody;
   try {
     body = await c.req.json();
@@ -51,7 +61,7 @@ authRoutes.post('/register', async (c) => {
     return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' } }, 400);
   }
 
-  const { email, password, name, role, phone, referral_code, institution_name } = body;
+  const { email, password, name, role, phone, referral_code, institution_name, invite_token } = body;
 
   // Validate required fields
   if (!validateEmail(email)) {
@@ -73,11 +83,23 @@ authRoutes.post('/register', async (c) => {
   }
   if (!isValidRole(role)) {
     return c.json(
-      { error: { code: 'INVALID_ROLE', message: 'Role must be student, teacher, partner, or admin' } },
+      { error: { code: 'INVALID_ROLE', message: 'Role must be student, teacher, or partner' } },
       400
     );
   }
-  if (role === 'partner' && (!institution_name || institution_name.trim().length === 0)) {
+  // Admin accounts cannot self-register — they're created via DB seeding or
+  // a separate admin invite flow. Blueprint line 1264 restricts register to
+  // teacher|student; we additionally allow partner (institution) but block admin.
+  if (role === 'admin') {
+    return c.json(
+      { error: { code: 'ADMIN_REGISTRATION_FORBIDDEN', message: 'Admin accounts cannot be self-registered' } },
+      403
+    );
+  }
+  // Blueprint line 359 uses 'institution' as the role value; implementation
+  // uses 'partner' for the same concept. Normalize incoming 'institution' → 'partner'.
+  const normalizedRole: UserRole = (role as string) === 'institution' ? 'partner' : role;
+  if (normalizedRole === 'partner' && (!institution_name || institution_name.trim().length === 0)) {
     return c.json(
       { error: { code: 'INSTITUTION_NAME_REQUIRED', message: 'Partner role requires institution_name' } },
       400
@@ -95,6 +117,11 @@ authRoutes.post('/register', async (c) => {
   // Validate referral code if provided
   let referredBy: string | null = null;
   if (referral_code) {
+    // Validate format: uppercase alphanumerics (no ambiguous chars), ~8 chars
+    // Matches the generateUniqueReferralCode output (A-Z2-9, line ~487).
+    if (!/^[A-Z2-9]{6,12}$/.test(referral_code.toUpperCase())) {
+      return c.json({ error: { code: 'INVALID_REFERRAL_FORMAT', message: 'Referral code must be 6-12 uppercase letters/digits (no O, I, 0, 1)' } }, 400);
+    }
     const { data: referrer } = await supabase
       .from('teacher_profiles')
       .select('user_id, referral_code_active')
@@ -113,16 +140,48 @@ authRoutes.post('/register', async (c) => {
   // Hash password
   const passwordHash = await hashPassword(password);
 
+  // Validate + resolve a partner invitation if an invite_token was supplied.
+  // The invitation links the registering teacher to the partner's institution.
+  let pendingInvitation: { institution_name: string; teacher_email: string } | null = null;
+  if (invite_token) {
+    if (role !== 'teacher') {
+      return c.json(
+        { error: { code: 'INVITATION_ROLE_MISMATCH', message: 'Invitation tokens can only be used by teachers' } },
+        400
+      );
+    }
+    try {
+      const invitation = await validateInvitation(c.env, invite_token);
+      if (invitation.teacher_email !== email.toLowerCase()) {
+        return c.json(
+          { error: { code: 'INVITATION_EMAIL_MISMATCH', message: 'This invitation was issued to a different email' } },
+          400
+        );
+      }
+      pendingInvitation = {
+        institution_name: invitation.institution_name,
+        teacher_email: invitation.teacher_email,
+      };
+    } catch (err) {
+      const code = err instanceof InvitationError ? err.code : 'INVITATION_INVALID';
+      const message = err instanceof Error ? err.message : 'Invalid invitation';
+      return c.json({ error: { code, message } }, 400);
+    }
+  }
+
   // Create user record
   const insertPayload: Record<string, unknown> = {
     email: email.toLowerCase(),
     password_hash: passwordHash,
     display_name: name.trim(),
-    role,
+    role: normalizedRole,
     phone: phone ?? null,
   };
-  if (role === 'partner') {
+  if (normalizedRole === 'partner') {
     insertPayload.teacher_institution = institution_name;
+  } else if (pendingInvitation) {
+    // Teacher accepting a partner invitation — link to the institution
+    insertPayload.teacher_institution = pendingInvitation.institution_name;
   }
   if (referredBy) {
     insertPayload.referred_by = referredBy;
@@ -140,7 +199,7 @@ authRoutes.post('/register', async (c) => {
   }
 
   // If teacher, create teacher_profiles row with referral code
-  if (role === 'teacher') {
+  if (normalizedRole === 'teacher') {
     const referralCode = await generateUniqueReferralCode(supabase);
     await supabase.from('teacher_profiles').insert({
       user_id: newUser.id,
@@ -157,6 +216,27 @@ authRoutes.post('/register', async (c) => {
     } catch (err) {
       // Non-fatal — student can still join a classroom later via join code
       console.error('Auto-enroll failed (non-fatal):', err);
+    }
+  }
+
+  // Accept the partner invitation (marks it consumed) now that the user exists
+  if (pendingInvitation && invite_token) {
+    try {
+      await acceptInvitation(c.env, invite_token, newUser.id);
+    } catch (err) {
+      // The user was created successfully; invitation acceptance failing is
+      // non-fatal but should be logged for manual follow-up.
+      console.error('Failed to accept invitation:', err);
+    }
+  }
+
+  // Award quota bonus to referring teacher (Task 12.4) — +5 generation credits
+  if (referredBy) {
+    try {
+      const { awardQuotaBonus } = await import('../services/quota');
+      await awardQuotaBonus(c.env, referredBy, 'student_registered');
+    } catch (err) {
+      console.error('Failed to award quota bonus on referral:', err);
     }
   }
 
@@ -178,6 +258,7 @@ authRoutes.post('/register', async (c) => {
     target_exam: newUser.target_exam ?? null,
     target_score: newUser.target_score ?? null,
     current_level: newUser.current_level ?? null,
+    teacher_institution: ((newUser as Record<string, unknown>).teacher_institution as string | null) ?? null,
     created_at: newUser.created_at,
     updated_at: newUser.updated_at,
   };
@@ -193,7 +274,7 @@ authRoutes.post('/register', async (c) => {
 
 // ---------- Login ----------
 
-authRoutes.post('/login', async (c) => {
+authRoutes.post('/login', authRateLimit, async (c) => {
   let body: LoginBody;
   try {
     body = await c.req.json();
@@ -238,6 +319,7 @@ authRoutes.post('/login', async (c) => {
     target_exam: user.target_exam ?? null,
     target_score: user.target_score ?? null,
     current_level: user.current_level ?? null,
+    teacher_institution: ((user as Record<string, unknown>).teacher_institution as string | null) ?? null,
     created_at: user.created_at,
     updated_at: user.updated_at,
   };
@@ -295,6 +377,7 @@ authRoutes.post('/verify', async (c) => {
       target_exam: user.target_exam ?? null,
       target_score: user.target_score ?? null,
       current_level: user.current_level ?? null,
+      teacher_institution: ((user as Record<string, unknown>).teacher_institution as string | null) ?? null,
       created_at: user.created_at,
       updated_at: user.updated_at,
     };
@@ -353,6 +436,79 @@ authRoutes.post('/refresh', async (c) => {
 
     c.header('Set-Cookie', buildAuthCookie(newToken));
     return c.json({ jwt: newToken });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid token';
+    return c.json({ error: { code: 'INVALID_TOKEN', message } }, 401);
+  }
+});
+
+// ---------- Link Telegram (Task 16.1) ----------
+
+authRoutes.post('/link-telegram', async (c) => {
+  let body: { telegram_id?: string; osee_token?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' } }, 400);
+  }
+
+  if (!body.telegram_id || typeof body.telegram_id !== 'string') {
+    return c.json({ error: { code: 'INVALID_INPUT', message: 'telegram_id required' } }, 400);
+  }
+
+  // Verify the osee_token (JWT) — links Telegram to the authenticated user
+  let token = body.osee_token;
+  if (!token) {
+    const authHeader = c.req.header('Authorization');
+    if (authHeader) {
+      const match = /^Bearer\s+(.+)$/i.exec(authHeader);
+      if (match) token = match[1].trim();
+    }
+  }
+  if (!token) {
+    const cookieHeader = c.req.header('Cookie');
+    if (cookieHeader) {
+      for (const part of cookieHeader.split(';')) {
+        const [name, ...valueParts] = part.trim().split('=');
+        if (name === COOKIE_NAME) {
+          token = valueParts.join('=').trim();
+          break;
+        }
+      }
+    }
+  }
+
+  if (!token) {
+    return c.json({ error: { code: 'NO_TOKEN', message: 'osee_token required' } }, 401);
+  }
+
+  try {
+    const payload = await verifyJwt(c.env, token);
+    const supabase = getSupabase(c.env);
+
+    // Check telegram_id not already linked to another user
+    const { data: existingTg } = await supabase
+      .from('unified_profiles')
+      .select('id')
+      .eq('telegram_id', body.telegram_id)
+      .neq('id', payload.sub)
+      .maybeSingle();
+    if (existingTg) {
+      return c.json(
+        { error: { code: 'TELEGRAM_LINKED', message: 'Telegram ID already linked to another account' } },
+        409
+      );
+    }
+
+    const { error } = await supabase
+      .from('unified_profiles')
+      .update({ telegram_id: body.telegram_id, updated_at: new Date().toISOString() })
+      .eq('id', payload.sub);
+
+    if (error) {
+      return c.json({ error: { code: 'LINK_FAILED', message: error.message } }, 500);
+    }
+    return c.json({ success: true, user_id: payload.sub, telegram_id: body.telegram_id });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Invalid token';
     return c.json({ error: { code: 'INVALID_TOKEN', message } }, 401);

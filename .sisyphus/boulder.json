@@ -1,7 +1,7 @@
 {
-  "active_plan": "D:/osee hub/.sisyphus/plans/osee-prep-hub.md",
+  "active_plan": ".sisyphus/plans/osee-prep-hub.md",
   "started_at": "2026-07-05T19:11:00Z",
   "session_ids": ["ses_current"],
   "plan_name": "osee-prep-hub",
-  "worktree_path": ""
+  "worktree_path": "."
 }

@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ToolBus, AgentRunner, type AgentDefinition, type AgentContext } from '../agents/runtime';
-import { _resetBucketsForTests, rateLimit } from '../middleware/rate-limit';
+import { resetRateLimits, rateLimit } from '../middleware/rate-limit';
 
 // Stub an LLM: returns a fixed envelope.
 function stubLlm(envelope: { response: string; toolCalls: unknown[] }) {
@@ -58,7 +58,7 @@ describe('ToolBus', () => {
 
 describe('AgentRunner', () => {
   beforeEach(() => {
-    _resetBucketsForTests();
+    resetRateLimits();
   });
 
   const def: AgentDefinition = {
@@ -152,11 +152,11 @@ describe('AgentRunner', () => {
 
 describe('rate-limit middleware', () => {
   beforeEach(() => {
-    _resetBucketsForTests();
+    resetRateLimits();
   });
 
   it('returns 429 when bucket exhausted', async () => {
-    const middleware = rateLimit('test-scope');
+    const middleware = rateLimit({ key: () => 'test-scope:user-1', capacity: 20, refillPerSecond: 20 / 60 });
     const ctx = (user: any) => ({
       req: { header: () => undefined },
       env: {} as never,
@@ -180,7 +180,7 @@ describe('rate-limit middleware', () => {
   });
 
   it('allows 200 for pro tier (teacher)', async () => {
-    const middleware = rateLimit('test-scope-2');
+    const middleware = rateLimit({ key: () => 'test-scope-2:user-2', capacity: 200, refillPerSecond: 200 / 60 });
     const ctx = (user: any) => ({
       req: { header: () => undefined },
       env: {} as never,

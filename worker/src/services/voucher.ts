@@ -5,7 +5,7 @@ import { getSupabase } from './supabase';
  * Voucher redemption service — Task 15.9.
  *
  * Validates voucher codes, marks as redeemed, grants platform access.
- * For mock tests: sends webhook to practice platform granting session access.
+ * For mock-test vouchers: sends webhook to practice platform granting session access.
  * For Tutor Bot premium: bridges to EduBot to activate premium subscription.
  */
 

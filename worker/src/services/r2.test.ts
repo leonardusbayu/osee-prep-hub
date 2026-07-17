@@ -75,8 +75,8 @@ describe('r2 service', () => {
     ).rejects.toThrow(/Video too large/);
   });
 
-  it('generates presigned upload URL', () => {
-    const url = getPresignedUploadUrl(
+  it('generates presigned upload URL (falls back to worker-mediated endpoint when S3 creds missing)', async () => {
+    const url = await getPresignedUploadUrl(
       mockEnv,
       'audio',
       'audio/user1/test.webm',
@@ -87,5 +87,25 @@ describe('r2 service', () => {
     expect(url).toContain('key=audio%2Fuser1%2Ftest.webm');
     expect(url).toContain('content_type=audio%2Fwebm');
     expect(url).toContain('expires=3600');
+  });
+
+  it('generates a real S3 presigned URL when R2 S3 creds are configured', async () => {
+    const envWithCreds = {
+      ...mockEnv,
+      R2_ACCESS_KEY_ID: 'test-access-key',
+      R2_SECRET_ACCESS_KEY: 'test-secret-key',
+      R2_ACCOUNT_ID: 'testaccountid',
+    } as unknown as Env;
+    const url = await getPresignedUploadUrl(
+      envWithCreds,
+      'audio',
+      'audio/user1/test.webm',
+      'audio/webm',
+      3600
+    );
+    expect(url).toContain('r2.cloudflarestorage.com');
+    expect(url).toContain('X-Amz-Algorithm=AWS4-HMAC-SHA256');
+    expect(url).toContain('X-Amz-Signature=');
+    expect(url).toContain('X-Amz-Credential=test-access-key%2F');
   });
 });

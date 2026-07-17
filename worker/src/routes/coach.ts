@@ -27,7 +27,11 @@ import { traceMiddleware } from '../agents/tracing';
 export const coachRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
 coachRoutes.use('*', requireAuth());
-coachRoutes.use('*', rateLimit('coach-send'));
+coachRoutes.use('*', rateLimit({
+  key: (c) => `coach-send:${c.get('user')?.id ?? 'anonymous'}`,
+  capacity: 20,
+  refillPerSecond: 20 / 60, // 20 per minute
+}));
 
 /** POST /api/coach/sessions — start a new session. */
 coachRoutes.post('/sessions', async (c) => {

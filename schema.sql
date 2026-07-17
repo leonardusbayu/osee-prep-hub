@@ -86,6 +86,8 @@ CREATE TABLE teacher_profiles (
   is_ambassador BOOLEAN DEFAULT FALSE,
   ambassador_recruited_at TIMESTAMPTZ,
   ambassador_recruited_by UUID REFERENCES unified_profiles(id),
+  -- 'osee_certified_educator' for ambassadors, NULL otherwise
+  badge TEXT,
 
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -108,6 +110,7 @@ CREATE TABLE classrooms (
   join_code_active BOOLEAN DEFAULT TRUE,
   is_active BOOLEAN DEFAULT TRUE,
   max_students INTEGER DEFAULT 50,
+  is_private BOOLEAN DEFAULT FALSE,  -- TRUE = private 1-on-1 lesson (les); FALSE = group class (kelas)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -187,11 +190,50 @@ CREATE TABLE syllabus_items (
   -- AI-generated content (if source_type = 'ai_generated')
   ai_generated_content JSONB,  -- full generated material stored here
 
+  -- Teacher annotations (persisted — Task 10.x)
+  label_ids JSONB DEFAULT '[]',  -- array of label id strings, e.g. ["important","review"]
+
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_syllabus_items_syllabus ON syllabus_items(syllabus_id);
 CREATE INDEX idx_syllabus_items_order ON syllabus_items(syllabus_id, sort_order);
+
+-- Per-item teacher comments (persisted — Task 10.x)
+CREATE TABLE syllabus_item_comments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  syllabus_item_id UUID NOT NULL REFERENCES syllabus_items(id) ON DELETE CASCADE,
+  teacher_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_syllabus_item_comments_item ON syllabus_item_comments(syllabus_item_id);
+
+-- Per-item attachments (persisted — Task 10.x)
+CREATE TABLE syllabus_item_attachments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  syllabus_item_id UUID NOT NULL REFERENCES syllabus_items(id) ON DELETE CASCADE,
+  teacher_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  label TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_syllabus_item_attachments_item ON syllabus_item_attachments(syllabus_item_id);
+
+-- Per-student syllabus item progress (Task 11.2)
+CREATE TABLE syllabus_item_progress (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  syllabus_item_id UUID NOT NULL REFERENCES syllabus_items(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'not_started' CHECK (status IN ('not_started', 'started', 'completed')),
+  score DECIMAL,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  UNIQUE(syllabus_item_id, student_id)
+);
+
+CREATE INDEX idx_sip_item ON syllabus_item_progress(syllabus_item_id);
+CREATE INDEX idx_sip_student ON syllabus_item_progress(student_id);
 
 -- ============================================================
 -- 5. REFERRAL + COMMISSION SYSTEM
@@ -279,6 +321,23 @@ CREATE TABLE commission_ledger (
 
 CREATE INDEX idx_commission_teacher ON commission_ledger(teacher_id);
 CREATE INDEX idx_commission_status ON commission_ledger(status);
+
+-- Commission payout requests (teacher withdrawal requests)
+CREATE TABLE commission_payouts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  teacher_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  amount DECIMAL NOT NULL,
+  method TEXT CHECK (method IN ('bank_transfer', 'gopay', 'ovo', 'dana')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'paid', 'rejected', 'cancelled')),
+  reference TEXT,  -- payout reference / bank transfer ref
+  notes TEXT,
+  requested_at TIMESTAMPTZ DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  paid_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_payout_teacher ON commission_payouts(teacher_id);
+CREATE INDEX idx_payout_status ON commission_payouts(status);
 
 -- ============================================================
 -- 6. AI QUOTA SYSTEM
@@ -428,6 +487,7 @@ CREATE INDEX idx_grading_teacher ON ai_grading_queue(teacher_id);
 CREATE TABLE ai_generation_queue (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   teacher_id UUID NOT NULL REFERENCES unified_profiles(id),
+  user_id UUID REFERENCES unified_profiles(id),  -- alias for teacher_id (code queries user_id)
   classroom_id UUID REFERENCES classrooms(id),
   syllabus_id UUID REFERENCES syllabi(id),
 
@@ -516,6 +576,13 @@ CREATE TABLE student_progress_unified (
   edubot_accuracy_rate DECIMAL,
   edubot_last_active TIMESTAMPTZ,
 
+  -- Practice counts per platform
+  ibt_practice_count INTEGER DEFAULT 0,
+  itp_practice_count INTEGER DEFAULT 0,
+  ielts_practice_count INTEGER DEFAULT 0,
+  toeic_practice_count INTEGER DEFAULT 0,
+  edubot_practice_count INTEGER DEFAULT 0,
+
   -- AI grading results
   writing_latest_band DECIMAL,
   writing_last_graded_at TIMESTAMPTZ,
@@ -534,10 +601,56 @@ CREATE TABLE student_progress_unified (
   predicted_score DECIMAL,
   weeks_to_target INTEGER,
 
+  -- EduBot premium subscription tracking (Blueprint line 64: recurring Rp 15k/month)
+  has_premium BOOLEAN DEFAULT FALSE,
+  last_premium_credit_at TIMESTAMPTZ,  -- null = never credited; used by cron to credit monthly
+
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_progress_student ON student_progress_unified(student_id);
+
+-- Per-practice history row (audit trail of all practice/test attempts)
+CREATE TABLE student_progress_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  student_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,  -- 'ibt' | 'itp' | 'ielts' | 'toeic' | 'booking' | 'edubot'
+  exam_type TEXT,
+  section TEXT,
+  score DECIMAL,
+  completed_at TIMESTAMPTZ DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}'
+);
+
+CREATE INDEX idx_history_student ON student_progress_history(student_id);
+CREATE INDEX idx_history_completed ON student_progress_history(completed_at);
+
+-- ============================================================
+-- 10b. PLATFORM LINKS (deep links to practice platforms per exam type)
+-- ============================================================
+
+CREATE TABLE platform_links (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  platform TEXT NOT NULL,        -- 'ibt' | 'itp' | 'ielts' | 'toeic' | 'edubot' | 'osee'
+  exam_type TEXT NOT NULL,        -- 'TOEFL_IBT' | 'TOEFL_ITP' | 'IELTS' | 'TOEIC' | 'GENERAL'
+  url TEXT NOT NULL,
+  label TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(platform, exam_type)
+);
+
+CREATE INDEX idx_platform_links_exam ON platform_links(exam_type);
+
+-- Seed: deep links to the five practice platforms + the OSEE booking bridge.
+INSERT INTO platform_links (platform, exam_type, url, label) VALUES
+  ('ibt',    'TOEFL_IBT', 'https://ibt.osee.co.id',     'OSEE IBT Practice'),
+  ('itp',    'TOEFL_ITP', 'https://itp.osee.co.id',    'OSEE ITP Practice'),
+  ('ielts',  'IELTS',     'https://ielts.osee.co.id',  'OSEE IELTS Practice'),
+  ('toeic',  'TOEIC',     'https://toeic.osee.co.id',  'OSEE TOEIC Practice'),
+  ('edubot', 'GENERAL',   'https://edubot.osee.co.id', 'EduBot Tutor'),
+  ('osee',   'TOEFL_IBT', 'https://osee.co.id/booking','OSEE Official Test Booking')
+ON CONFLICT (platform, exam_type) DO UPDATE SET url = EXCLUDED.url, label = EXCLUDED.label;
 
 -- ============================================================
 -- 11. CROSS-EXAM SCORE MAP
@@ -634,6 +747,21 @@ CREATE TABLE video_lessons (
 CREATE INDEX idx_video_course ON video_lessons(course_id);
 CREATE INDEX idx_video_lesson_num ON video_lessons(course_id, lesson_number);
 
+-- Video progress tracking (per student per lesson)
+CREATE TABLE video_progress (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  lesson_id UUID NOT NULL REFERENCES video_lessons(id) ON DELETE CASCADE,
+  watched_seconds INTEGER DEFAULT 0,
+  completed BOOLEAN DEFAULT FALSE,
+  quiz_score INTEGER,
+  last_watched_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, lesson_id)
+);
+
+CREATE INDEX idx_video_progress_user ON video_progress(user_id);
+CREATE INDEX idx_video_progress_lesson ON video_progress(lesson_id);
+
 -- ============================================================
 -- 13. LIVE CLASSES
 -- ============================================================
@@ -679,6 +807,18 @@ CREATE TABLE live_classes (
 
 CREATE INDEX idx_live_class_schedule ON live_classes(scheduled_at);
 CREATE INDEX idx_live_class_status ON live_classes(status);
+
+-- Class registrations (student registers interest for a live class)
+CREATE TABLE class_registrations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  class_id UUID NOT NULL REFERENCES live_classes(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  registered_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(class_id, user_id)
+);
+
+CREATE INDEX idx_class_reg_class ON class_registrations(class_id);
+CREATE INDEX idx_class_reg_user ON class_registrations(user_id);
 
 -- ============================================================
 -- 14. WEBHOOK EVENTS
@@ -737,6 +877,218 @@ CREATE TABLE branding_configs (
 );
 
 -- ============================================================
+-- ORDER SYSTEM (added per user request — not in original blueprint)
+-- Supports: pricing config, orders, order items, vouchers
+-- Roles: student, teacher, partner (institution), admin
+-- Item types: mock_itp, mock_ibt, mock_ielts, mock_toeic,
+--            tutor_bot_premium, official_toefl, official_toeic
+-- Order types: voucher_resale, book_for_student, bulk_purchase, self_purchase
+-- ============================================================
+
+CREATE TABLE pricing_config (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  item_type TEXT NOT NULL CHECK (item_type IN (
+    'mock_itp','mock_ibt','mock_ielts','mock_toeic',
+    'tutor_bot_premium','official_toefl','official_toeic'
+  )),
+  role TEXT NOT NULL CHECK (role IN ('student','teacher','partner','admin')),
+  price INTEGER NOT NULL CHECK (price >= 0),  -- in Rupiah
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(item_type, role)
+);
+
+CREATE INDEX idx_pricing_config_lookup ON pricing_config(item_type, role) WHERE is_active = TRUE;
+
+CREATE TABLE orders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  order_type TEXT NOT NULL CHECK (order_type IN (
+    'voucher_resale','book_for_student','bulk_purchase','self_purchase'
+  )),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
+    'pending','paid','fulfilled','cancelled','refunded'
+  )),
+  total_amount INTEGER NOT NULL CHECK (total_amount >= 0),  -- in Rupiah
+  payment_method TEXT,
+  payment_ref TEXT,  -- TriPay transaction reference
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_orders_user ON orders(user_id);
+CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_orders_created ON orders(created_at);
+
+CREATE TABLE order_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  item_type TEXT NOT NULL CHECK (item_type IN (
+    'mock_itp','mock_ibt','mock_ielts','mock_toeic',
+    'tutor_bot_premium','official_toefl','official_toeic'
+  )),
+  quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  unit_price INTEGER NOT NULL CHECK (unit_price >= 0),  -- snapshot of price at order time
+  assigned_student_id UUID REFERENCES unified_profiles(id),  -- for bulk_purchase / book_for_student
+  fulfillment_status TEXT DEFAULT 'pending' CHECK (fulfillment_status IN (
+    'pending','voucher_generated','booking_confirmed','pending_booking','pending_assignment','booking_failed','fulfilled','failed'
+  )),
+  external_booking_id TEXT,  -- for official tests: osee.co.id booking ID
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_order_items_order ON order_items(order_id);
+CREATE INDEX idx_order_items_assigned ON order_items(assigned_student_id);
+
+CREATE TABLE vouchers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  order_item_id UUID NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
+  code TEXT NOT NULL UNIQUE,  -- 12-char alphanumeric, collision-checked
+  item_type TEXT NOT NULL CHECK (item_type IN (
+    'mock_itp','mock_ibt','mock_ielts','mock_toeic',
+    'tutor_bot_premium','official_toefl','official_toeic'
+  )),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN (
+    'active','redeemed','expired','cancelled'
+  )),
+  redeemed_by UUID REFERENCES unified_profiles(id),
+  redeemed_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  platform_webhook_sent BOOLEAN DEFAULT FALSE,  -- track if practice platform was notified
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_vouchers_code ON vouchers(code);
+CREATE INDEX idx_vouchers_status ON vouchers(status);
+CREATE INDEX idx_vouchers_redeemed_by ON vouchers(redeemed_by);
+CREATE INDEX idx_vouchers_order_item ON vouchers(order_item_id);
+
+-- ============================================================
+-- TEACHER INVITATIONS (partner → teacher recruitment)
+-- A partner (institution) invites a teacher by email; the teacher
+-- registers using the token-bearing invite URL to auto-link to the
+-- institution. Token-gated, 7-day expiry, single-use.
+-- ============================================================
+
+CREATE TABLE teacher_invitations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  partner_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
+  teacher_email TEXT NOT NULL,
+  institution_name TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,  -- opaque, single-use
+  accepted_at TIMESTAMPTZ,     -- NULL = pending, non-NULL = consumed
+  accepted_by UUID REFERENCES unified_profiles(id),  -- the teacher who accepted
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_teacher_invitations_partner ON teacher_invitations(partner_id);
+CREATE INDEX idx_teacher_invitations_token ON teacher_invitations(token);
+CREATE INDEX idx_teacher_invitations_email ON teacher_invitations(teacher_email);
+
+-- ============================================================
+-- Additional FK indexes (query-performance hardening)
+-- ============================================================
+CREATE INDEX idx_teacher_ambassador_by ON teacher_profiles(ambassador_recruited_by);
+CREATE INDEX idx_syllabi_classroom ON syllabi(classroom_id);
+CREATE INDEX idx_syllabi_teacher ON syllabi(teacher_id);
+CREATE INDEX idx_syllabus_items_prereq ON syllabus_items(prerequisite_item_id);
+CREATE INDEX idx_referral_classroom ON teacher_referrals(classroom_id);
+CREATE INDEX idx_commission_student ON commission_ledger(student_id);
+CREATE INDEX idx_kb_uploaded_by ON knowledge_base_documents(uploaded_by);
+CREATE INDEX idx_grading_student ON ai_grading_queue(student_id);
+CREATE INDEX idx_grading_classroom ON ai_grading_queue(classroom_id);
+CREATE INDEX idx_grading_item ON ai_grading_queue(syllabus_item_id);
+CREATE INDEX idx_gen_classroom ON ai_generation_queue(classroom_id);
+CREATE INDEX idx_gen_syllabus ON ai_generation_queue(syllabus_id);
+CREATE INDEX idx_gen_user ON ai_generation_queue(user_id);
+CREATE INDEX idx_progress_syllabus ON student_progress_unified(syllabus_id);
+CREATE INDEX idx_webhook_user ON webhook_events(user_id);
+CREATE INDEX idx_branding_teacher ON branding_configs(teacher_id);
+CREATE INDEX idx_video_course_exam ON video_courses(exam_type);
+CREATE INDEX idx_orders_user_status ON orders(user_id, status);
+CREATE INDEX idx_order_items_status ON order_items(order_id, fulfillment_status);
+CREATE INDEX idx_vouchers_lookup ON vouchers(item_type, status);
+CREATE INDEX idx_cross_exam_source ON cross_exam_score_map(source_exam);
+CREATE INDEX idx_cross_exam_target ON cross_exam_score_map(target_exam);
+
+-- GIN trigram index for fuzzy email/name search (pg_trgm already enabled at top).
+CREATE INDEX idx_profiles_email_trgm ON unified_profiles USING gin (email gin_trgm_ops);
+CREATE INDEX idx_profiles_name_trgm ON unified_profiles USING gin (display_name gin_trgm_ops);
+
+-- Updated_at trigger for orders (auto-maintain)
+CREATE OR REPLACE FUNCTION update_orders_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER orders_updated_at
+  BEFORE UPDATE ON orders
+  FOR EACH ROW
+  EXECUTE FUNCTION update_orders_updated_at();
+
+-- Updated_at trigger for pricing_config
+CREATE OR REPLACE FUNCTION update_pricing_config_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER pricing_config_updated_at
+  BEFORE UPDATE ON pricing_config
+  FOR EACH ROW
+  EXECUTE FUNCTION update_pricing_config_updated_at();
+
+-- Generic updated_at trigger for the remaining tables with updated_at columns.
+-- Replaces per-table boilerplate; one function, many triggers.
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- is_admin(): SECURITY DEFINER function to check the caller's role WITHOUT
+-- triggering infinite RLS recursion (a policy on unified_profiles that does
+-- `(SELECT role FROM unified_profiles ...)` recurses into itself). SECURITY
+-- DEFINER functions run with the owner's privileges and bypass RLS, so this
+-- is safe and fast. Used by every admin-check subquery in RLS policies.
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM unified_profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+CREATE TRIGGER unified_profiles_updated_at
+  BEFORE UPDATE ON unified_profiles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER teacher_profiles_updated_at
+  BEFORE UPDATE ON teacher_profiles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER syllabi_updated_at
+  BEFORE UPDATE ON syllabi
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER knowledge_base_documents_updated_at
+  BEFORE UPDATE ON knowledge_base_documents
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER video_courses_updated_at
+  BEFORE UPDATE ON video_courses
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER commission_rates_updated_at
+  BEFORE UPDATE ON commission_rates
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ============================================================
 -- 17. ROW-LEVEL SECURITY (RLS) POLICIES
 -- ============================================================
 
@@ -759,9 +1111,43 @@ ALTER TABLE teacher_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE branding_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_quota_usage ENABLE ROW LEVEL SECURITY;
 
+-- Enable RLS on additional tables (security hardening)
+ALTER TABLE syllabus_item_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE commission_payouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE commission_rates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE student_progress_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE video_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE class_registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE webhook_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pricing_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cross_exam_score_map ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_base_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_base_embeddings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teacher_invitations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE syllabus_item_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE syllabus_item_attachments ENABLE ROW LEVEL SECURITY;
+
+-- Default deny for sensitive tables (access via service key only)
+CREATE POLICY syllabus_item_progress_student_select ON syllabus_item_progress
+  FOR SELECT USING (auth.uid() = student_id);
+CREATE POLICY commission_payouts_teacher_select ON commission_payouts
+  FOR SELECT USING (auth.uid() = teacher_id);
+CREATE POLICY video_progress_user_select ON video_progress
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY class_registrations_user_select ON class_registrations
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY orders_user_select ON orders
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY vouchers_select ON vouchers
+  FOR SELECT USING (TRUE);  -- vouchers are validated by code, not by owner
+
 -- Profiles: users can only see/update their own profile
 CREATE POLICY profiles_self_select ON unified_profiles
-  FOR SELECT USING (auth.uid() = id OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin');
+  FOR SELECT USING (auth.uid() = id OR is_admin());
 CREATE POLICY profiles_self_update ON unified_profiles
   FOR UPDATE USING (auth.uid() = id);
 
@@ -770,7 +1156,7 @@ CREATE POLICY classrooms_teacher_select ON classrooms
   FOR SELECT USING (teacher_id = auth.uid() OR EXISTS (
     SELECT 1 FROM classroom_enrollments
     WHERE classroom_id = classrooms.id AND student_id = auth.uid() AND is_active = TRUE
-  ) OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin');
+  ) OR is_admin());
 CREATE POLICY classrooms_teacher_insert ON classrooms
   FOR INSERT WITH CHECK (teacher_id = auth.uid());
 CREATE POLICY classrooms_teacher_update ON classrooms
@@ -787,7 +1173,7 @@ CREATE POLICY syllabi_teacher_select ON syllabi
       JOIN syllabi s ON s.classroom_id = ce.classroom_id
       WHERE ce.student_id = auth.uid() AND s.id = syllabi.id AND ce.is_active = TRUE
     )
-    OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin'
+    OR is_admin()
   );
 CREATE POLICY syllabi_teacher_insert ON syllabi
   FOR INSERT WITH CHECK (teacher_id = auth.uid());
@@ -796,14 +1182,14 @@ CREATE POLICY syllabi_teacher_update ON syllabi
 
 -- Commission: teachers see their own commission
 CREATE POLICY commission_teacher_select ON commission_ledger
-  FOR SELECT USING (teacher_id = auth.uid() OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin');
+  FOR SELECT USING (teacher_id = auth.uid() OR is_admin());
 
 -- AI grading: teachers see their own queue, students see their results
 CREATE POLICY grading_teacher_select ON ai_grading_queue
   FOR SELECT USING (
     teacher_id = auth.uid()
     OR student_id = auth.uid()
-    OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin'
+    OR is_admin()
   );
 
 -- Student progress: students see own, teachers see enrolled students
@@ -817,22 +1203,300 @@ CREATE POLICY progress_student_select ON student_progress_unified
       AND c.teacher_id = auth.uid()
       AND ce.is_active = TRUE
     )
-    OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin'
+    OR is_admin()
   );
 
 -- Video lessons: public courses visible to all, premium gated by app logic
 CREATE POLICY video_select ON video_lessons
-  FOR SELECT USING (is_published = TRUE OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin');
+  FOR SELECT USING (is_published = TRUE OR is_admin());
 
 -- Live classes: all scheduled classes visible to all authenticated users
 CREATE POLICY live_class_select ON live_classes
-  FOR SELECT USING (status IN ('scheduled', 'live', 'completed') OR (SELECT role FROM unified_profiles WHERE id = auth.uid()) = 'admin');
+  FOR SELECT USING (status IN ('scheduled', 'live', 'completed') OR is_admin());
 
 -- Knowledge base: teachers can read, only admin can write
 CREATE POLICY kb_select ON knowledge_base_documents
   FOR SELECT USING (is_active = TRUE);
 CREATE POLICY kb_embeddings_select ON knowledge_base_embeddings
   FOR SELECT USING (TRUE);
+
+-- ============================================================
+-- 17b. MISSING RLS POLICIES (security hardening — closing default-deny gaps)
+-- Tables below had RLS ENABLED but no policy, which default-denies ALL
+-- access via the anon/authenticated key. The worker bypasses RLS via the
+-- service key, so production API traffic is unaffected; these policies
+-- enable direct-client Supabase calls and satisfy the Blueprint's RLS
+-- requirement. Admin checks reuse the existing inline-subquery pattern.
+-- NOTE: CREATE POLICY has no IF NOT EXISTS — re-applying this file to a
+-- live DB requires dropping these policies first.
+-- ============================================================
+
+-- teacher_profiles: teachers read/update own profile
+CREATE POLICY teacher_profiles_self_select ON teacher_profiles
+  FOR SELECT USING (user_id = auth.uid() OR is_admin());
+CREATE POLICY teacher_profiles_self_update ON teacher_profiles
+  FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY teacher_profiles_teacher_insert ON teacher_profiles
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
+-- classroom_enrollments: students see own, teachers see their classroom's roster
+CREATE POLICY enrollment_student_select ON classroom_enrollments
+  FOR SELECT USING (
+    student_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM classrooms c WHERE c.id = classroom_id AND c.teacher_id = auth.uid()
+    )
+    OR is_admin()
+  );
+CREATE POLICY enrollment_teacher_insert ON classroom_enrollments
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM classrooms c WHERE c.id = classroom_id AND c.teacher_id = auth.uid()
+    )
+  );
+CREATE POLICY enrollment_teacher_update ON classroom_enrollments
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM classrooms c WHERE c.id = classroom_id AND c.teacher_id = auth.uid()
+    )
+  );
+CREATE POLICY enrollment_student_insert ON classroom_enrollments
+  FOR INSERT WITH CHECK (student_id = auth.uid());
+
+-- syllabus_items: teachers manage, students read assigned
+CREATE POLICY syllabus_items_select ON syllabus_items
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM syllabi s
+      WHERE s.id = syllabus_id
+      AND (
+        s.teacher_id = auth.uid()
+        OR EXISTS (
+          SELECT 1 FROM classroom_enrollments ce
+          WHERE ce.classroom_id = s.classroom_id
+          AND ce.student_id = auth.uid()
+          AND ce.is_active = TRUE
+        )
+        OR is_admin()
+      )
+    )
+  );
+CREATE POLICY syllabus_items_teacher_insert ON syllabus_items
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM syllabi s WHERE s.id = syllabus_id AND s.teacher_id = auth.uid())
+  );
+CREATE POLICY syllabus_items_teacher_update ON syllabus_items
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM syllabi s WHERE s.id = syllabus_id AND s.teacher_id = auth.uid())
+  );
+CREATE POLICY syllabus_items_teacher_delete ON syllabus_items
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM syllabi s WHERE s.id = syllabus_id AND s.teacher_id = auth.uid())
+  );
+
+-- syllabus_item_comments + attachments: teachers who own the parent syllabus
+-- can read/insert/update/delete; admins too.
+CREATE POLICY syllabus_item_comments_teacher_select ON syllabus_item_comments
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM syllabus_items si
+      JOIN syllabi s ON s.id = si.syllabus_id
+      WHERE si.id = syllabus_item_id AND s.teacher_id = auth.uid()
+    )
+    OR is_admin()
+  );
+CREATE POLICY syllabus_item_comments_teacher_insert ON syllabus_item_comments
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM syllabus_items si
+      JOIN syllabi s ON s.id = si.syllabus_id
+      WHERE si.id = syllabus_item_id AND s.teacher_id = auth.uid()
+    )
+  );
+CREATE POLICY syllabus_item_comments_teacher_delete ON syllabus_item_comments
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM syllabus_items si
+      JOIN syllabi s ON s.id = si.syllabus_id
+      WHERE si.id = syllabus_item_id AND s.teacher_id = auth.uid()
+    )
+  );
+CREATE POLICY syllabus_item_attachments_teacher_select ON syllabus_item_attachments
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM syllabus_items si
+      JOIN syllabi s ON s.id = si.syllabus_id
+      WHERE si.id = syllabus_item_id AND s.teacher_id = auth.uid()
+    )
+    OR is_admin()
+  );
+CREATE POLICY syllabus_item_attachments_teacher_insert ON syllabus_item_attachments
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM syllabus_items si
+      JOIN syllabi s ON s.id = si.syllabus_id
+      WHERE si.id = syllabus_item_id AND s.teacher_id = auth.uid()
+    )
+  );
+CREATE POLICY syllabus_item_attachments_teacher_delete ON syllabus_item_attachments
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM syllabus_items si
+      JOIN syllabi s ON s.id = si.syllabus_id
+      WHERE si.id = syllabus_item_id AND s.teacher_id = auth.uid()
+    )
+  );
+
+-- teacher_referrals: teachers see own, students see who referred them
+CREATE POLICY referral_teacher_select ON teacher_referrals
+  FOR SELECT USING (
+    teacher_id = auth.uid()
+    OR student_id = auth.uid()
+    OR is_admin()
+  );
+
+-- commission_rates: public config read (no secrets), admin writes
+CREATE POLICY commission_rates_select ON commission_rates
+  FOR SELECT USING (TRUE);
+CREATE POLICY commission_rates_admin_insert ON commission_rates
+  FOR INSERT WITH CHECK (is_admin());
+CREATE POLICY commission_rates_admin_update ON commission_rates
+  FOR UPDATE USING (is_admin());
+CREATE POLICY commission_rates_admin_delete ON commission_rates
+  FOR DELETE USING (is_admin());
+
+-- commission_payouts: teachers can request (insert) and read own
+CREATE POLICY commission_payouts_teacher_insert ON commission_payouts
+  FOR INSERT WITH CHECK (teacher_id = auth.uid());
+CREATE POLICY commission_payouts_admin_update ON commission_payouts
+  FOR UPDATE USING (is_admin());
+
+-- ai_generation_queue: teachers read own, insert own
+CREATE POLICY generation_teacher_select ON ai_generation_queue
+  FOR SELECT USING (
+    teacher_id = auth.uid()
+    OR user_id = auth.uid()
+    OR is_admin()
+  );
+CREATE POLICY generation_teacher_insert ON ai_generation_queue
+  FOR INSERT WITH CHECK (teacher_id = auth.uid());
+CREATE POLICY generation_teacher_update ON ai_generation_queue
+  FOR UPDATE USING (
+    teacher_id = auth.uid()
+    OR is_admin()
+  );
+
+-- ai_grading_queue: teachers can insert (submit) grading jobs
+CREATE POLICY grading_teacher_insert ON ai_grading_queue
+  FOR INSERT WITH CHECK (teacher_id = auth.uid());
+CREATE POLICY grading_teacher_update ON ai_grading_queue
+  FOR UPDATE USING (
+    teacher_id = auth.uid()
+    OR is_admin()
+  );
+
+-- ai_quota_usage: users read/update own
+CREATE POLICY quota_self_select ON ai_quota_usage
+  FOR SELECT USING (
+    user_id = auth.uid()
+    OR is_admin()
+  );
+CREATE POLICY quota_self_upsert ON ai_quota_usage
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY quota_self_update ON ai_quota_usage
+  FOR UPDATE USING (user_id = auth.uid());
+
+-- ai_quota_limits: public tier limits (no secrets)
+CREATE POLICY quota_limits_select ON ai_quota_limits
+  FOR SELECT USING (TRUE);
+
+-- student_progress_history: students see own, teachers see enrolled
+CREATE POLICY history_student_select ON student_progress_history
+  FOR SELECT USING (
+    student_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM classroom_enrollments ce
+      JOIN classrooms c ON c.id = ce.classroom_id
+      WHERE ce.student_id = student_progress_history.student_id
+      AND c.teacher_id = auth.uid()
+      AND ce.is_active = TRUE
+    )
+    OR is_admin()
+  );
+
+-- platform_links: public active links
+CREATE POLICY platform_links_select ON platform_links
+  FOR SELECT USING (is_active = TRUE);
+
+-- video_courses: published visible to all, admin sees all
+CREATE POLICY video_courses_select ON video_courses
+  FOR SELECT USING (is_published = TRUE OR is_admin());
+
+-- video_progress: users record own watch progress
+CREATE POLICY video_progress_user_insert ON video_progress
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY video_progress_user_update ON video_progress
+  FOR UPDATE USING (user_id = auth.uid());
+
+-- teacher_subscriptions: teachers see own, admin sees all
+CREATE POLICY sub_teacher_select ON teacher_subscriptions
+  FOR SELECT USING (
+    teacher_id = auth.uid()
+    OR is_admin()
+  );
+CREATE POLICY sub_admin_insert ON teacher_subscriptions
+  FOR INSERT WITH CHECK (is_admin());
+CREATE POLICY sub_admin_update ON teacher_subscriptions
+  FOR UPDATE USING (is_admin());
+
+-- branding_configs: teachers read/upsert own, admin sees all
+CREATE POLICY branding_teacher_select ON branding_configs
+  FOR SELECT USING (
+    teacher_id = auth.uid()
+    OR is_admin()
+  );
+CREATE POLICY branding_teacher_insert ON branding_configs
+  FOR INSERT WITH CHECK (teacher_id = auth.uid());
+CREATE POLICY branding_teacher_update ON branding_configs
+  FOR UPDATE USING (teacher_id = auth.uid());
+
+-- pricing_config: public active prices, admin writes
+CREATE POLICY pricing_config_select ON pricing_config
+  FOR SELECT USING (is_active = TRUE OR is_admin());
+CREATE POLICY pricing_config_admin_insert ON pricing_config
+  FOR INSERT WITH CHECK (is_admin());
+CREATE POLICY pricing_config_admin_update ON pricing_config
+  FOR UPDATE USING (is_admin());
+CREATE POLICY pricing_config_admin_delete ON pricing_config
+  FOR DELETE USING (is_admin());
+
+-- order_items: users see items of their own orders
+CREATE POLICY order_items_user_select ON order_items
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM orders o WHERE o.id = order_id AND o.user_id = auth.uid()
+    )
+    OR is_admin()
+  );
+
+-- cross_exam_score_map: public reference data
+CREATE POLICY cross_exam_select ON cross_exam_score_map
+  FOR SELECT USING (TRUE);
+
+-- webhook_events: service-only (no client policy = default deny via anon key).
+-- Intentional — the worker uses the service key to write/read. No policy added.
+
+-- teacher_invitations: partner sees own sent invitations; token-gated validation
+-- is open (the token is the secret). Admin sees all.
+CREATE POLICY teacher_invitations_partner_select ON teacher_invitations
+  FOR SELECT USING (
+    partner_id = auth.uid()
+    OR is_admin()
+  );
+CREATE POLICY teacher_invitations_partner_insert ON teacher_invitations
+  FOR INSERT WITH CHECK (partner_id = auth.uid());
+CREATE POLICY teacher_invitations_admin_update ON teacher_invitations
+  FOR UPDATE USING (is_admin());
 
 -- ============================================================
 -- 18. USEFUL VIEWS
@@ -896,122 +1560,6 @@ SELECT
 FROM student_progress_unified p
 JOIN unified_profiles u ON u.id = p.student_id;
 
--- ============================================================
--- ORDER SYSTEM (added per user request — not in original blueprint)
--- Supports: pricing config, orders, order items, vouchers
--- Roles: student, teacher, partner (institution), admin
--- Item types: mock_itp, mock_ibt, mock_ielts, mock_toeic,
---            tutor_bot_premium, official_toefl, official_toeic
--- Order types: voucher_resale, book_for_student, bulk_purchase, self_purchase
--- ============================================================
-
-CREATE TABLE pricing_config (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  item_type TEXT NOT NULL CHECK (item_type IN (
-    'mock_itp','mock_ibt','mock_ielts','mock_toeic',
-    'tutor_bot_premium','official_toefl','official_toeic'
-  )),
-  role TEXT NOT NULL CHECK (role IN ('student','teacher','partner','admin')),
-  price INTEGER NOT NULL CHECK (price >= 0),  -- in Rupiah
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(item_type, role)
-);
-
-CREATE INDEX idx_pricing_config_lookup ON pricing_config(item_type, role) WHERE is_active = TRUE;
-
-CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES unified_profiles(id) ON DELETE CASCADE,
-  order_type TEXT NOT NULL CHECK (order_type IN (
-    'voucher_resale','book_for_student','bulk_purchase','self_purchase'
-  )),
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
-    'pending','paid','fulfilled','cancelled','refunded'
-  )),
-  total_amount INTEGER NOT NULL CHECK (total_amount >= 0),  -- in Rupiah
-  payment_method TEXT,
-  payment_ref TEXT,  -- TriPay transaction reference
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_orders_user ON orders(user_id);
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_orders_created ON orders(created_at);
-
-CREATE TABLE order_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  item_type TEXT NOT NULL CHECK (item_type IN (
-    'mock_itp','mock_ibt','mock_ielts','mock_toeic',
-    'tutor_bot_premium','official_toefl','official_toeic'
-  )),
-  quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
-  unit_price INTEGER NOT NULL CHECK (unit_price >= 0),  -- snapshot of price at order time
-  assigned_student_id UUID REFERENCES unified_profiles(id),  -- for bulk_purchase / book_for_student
-  fulfillment_status TEXT DEFAULT 'pending' CHECK (fulfillment_status IN (
-    'pending','voucher_generated','booking_confirmed','fulfilled','failed'
-  )),
-  external_booking_id TEXT,  -- for official tests: osee.co.id booking ID
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_order_items_order ON order_items(order_id);
-CREATE INDEX idx_order_items_assigned ON order_items(assigned_student_id);
-
-CREATE TABLE vouchers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  order_item_id UUID NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
-  code TEXT NOT NULL UNIQUE,  -- 12-char alphanumeric, collision-checked
-  item_type TEXT NOT NULL CHECK (item_type IN (
-    'mock_itp','mock_ibt','mock_ielts','mock_toeic',
-    'tutor_bot_premium','official_toefl','official_toeic'
-  )),
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN (
-    'active','redeemed','expired','cancelled'
-  )),
-  redeemed_by UUID REFERENCES unified_profiles(id),
-  redeemed_at TIMESTAMPTZ,
-  expires_at TIMESTAMPTZ,
-  platform_webhook_sent BOOLEAN DEFAULT FALSE,  -- track if practice platform was notified
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_vouchers_code ON vouchers(code);
-CREATE INDEX idx_vouchers_status ON vouchers(status);
-CREATE INDEX idx_vouchers_redeemed_by ON vouchers(redeemed_by);
-CREATE INDEX idx_vouchers_order_item ON vouchers(order_item_id);
-
--- Updated_at trigger for orders (auto-maintain)
-CREATE OR REPLACE FUNCTION update_orders_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER orders_updated_at
-  BEFORE UPDATE ON orders
-  FOR EACH ROW
-  EXECUTE FUNCTION update_orders_updated_at();
-
--- Updated_at trigger for pricing_config
-CREATE OR REPLACE FUNCTION update_pricing_config_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER pricing_config_updated_at
-  BEFORE UPDATE ON pricing_config
-  FOR EACH ROW
-  EXECUTE FUNCTION update_pricing_config_updated_at();
 
 -- ============================================================
 -- VECTOR SEARCH FUNCTION (Task 4.5)
@@ -1039,7 +1587,17 @@ RETURNS TABLE (
     e.metadata,
     1 - (e.embedding <=> query_embedding) AS similarity
   FROM knowledge_base_embeddings e
-  WHERE e.metadata @> filter
+  JOIN knowledge_base_documents d ON d.id = e.document_id
+  WHERE d.is_active = TRUE
+    -- Apply filters: support both chunk metadata (e.metadata @> filter) AND document-level filters
+    AND (
+      e.metadata @> filter
+      OR (
+        (filter->>'category' IS NULL OR d.category = (filter->>'category'))
+        AND (filter->>'cefr_level' IS NULL OR d.cefr_level = (filter->>'cefr_level'))
+        AND (filter->>'tier' IS NULL OR (d.metadata->>'tier') = (filter->>'tier'))
+      )
+    )
   ORDER BY e.embedding <=> query_embedding
   LIMIT match_count;
 $$ LANGUAGE SQL;

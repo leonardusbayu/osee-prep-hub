@@ -27,6 +27,7 @@ export interface SyllabusItem {
   sort_order: number;
   source_type: string;
   source_material_id: string | null;
+  source_platform_url: string | null;
   title: string;
   description: string | null;
   item_type: string;
@@ -35,6 +36,7 @@ export interface SyllabusItem {
   estimated_minutes: number | null;
   unlocked_at: string | null;
   ai_generated_content: Record<string, unknown> | null;
+  label_ids: string[] | null;
   created_at: string;
 }
 
@@ -119,6 +121,7 @@ export async function batchSaveSyllabusItems(
     sort_order: item.sort_order ?? index,
     source_type: item.source_type,
     source_material_id: item.source_material_id,
+    source_platform_url: item.source_platform_url,
     title: item.title,
     description: item.description,
     item_type: item.item_type,
@@ -127,6 +130,7 @@ export async function batchSaveSyllabusItems(
     estimated_minutes: item.estimated_minutes,
     unlocked_at: item.unlocked_at,
     ai_generated_content: item.ai_generated_content,
+    label_ids: item.label_ids ?? [],
   }));
   const { error: insErr } = await supabase.from('syllabus_items').insert(insertPayload);
   if (insErr) throw new Error(`Insert items failed: ${insErr.message}`);
@@ -156,6 +160,7 @@ export async function addSyllabusItem(
       sort_order: item.sort_order ?? nextOrder,
       source_type: item.source_type,
       source_material_id: item.source_material_id,
+      source_platform_url: item.source_platform_url,
       title: item.title,
       description: item.description,
       item_type: item.item_type,
@@ -164,9 +169,62 @@ export async function addSyllabusItem(
       estimated_minutes: item.estimated_minutes,
       unlocked_at: item.unlocked_at,
       ai_generated_content: item.ai_generated_content,
+      label_ids: item.label_ids ?? [],
     })
     .select()
     .single();
   if (error || !data) throw new Error(`Add item failed: ${error?.message}`);
   return data as SyllabusItem;
+}
+
+/** Delete a syllabus item (blueprint line 1327). */
+export async function deleteSyllabusItem(
+  env: Env,
+  syllabusId: string,
+  itemId: string
+): Promise<void> {
+  const supabase = getSupabase(env);
+  const { error } = await supabase
+    .from('syllabus_items')
+    .delete()
+    .eq('id', itemId)
+    .eq('syllabus_id', syllabusId);
+  if (error) throw new Error(`Delete item failed: ${error.message}`);
+}
+
+/** Delete an entire syllabus (all items + syllabus row). */
+export async function deleteSyllabus(
+  env: Env,
+  teacherId: string,
+  syllabusId: string
+): Promise<void> {
+  const supabase = getSupabase(env);
+  // Verify ownership
+  const { data: syl } = await supabase
+    .from('syllabi')
+    .select('id')
+    .eq('id', syllabusId)
+    .eq('teacher_id', teacherId)
+    .maybeSingle();
+  if (!syl) throw new Error('Syllabus not found or not owned by teacher');
+
+  // Delete (cascade will remove items)
+  const { error } = await supabase.from('syllabi').delete().eq('id', syllabusId);
+  if (error) throw new Error(`Delete syllabus failed: ${error.message}`);
+}
+
+/** Publish/unpublish a syllabus (toggle is_published). */
+export async function togglePublishSyllabus(
+  env: Env,
+  teacherId: string,
+  syllabusId: string,
+  published: boolean
+): Promise<void> {
+  const supabase = getSupabase(env);
+  const { error } = await supabase
+    .from('syllabi')
+    .update({ is_published: published, updated_at: new Date().toISOString() })
+    .eq('id', syllabusId)
+    .eq('teacher_id', teacherId);
+  if (error) throw new Error(`Publish toggle failed: ${error.message}`);
 }

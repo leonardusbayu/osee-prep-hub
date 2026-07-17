@@ -23,17 +23,22 @@ class SyllabusRepository {
     String? classroomId,
   }) async {
     final dio = ApiClient.create();
-    final res = await dio.post('/teacher/syllabi', data: {
-      'name': name,
-      if (description != null) 'description': description,
-      if (targetExam != null) 'target_exam': targetExam,
-      if (classroomId != null) 'classroom_id': classroomId,
-    });
+    final res = await dio.post(
+      '/teacher/syllabi',
+      data: {
+        'name': name,
+        if (description != null) 'description': description,
+        if (targetExam != null) 'target_exam': targetExam,
+        if (classroomId != null) 'classroom_id': classroomId,
+      },
+    );
     return Syllabus.fromJson(res.data as Map<String, dynamic>);
   }
 
   /// Returns the syllabus + its items.
-  Future<({Syllabus syllabus, List<SyllabusItem> items})> getSyllabus(String id) async {
+  Future<({Syllabus syllabus, List<SyllabusItem> items})> getSyllabus(
+    String id,
+  ) async {
     final dio = ApiClient.create();
     final res = await dio.get('/teacher/syllabi/$id');
     final data = res.data as Map<String, dynamic>;
@@ -49,29 +54,40 @@ class SyllabusRepository {
   /// Replaces all items in the syllabus (atomic).
   Future<void> saveItems(String syllabusId, List<SyllabusItem> items) async {
     final dio = ApiClient.create();
-    await dio.put('/teacher/syllabi/$syllabusId/items', data: {
-      'items': items.map((i) => i.toSaveJson()).toList(),
-    });
+    await dio.put(
+      '/teacher/syllabi/$syllabusId/items',
+      data: {'items': items.map((i) => i.toSaveJson()).toList()},
+    );
   }
 
   Future<SyllabusItem> addItem(String syllabusId, SyllabusItem item) async {
     final dio = ApiClient.create();
-    final res = await dio.post('/teacher/syllabi/$syllabusId/items', data: item.toSaveJson());
+    final res = await dio.post(
+      '/teacher/syllabi/$syllabusId/items',
+      data: item.toSaveJson(),
+    );
     return SyllabusItem.fromJson(res.data as Map<String, dynamic>);
   }
 }
 
-final syllabusRepositoryProvider = Provider<SyllabusRepository>((ref) => SyllabusRepository());
+final syllabusRepositoryProvider = Provider<SyllabusRepository>(
+  (ref) => SyllabusRepository(),
+);
 
 /// List of the calling teacher's syllabi.
-final syllabiListProvider = FutureProvider.autoDispose<List<Syllabus>>((ref) async {
+final syllabiListProvider = FutureProvider.autoDispose<List<Syllabus>>((
+  ref,
+) async {
   final repo = ref.read(syllabusRepositoryProvider);
   return repo.listSyllabi();
 });
 
 /// Single syllabus + its items, keyed by syllabus id.
 final syllabusDetailProvider = FutureProvider.autoDispose
-    .family<({Syllabus syllabus, List<SyllabusItem> items}), String>((ref, id) async {
-  final repo = ref.read(syllabusRepositoryProvider);
-  return repo.getSyllabus(id);
-});
+    .family<({Syllabus syllabus, List<SyllabusItem> items}), String>((
+      ref,
+      id,
+    ) async {
+      final repo = ref.read(syllabusRepositoryProvider);
+      return repo.getSyllabus(id);
+    });

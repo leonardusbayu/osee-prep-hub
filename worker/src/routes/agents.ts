@@ -23,7 +23,11 @@ import { checkDailyTokenBudget, checkGlobalDailyBudget } from '../services/cost-
 export const agentRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
 agentRoutes.use('*', requireAuth());
-agentRoutes.use('*', rateLimit('agent-invoke'));
+agentRoutes.use('*', rateLimit({
+  key: (c) => `agent-invoke:${c.get('user')?.id ?? 'anonymous'}`,
+  capacity: 20,
+  refillPerSecond: 20 / 60, // 20 per minute
+}));
 
 /** GET /api/agents — list available agents. */
 agentRoutes.get('/', (c) => {

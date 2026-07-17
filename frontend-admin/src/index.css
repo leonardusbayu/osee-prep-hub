@@ -1,3 +1,69 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-osee-50 text-osee-900 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply font-bold tracking-tight;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-white shadow-card;
+  }
+
+  .btn-primary {
+    @apply rounded-xl bg-osee-600 px-4 py-2.5 font-semibold text-white transition-all hover:bg-osee-800 hover:shadow-card-hover disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply rounded-xl border border-osee-200 bg-white px-4 py-2.5 font-semibold text-osee-900 transition-all hover:bg-osee-100 disabled:opacity-50;
+  }
+
+  .stat-card {
+    @apply rounded-2xl bg-white p-5 shadow-card transition-shadow hover:shadow-card-hover;
+  }
+
+  .stat-label {
+    @apply text-xs font-semibold uppercase tracking-wider text-osee-400;
+  }
+
+  .stat-value {
+    @apply mt-1 text-2xl font-extrabold text-osee-900;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold;
+  }
+
+  .badge-success {
+    @apply badge bg-green-100 text-green-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-amber-100 text-amber-700;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-100 text-red-700;
+  }
+
+  .badge-info {
+    @apply badge bg-indigo-100 text-indigo-700;
+  }
+
+  .input {
+    @apply rounded-xl border border-osee-200 bg-osee-50 px-3.5 py-2.5 text-sm transition-colors placeholder:text-osee-400 focus:border-osee-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-osee-600/10;
+  }
+
+  .table-row {
+    @apply border-b border-osee-100 transition-colors hover:bg-osee-50;
+  }
+}

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
-import { getPartnerDashboard, getPartnerTeachers, inviteTeacher } from '../services/partner';
+import { getPartnerDashboard, getPartnerTeachers, getPartnerStudents, inviteTeacher } from '../services/partner';
 
 export const partnerRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -57,6 +57,17 @@ partnerRoutes.post('/teachers/invite', async (c) => {
   }
 });
 
+/** GET /api/partner/students — list students in the institution (Goal 2) */
+partnerRoutes.get('/students', async (c) => {
+  const user = getAuthedUser(c);
+  try {
+    const students = await getPartnerStudents(c.env, user.id);
+    return c.json({ students });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
 /** GET /api/partner/orders — list all orders by institution */
 partnerRoutes.get('/orders', async (c) => {
   const user = getAuthedUser(c);
@@ -67,5 +78,89 @@ partnerRoutes.get('/orders', async (c) => {
   } catch (err) {
     return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
   }
-  return c.json({ orders: [] });
+});
+
+/** GET /api/partner/teachers/:id/activity — teacher activity stats for partner (Goal 2) */
+partnerRoutes.get('/teachers/:id/activity', async (c) => {
+  const user = getAuthedUser(c);
+  const teacherId = c.req.param('id');
+  const supabase = (await import('../services/supabase')).getSupabase(c.env);
+
+  try {
+    // Verify this teacher belongs to this partner
+    const { data: teacher } = await supabase
+      .from('unified_profiles')
+      .select('id, display_name, email, referred_by, teacher_institution')
+      .eq('id', teacherId)
+      .eq('role', 'teacher')
+      .maybeSingle();
+
+    if (!teacher) {
+      return c.json({ error: { code: 'NOT_FOUND', message: 'Teacher not found' } }, 404);
+    }
+
+    const t = teacher as Record<string, unknown>;
+    // Check teacher belongs to this partner (via referred_by or institution).
+    const { getPartnerTeacherIds } = await import('../services/partner');
+    const ids = await getPartnerTeacherIds(c.env, user.id);
+    if (!ids.includes(teacherId)) {
+      return c.json({ error: { code: 'FORBIDDEN', message: 'Teacher not in your institution' } }, 403);
+    }
+
+    // Get teacher's classrooms
+    const { data: classrooms } = await supabase
+      .from('classrooms')
+      .select('id, name')
+      .eq('teacher_id', teacherId);
+    const classroomIds = (classrooms ?? []).map((c: Record<string, unknown>) => c.id as string);
+
+    // Count students
+    let studentCount = 0;
+    if (classroomIds.length > 0) {
+      const { count } = await supabase
+        .from('classroom_enrollments')
+        .select('id', { count: 'exact', head: true })
+        .in('classroom_id', classroomIds)
+        .eq('is_active', true);
+      studentCount = count ?? 0;
+    }
+
+    // Count commission
+    const { data: commissions } = await supabase
+      .from('commission_ledger')
+      .select('amount_idr, status')
+      .eq('teacher_id', teacherId);
+    const totalCommission = (commissions ?? []).reduce(
+      (s, r) => s + Number((r as Record<string, unknown>).amount_idr ?? 0), 0
+    );
+
+    // Count AI usage
+    const { count: aiUsage } = await supabase
+      .from('ai_grading_queue')
+      .select('id', { count: 'exact', head: true })
+      .eq('teacher_id', teacherId);
+
+    return c.json({
+      teacher: { id: t.id, name: t.display_name, email: t.email },
+      classrooms: classrooms ?? [],
+      student_count: studentCount,
+      total_commission: totalCommission,
+      ai_grading_count: aiUsage ?? 0,
+    });
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
+});
+
+/** GET /api/partner/commission — partner commission summary aggregated across
+ *  all the institution's teachers (Goal 9). */
+partnerRoutes.get('/commission', async (c) => {
+  const user = getAuthedUser(c);
+  try {
+    const { getPartnerCommissionStats } = await import('../services/commission-dashboard');
+    const stats = await getPartnerCommissionStats(c.env, user.id);
+    return c.json(stats);
+  } catch (err) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: (err as Error).message } }, 500);
+  }
 });

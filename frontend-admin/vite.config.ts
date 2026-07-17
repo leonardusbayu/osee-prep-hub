@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 5174,
     proxy: {
       // Proxy API calls to the Hub worker during dev
       '/api': {

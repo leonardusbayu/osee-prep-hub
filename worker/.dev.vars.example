@@ -5,6 +5,11 @@ SUPABASE_URL=https://placeholder.supabase.co
 SUPABASE_ANON_KEY=placeholder
 SUPABASE_SERVICE_KEY=placeholder
 
+# PostgreSQL connection string for one-off CLI tasks such as:
+# psql "$DATABASE_URL" -f ../schema.sql
+# This is not read by the Worker runtime.
+DATABASE_URL=postgresql://postgres:4rrisBugangbau!@db.prxzxecxwjsayeueijla.supabase.co:5432/postgres
+
 JWT_SECRET=local-dev-secret-replace-in-production-xxxxxxxxxxxxxxxx
 JWT_EXPIRY=7d
 
@@ -31,5 +36,11 @@ TELEGRAM_CHANNEL_ID=-1003884450070
 
 OSEE_BOOKING_API_URL=https://osee.co.id/api/hub
 OSEE_BOOKING_API_SECRET=placeholder
+
+# Email (Resend) — for report delivery + partner teacher invitations.
+# Dev: use Resend's sandbox sender onboarding@resend.dev (no DNS needed).
+# Production: verify osee.co.id in the Resend dashboard and set MAIL_FROM.
+RESEND_API_KEY=placeholder
+MAIL_FROM=OSEE Prep Hub <noreply@osee.co.id>
 
 ENVIRONMENT=development

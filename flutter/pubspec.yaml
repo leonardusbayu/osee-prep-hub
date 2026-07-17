@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.12.2
+  sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -20,14 +20,10 @@ dependencies:
   # HTTP client
   dio: ^5.5.0
 
-  # Model codegen
-  json_annotation: ^4.9.0
-
   # Typography
   google_fonts: ^6.2.1
   dio_web_adapter: ^2.2.0
   web: ^1.1.1
-
   # Task 2 (Wave 1): Real-time collaboration
   # Note: y_supabase / y_crdt are JS-only; Flutter uses supabase_flutter's realtime.
   supabase_flutter: ^2.0.0
@@ -47,14 +43,19 @@ dependencies:
   # Task 7 (Wave 1): Observability (Sentry Flutter)
   sentry_flutter: ^8.0.0
 
+  # main branch: voo_kanban, url_launcher, file_picker (friend's additions)
+  voo_kanban: ^0.0.3
+  url_launcher: ^6.3.2
+  file_picker: ^11.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
 
-  # Model codegen
-  build_runner: ^2.4.11
-  json_serializable: ^6.8.0
+dependency_overrides:
+  voo_responsive:
+    path: vendor/voo_responsive
 
 flutter:
   uses-material-design: true
@@ -62,3 +63,4 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/student/

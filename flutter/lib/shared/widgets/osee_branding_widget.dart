@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/theme.dart';
 
 /// OSEE branding widget — Task 2.5.
 ///
@@ -16,14 +17,14 @@ class OseeBrandingWidget extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.school, size: 12, color: Colors.blue),
+          const Icon(Icons.school_rounded, size: 12, color: OseeTheme.primary),
           const SizedBox(width: 4),
           Text(
             'OSEE',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
+              fontWeight: FontWeight.bold,
+              color: OseeTheme.primary,
+            ),
           ),
         ],
       );
@@ -34,18 +35,19 @@ class OseeBrandingWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.blue.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: OseeTheme.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.school, size: 14, color: Colors.blue),
+          const Icon(Icons.school_rounded, size: 14, color: OseeTheme.primary),
           const SizedBox(width: 6),
           Text(
             'Powered by OSEE Education Hub',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.blue.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
+              color: OseeTheme.primary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

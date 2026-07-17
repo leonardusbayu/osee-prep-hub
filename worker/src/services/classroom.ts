@@ -35,8 +35,8 @@ export async function generateUniqueJoinCode(
 export async function createClassroom(
   env: Env,
   teacherId: string,
-  input: { name: string; description?: string; target_exam?: string; max_students?: number }
-): Promise<{ id: string; name: string; join_code: string; description: string | null; target_exam: string | null; max_students: number }> {
+  input: { name: string; description?: string; target_exam?: string; max_students?: number; is_private?: boolean }
+): Promise<{ id: string; name: string; join_code: string; description: string | null; target_exam: string | null; max_students: number; is_private: boolean }> {
   const supabase = getSupabase(env);
 
   if (!input.name || input.name.trim().length === 0) {
@@ -50,10 +50,11 @@ export async function createClassroom(
     name: input.name.trim(),
     description: input.description ?? null,
     target_exam: input.target_exam ?? null,
-    max_students: input.max_students ?? 50,
+    max_students: input.is_private ? 1 : (input.max_students ?? 50),
     join_code: joinCode,
     join_code_active: true,
     is_active: true,
+    is_private: input.is_private ?? false,
   };
 
   const { data, error } = await supabase
@@ -73,6 +74,7 @@ export async function createClassroom(
     description: data.description,
     target_exam: data.target_exam,
     max_students: data.max_students,
+    is_private: data.is_private,
   };
 }
 
@@ -217,7 +219,7 @@ export async function enrollStudentByJoinCode(
 export async function getStudentClassrooms(
   env: Env,
   studentId: string
-): Promise<Array<{ id: string; name: string; teacher_name: string; target_exam: string | null }>> {
+): Promise<Array<{ id: string; name: string; teacher_name: string; target_exam: string | null; syllabus_completion_pct: number }>> {
   const supabase = getSupabase(env);
 
   const { data, error } = await supabase
@@ -237,7 +239,63 @@ export async function getStudentClassrooms(
     throw new Error(`Failed to fetch student classrooms: ${error.message}`);
   }
 
-  return (data ?? []).map((row: Record<string, unknown>) => {
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const classroomIds = rows.map((row) => (row.classroom as Record<string, unknown>).id as string);
+
+  // Compute per-classroom syllabus completion %.
+  const completionMap = new Map<string, number>();
+  if (classroomIds.length > 0) {
+    // Fetch published syllabi for these classrooms.
+    const { data: syllabi } = await supabase
+      .from('syllabi')
+      .select('id, classroom_id')
+      .in('classroom_id', classroomIds)
+      .eq('is_published', true);
+    const syllabusRows = (syllabi ?? []) as Array<Record<string, unknown>>;
+    const syllabusIds = syllabusRows.map((s) => s.id as string);
+    const syllabusToClassroom = new Map<string, string>(
+      syllabusRows.map((s) => [s.id as string, s.classroom_id as string])
+    );
+
+    if (syllabusIds.length > 0) {
+      // Total items per syllabus.
+      const { data: items } = await supabase
+        .from('syllabus_items')
+        .select('id, syllabus_id')
+        .in('syllabus_id', syllabusIds);
+      const itemRows = (items ?? []) as Array<Record<string, unknown>>;
+
+      // Completed items for this student.
+      const itemIds = itemRows.map((i) => i.id as string);
+      const { data: progress } = await supabase
+        .from('syllabus_item_progress')
+        .select('syllabus_item_id')
+        .eq('student_id', studentId)
+        .eq('status', 'completed')
+        .in('syllabus_item_id', itemIds);
+      const completedIds = new Set(
+        ((progress ?? []) as Array<Record<string, unknown>>).map((p) => p.syllabus_item_id as string)
+      );
+
+      // Aggregate per classroom.
+      const totals = new Map<string, number>();
+      const completed = new Map<string, number>();
+      for (const item of itemRows) {
+        const cid = syllabusToClassroom.get(item.syllabus_id as string);
+        if (!cid) continue;
+        totals.set(cid, (totals.get(cid) ?? 0) + 1);
+        if (completedIds.has(item.id as string)) {
+          completed.set(cid, (completed.get(cid) ?? 0) + 1);
+        }
+      }
+      for (const cid of classroomIds) {
+        const total = totals.get(cid) ?? 0;
+        completionMap.set(cid, total > 0 ? Math.round(((completed.get(cid) ?? 0) / total) * 100) : 0);
+      }
+    }
+  }
+
+  return rows.map((row) => {
     const classroom = row.classroom as Record<string, unknown>;
     const teacher = classroom.teacher as Record<string, unknown>;
     return {
@@ -245,6 +303,7 @@ export async function getStudentClassrooms(
       name: classroom.name as string,
       teacher_name: teacher.display_name as string,
       target_exam: (classroom.target_exam as string) ?? null,
+      syllabus_completion_pct: completionMap.get(classroom.id as string) ?? 0,
     };
   });
 }
@@ -344,5 +403,117 @@ export async function autoEnrollReferredStudent(
     classroom_id: (newClassroom as Record<string, unknown>).id as string,
     classroom_name: (newClassroom as Record<string, unknown>).name as string,
     created_default: true,
+  };
+}
+
+/**
+ * Teacher manually adds students to a classroom by email.
+ * Task 2.x — POST /api/teacher/classroom/:id/students.
+ *
+ * Behavior:
+ * - For each email, find the unified_profile.
+ * - If student exists → enroll them.
+ * - If student doesn't exist → return them in `not_found` list (teacher must
+ *   invite them via referral code first).
+ * - Already-enrolled students are skipped (returned in `already_enrolled`).
+ */
+export async function addStudentsToClassroom(
+  env: Env,
+  teacherId: string,
+  classroomId: string,
+  studentEmails: string[]
+): Promise<{
+  enrolled: Array<{ email: string; name: string }>;
+  already_enrolled: string[];
+  not_found: string[];
+}> {
+  const supabase = getSupabase(env);
+
+  // Verify classroom belongs to teacher
+  const { data: classroom } = await supabase
+    .from('classrooms')
+    .select('id, max_students, is_active')
+    .eq('id', classroomId)
+    .eq('teacher_id', teacherId)
+    .maybeSingle();
+  if (!classroom) {
+    throw new Error('Classroom not found or not owned by teacher');
+  }
+  const cr = classroom as Record<string, unknown>;
+  if (!cr.is_active) {
+    throw new Error('Classroom is not active');
+  }
+
+  // Check current enrollment count
+  const { count } = await supabase
+    .from('classroom_enrollments')
+    .select('id', { count: 'exact', head: true })
+    .eq('classroom_id', classroomId)
+    .eq('is_active', true);
+  const max = (cr.max_students as number) ?? 50;
+  const currentCount = count ?? 0;
+
+  const enrolled: Array<{ email: string; name: string }> = [];
+  const alreadyEnrolled: string[] = [];
+  const notFound: string[] = [];
+
+  for (const rawEmail of studentEmails) {
+    const email = rawEmail.trim().toLowerCase();
+    if (!email) continue;
+
+    // Find student profile
+    const { data: student } = await supabase
+      .from('unified_profiles')
+      .select('id, email, display_name, role')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (!student) {
+      notFound.push(email);
+      continue;
+    }
+    const s = student as Record<string, unknown>;
+
+    // Check if already enrolled
+    const { data: existing } = await supabase
+      .from('classroom_enrollments')
+      .select('id')
+      .eq('classroom_id', classroomId)
+      .eq('student_id', s.id as string)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (existing) {
+      alreadyEnrolled.push(email);
+      continue;
+    }
+
+    // Check capacity
+    if (enrolled.length + currentCount >= max) {
+      throw new Error(`Classroom is full (max ${max} students)`);
+    }
+
+    // Enroll
+    const { error: enrollErr } = await supabase.from('classroom_enrollments').insert({
+      classroom_id: classroomId,
+      student_id: s.id as string,
+      enrolled_via: 'manual',
+      is_active: true,
+    });
+    if (enrollErr) {
+      // Unique constraint = already enrolled (treat as already_enrolled)
+      if (enrollErr.code === '23505') {
+        alreadyEnrolled.push(email);
+      } else {
+        throw new Error(`Failed to enroll ${email}: ${enrollErr.message}`);
+      }
+      continue;
+    }
+    enrolled.push({ email, name: s.display_name as string });
+  }
+
+  return {
+    enrolled,
+    already_enrolled: alreadyEnrolled,
+    not_found: notFound,
   };
 }

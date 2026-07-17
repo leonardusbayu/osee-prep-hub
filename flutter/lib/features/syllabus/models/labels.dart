@@ -5,10 +5,17 @@ class SyllabusLabel {
   final String name;
   final int color; // RGB hex int, e.g. 0xFFE63946
 
-  const SyllabusLabel({required this.id, required this.name, required this.color});
+  const SyllabusLabel({
+    required this.id,
+    required this.name,
+    required this.color,
+  });
 
-  factory SyllabusLabel.fromJson(Map<String, dynamic> j) =>
-      SyllabusLabel(id: j['id'] as String, name: j['name'] as String, color: j['color'] as int);
+  factory SyllabusLabel.fromJson(Map<String, dynamic> j) => SyllabusLabel(
+    id: j['id'] as String,
+    name: j['name'] as String,
+    color: j['color'] as int,
+  );
 
   Map<String, dynamic> toJson() => {'id': id, 'name': name, 'color': color};
 
@@ -54,22 +61,22 @@ class SyllabusComment {
   });
 
   factory SyllabusComment.fromJson(Map<String, dynamic> j) => SyllabusComment(
-        id: j['id'] as String,
-        itemId: j['item_id'] as String,
-        authorId: j['author_id'] as String,
-        authorName: j['author_name'] as String?,
-        text: j['text'] as String,
-        createdAt: DateTime.parse(j['created_at'] as String),
-      );
+    id: j['id'] as String,
+    itemId: j['item_id'] as String,
+    authorId: j['author_id'] as String,
+    authorName: j['author_name'] as String?,
+    text: j['text'] as String,
+    createdAt: DateTime.parse(j['created_at'] as String),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'item_id': itemId,
-        'author_id': authorId,
-        'author_name': authorName,
-        'text': text,
-        'created_at': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'item_id': itemId,
+    'author_id': authorId,
+    'author_name': authorName,
+    'text': text,
+    'created_at': createdAt.toIso8601String(),
+  };
 }
 
 /// Planka-style attachment on a syllabus item (file, link, or deep-link).
@@ -92,7 +99,8 @@ class SyllabusAttachment {
     required this.createdAt,
   });
 
-  factory SyllabusAttachment.fromJson(Map<String, dynamic> j) => SyllabusAttachment(
+  factory SyllabusAttachment.fromJson(Map<String, dynamic> j) =>
+      SyllabusAttachment(
         id: j['id'] as String,
         itemId: j['item_id'] as String,
         url: j['url'] as String,
@@ -103,12 +111,12 @@ class SyllabusAttachment {
       );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'item_id': itemId,
-        'url': url,
-        'filename': filename,
-        'mime_type': mimeType,
-        'size_bytes': sizeBytes,
-        'created_at': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'item_id': itemId,
+    'url': url,
+    'filename': filename,
+    'mime_type': mimeType,
+    'size_bytes': sizeBytes,
+    'created_at': createdAt.toIso8601String(),
+  };
 }

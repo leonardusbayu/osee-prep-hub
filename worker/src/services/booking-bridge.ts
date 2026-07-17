@@ -3,11 +3,18 @@ import type { Env } from '../types';
 /**
  * Official test booking bridge — Task 15.10.
  *
- * Bridges between Hub and osee.co.id booking system.
- * Hub calls osee.co.id API to create/get/cancel bookings for official tests.
+ * Bridges between Hub and osee.co.id booking system for official TOEFL/TOEIC
+ * test bookings created through Hub orders. Hub calls osee.co.id API to
+ * create / get / cancel bookings.
  *
- * NOTE: osee.co.id may need to add these API endpoints. The Hub tests
- * against mocks if the API doesn't exist yet.
+ * The osee.co.id booking API is expected to expose:
+ *   POST   {OSEE_BOOKING_API_URL}/booking        — create booking
+ *   GET    {OSEE_BOOKING_API_URL}/booking/:id    — fetch status
+ *   DELETE {OSEE_BOOKING_API_URL}/booking/:id    — cancel booking
+ * Authenticated via the `X-Hub-Secret` header using OSEE_BOOKING_API_SECRET.
+ *
+ * For the student-facing "Book Official Test" CTA, the Hub does not proxy
+ * dates — see GET /api/student/book-test which returns osee_booking_url only.
  */
 
 export interface BookingInput {

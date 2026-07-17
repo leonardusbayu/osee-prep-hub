@@ -51,6 +51,10 @@ export interface Env {
   OSEE_BOOKING_API_URL: string;
   OSEE_BOOKING_API_SECRET: string;
 
+  // Email (Resend — used for report delivery + partner teacher invitations)
+  RESEND_API_KEY: string;
+  MAIL_FROM?: string; // defaults to 'OSEE Prep Hub <noreply@osee.co.id>'
+
   // Environment
   ENVIRONMENT: 'development' | 'staging' | 'production';
 
@@ -81,6 +85,7 @@ export interface User {
   target_exam: string | null;
   target_score: Record<string, unknown> | null;
   current_level: string | null;
+  teacher_institution: string | null;
   created_at: string;
   updated_at: string;
 }

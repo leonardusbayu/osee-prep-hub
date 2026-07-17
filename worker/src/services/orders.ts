@@ -211,9 +211,48 @@ export async function fulfillOrder(env: Env, orderId: string): Promise<void> {
       (order as Record<string, unknown>).order_type === 'book_for_student' &&
       (itemType === 'official_toefl' || itemType === 'official_toeic')
     ) {
-      // TODO: Task 15.10 will implement booking bridge
-      // For now, mark as pending booking
-      console.log(`Booking needed for order ${orderId}, item ${itemId}, student ${assignedStudentId}`);
+      try {
+        // Look up the assigned student
+        const studentId = assignedStudentId as string | undefined;
+        if (studentId) {
+          const { data: student } = await supabase
+            .from('unified_profiles')
+            .select('id, display_name, email')
+            .eq('id', studentId)
+            .maybeSingle();
+          const s = (student as Record<string, unknown> | null) ?? {};
+
+          // Call booking bridge
+          const { createBooking } = await import('./booking-bridge');
+          const booking = await createBooking(env, {
+            order_item_id: itemId,
+            student_id: studentId,
+            student_name: (s.display_name as string) ?? '',
+            student_email: (s.email as string) ?? '',
+            test_type: itemType as 'official_toefl' | 'official_toeic',
+          });
+          console.log(`Booking created: ${booking.booking_id} (status: ${booking.status})`);
+
+          await supabase
+            .from('order_items')
+            .update({
+              fulfillment_status: booking.status === 'confirmed' ? 'booking_confirmed' : 'pending',
+              external_booking_id: booking.booking_id,
+            })
+            .eq('id', itemId);
+        } else {
+          await supabase
+            .from('order_items')
+            .update({ fulfillment_status: 'pending_assignment' })
+            .eq('id', itemId);
+        }
+      } catch (err) {
+        console.error(`Booking bridge failed for item ${itemId}:`, err);
+        await supabase
+          .from('order_items')
+          .update({ fulfillment_status: 'booking_failed' })
+          .eq('id', itemId);
+      }
     }
 
     // For self_purchase: grant access directly
@@ -287,4 +326,123 @@ export async function markOrderPaid(
 
   // Fulfill the order
   await fulfillOrder(env, orderId);
+}
+
+/** List ALL orders (admin) — optionally filtered by status. (Goal 3/9) */
+export async function listAllOrders(env: Env, status?: string): Promise<Array<Record<string, unknown>>> {
+  const supabase = getSupabase(env);
+  let query = supabase
+    .from('orders')
+    .select('*, order_items(*), user:unified_profiles!orders_user_id_fkey(email, display_name, role)')
+    .order('created_at', { ascending: false })
+    .limit(500);
+  if (status) query = query.eq('status', status);
+  const { data, error } = await query;
+  if (error) throw new Error(`List all orders failed: ${error.message}`);
+  return (data ?? []) as Array<Record<string, unknown>>;
+}
+
+/** Refund an order — sets status='refunded' and voids linked vouchers. (Goal 3) */
+export async function refundOrder(env: Env, orderId: string): Promise<void> {
+  const supabase = getSupabase(env);
+
+  // Verify order exists and is in a refundable state.
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, status')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (!order) throw new Error('Order not found');
+  const o = order as Record<string, unknown>;
+  if (!['paid', 'fulfilled'].includes(o.status as string)) {
+    throw new Error(`Cannot refund order in status '${o.status}' (only paid/fulfilled)`);
+  }
+
+  // Void any vouchers linked to this order's items.
+  const { data: items } = await supabase
+    .from('order_items')
+    .select('id')
+    .eq('order_id', orderId);
+  const itemIds = (items ?? []).map((i: Record<string, unknown>) => i.id as string);
+  if (itemIds.length > 0) {
+    await supabase
+      .from('vouchers')
+      .update({ status: 'cancelled' })
+      .in('order_item_id', itemIds)
+      .in('status', ['active', 'redeemed']);
+  }
+
+  // Mark order as refunded.
+  const { error } = await supabase
+    .from('orders')
+    .update({ status: 'refunded' })
+    .eq('id', orderId);
+  if (error) throw new Error(`Refund failed: ${error.message}`);
+}
+
+/** Retry fulfillment for items that failed/pending booking. (Goal 3) */
+export async function retryFulfill(env: Env, orderId: string): Promise<{ retried: number }> {
+  const supabase = getSupabase(env);
+
+  // Check order is paid (fulfillment only runs on paid orders).
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, status')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (!order) throw new Error('Order not found');
+  if ((order as Record<string, unknown>).status !== 'paid') {
+    throw new Error('Order must be paid to retry fulfillment');
+  }
+
+  // Count items in a retryable state.
+  const { data: items } = await supabase
+    .from('order_items')
+    .select('id, fulfillment_status')
+    .eq('order_id', orderId);
+  const retryable = (items ?? []).filter(
+    (i: Record<string, unknown>) => ['booking_failed', 'pending_assignment', 'pending_booking', 'pending'].includes(i.fulfillment_status as string)
+  );
+  if (retryable.length === 0) {
+    return { retried: 0 };
+  }
+
+  // Re-run fulfillment — fulfillOrder re-processes all items but is idempotent
+  // for already-fulfilled ones (it checks status before each action).
+  await fulfillOrder(env, orderId);
+  return { retried: retryable.length };
+}
+
+/** Admin: cancel any order (no user_id scope). (Goal 3) */
+export async function cancelOrderAdmin(env: Env, orderId: string): Promise<void> {
+  const supabase = getSupabase(env);
+  const { error } = await supabase
+    .from('orders')
+    .update({ status: 'cancelled' })
+    .eq('id', orderId)
+    .in('status', ['pending', 'paid']); // can cancel pending or unpaid-before-fulfill
+  if (error) throw new Error(`Cancel failed: ${error.message}`);
+  // Void any vouchers already generated
+  const { data: items } = await supabase
+    .from('order_items')
+    .select('id')
+    .eq('order_id', orderId);
+  const itemIds = (items ?? []).map((i: Record<string, unknown>) => i.id as string);
+  if (itemIds.length > 0) {
+    await supabase
+      .from('vouchers')
+      .update({ status: 'cancelled' })
+      .in('order_item_id', itemIds)
+      .eq('status', 'active');
+  }
+}
+
+/** Admin: mark a pending order as paid manually (for offline payment like
+ *  bank transfer that doesn't trigger TriPay webhook) then fulfill it. */
+export async function markOrderPaidAdmin(
+  env: Env,
+  orderId: string,
+  paymentMethod: string = 'manual'
+): Promise<void> {
+  await markOrderPaid(env, orderId, paymentMethod, `admin-manual-${Date.now()}`);
 }

@@ -44,21 +44,74 @@ export async function verifyStudent(env: Env, telegramId: string): Promise<Stude
   };
 }
 
-/** Report progress update from EduBot to Hub. */
+/** Report progress update from EduBot to Hub.
+ *  Also updates student_progress_unified (aggregated) + edubot_practice_count. */
 export async function receiveProgress(
   env: Env,
   userId: string,
   update: { activity_type: string; score?: number; topic?: string; metadata?: Record<string, unknown> }
 ): Promise<void> {
   const supabase = getSupabase(env);
+  const now = new Date().toISOString();
+
+  // Insert history row
   await supabase.from('student_progress_history').insert({
     student_id: userId,
     platform: 'edubot',
     exam_type: 'GENERAL',
     section: update.activity_type,
     score: update.score ?? null,
-    completed_at: new Date().toISOString(),
+    completed_at: now,
+    metadata: update.metadata ?? {},
   });
+
+  // Update student_progress_unified — increment edubot_practice_count + update edubot fields
+  // Read streak_days + accuracy_rate from metadata (EduBot has session context).
+  const { data: existing } = await supabase
+    .from('student_progress_unified')
+    .select('edubot_practice_count, edubot_xp, edubot_questions_answered, edubot_last_active, edubot_streak_days, edubot_accuracy_rate')
+    .eq('student_id', userId)
+    .maybeSingle();
+
+  const p = (existing as Record<string, unknown> | null) ?? {};
+  const newCount = (p.edubot_practice_count as number ?? 0) + 1;
+  const newXp = (p.edubot_xp as number ?? 0) + (update.score ?? 10);  // award XP
+  const newQuestions = (p.edubot_questions_answered as number ?? 0) + 1;
+  // Streak: EduBot sends the current streak_days in metadata; fall back to existing.
+  const newStreak = (update.metadata?.streak_days as number | undefined) ?? (p.edubot_streak_days as number | undefined) ?? 0;
+  // Accuracy: EduBot sends the running accuracy (0-100) in metadata; compute a
+  // running average if it sends a per-session accuracy delta instead.
+  const metaAccuracy = update.metadata?.accuracy_rate as number | undefined;
+  let newAccuracy: number | undefined;
+  if (typeof metaAccuracy === 'number') {
+    // If metadata value is in 0-100 range, treat it as the current overall accuracy.
+    if (metaAccuracy <= 100) {
+      newAccuracy = metaAccuracy;
+    } else {
+      // Otherwise treat as a count-correct delta and compute a running average.
+      const prevCorrect = Math.round(((p.edubot_accuracy_rate as number ?? 0) / 100) * (newQuestions - 1));
+      newAccuracy = Math.round(((prevCorrect + metaAccuracy) / newQuestions) * 100);
+    }
+  } else {
+    newAccuracy = (p.edubot_accuracy_rate as number | undefined) ?? undefined;
+  }
+
+  const upsertPayload: Record<string, unknown> = {
+    student_id: userId,
+    edubot_practice_count: newCount,
+    edubot_xp: newXp,
+    edubot_questions_answered: newQuestions,
+    edubot_last_active: now,
+    edubot_streak_days: newStreak,
+    updated_at: now,
+  };
+  if (newAccuracy !== undefined) {
+    upsertPayload.edubot_accuracy_rate = newAccuracy;
+  }
+
+  await supabase
+    .from('student_progress_unified')
+    .upsert(upsertPayload, { onConflict: 'student_id' });
 }
 
 /** Get teacher's syllabus items so EduBot can tutor on those topics. */

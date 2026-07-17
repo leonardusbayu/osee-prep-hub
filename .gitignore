@@ -15,6 +15,9 @@ out/
 .dev.vars
 .mf/
 
+# Supabase CLI local metadata
+supabase/.temp/
+
 # Environment
 .env
 .env.local
@@ -62,3 +65,5 @@ worker/.temp/
 tmp/
 temp/
 *.tmpsupabase/
+AGENT.md
+GOAL.md

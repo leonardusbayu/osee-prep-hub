@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../models/user.dart';
 import '../providers/auth_provider.dart';
+import '../models/user.dart';
+import '../widgets/auth_widgets.dart';
+import '../../../app/theme.dart';
+import '../../../shared/widgets/ui_components.dart';
 
-/// Registration page — simplified, with visible errors and no blocking validation.
+/// Registration page — premium design with role‑specific fields & illustrations.
 class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key, this.referralCode});
 
@@ -20,9 +24,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _referralController = TextEditingController();
+  final _institutionNameController = TextEditingController();
   UserRole _role = UserRole.teacher;
   bool _obscure = true;
   bool _isLoading = false;
+  bool _agreedToTerms = false;
   String? _errorMsg;
 
   @override
@@ -39,13 +45,69 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     _passwordController.dispose();
     _nameController.dispose();
     _referralController.dispose();
+    _institutionNameController.dispose();
     super.dispose();
   }
+
+  // Password strength (0-4)
+  int get _passwordStrength {
+    final p = _passwordController.text;
+    if (p.isEmpty) return 0;
+    int score = 0;
+    if (p.length >= 8) score++;
+    if (RegExp(r'[a-zA-Z]').hasMatch(p)) score++;
+    if (RegExp(r'[0-9]').hasMatch(p)) score++;
+    if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(p)) score++;
+    return score;
+  }
+
+  String get _strengthLabel => switch (_passwordStrength) {
+    0 => '',
+    1 => 'Weak',
+    2 => 'Fair',
+    3 => 'Good',
+    4 => 'Strong',
+    _ => '',
+  };
+
+  Color get _strengthColor => switch (_passwordStrength) {
+    1 => OseeTheme.danger,
+    2 => OseeTheme.warning,
+    3 => const Color(0xFF6B8E7F),
+    4 => const Color(0xFF2E8B57),
+    _ => OseeTheme.border,
+  };
 
   Future<void> _submit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final name = _nameController.text.trim();
+
+    // Validate required fields before hitting the API.
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _errorMsg = 'Please enter a valid email address.');
+      return;
+    }
+    if (password.length < 8) {
+      setState(() => _errorMsg = 'Password must be at least 8 characters.');
+      return;
+    }
+    if (name.isEmpty) {
+      setState(() => _errorMsg = 'Please enter your name.');
+      return;
+    }
+    if (_role == UserRole.partner &&
+        _institutionNameController.text.trim().isEmpty) {
+      setState(() => _errorMsg = 'Institution name is required for partners.');
+      return;
+    }
+    if (!_agreedToTerms) {
+      setState(
+        () =>
+            _errorMsg = 'Please accept the Terms & Privacy Policy to continue.',
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -53,13 +115,19 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     });
 
     try {
-      final ok = await ref.read(authProvider.notifier).register(
+      final ok = await ref
+          .read(authProvider.notifier)
+          .register(
             email: email,
             password: password,
             name: name,
             role: _role.name,
-            referralCode: _referralController.text.trim().isEmpty ? null : _referralController.text.trim(),
-            institutionName: _role == UserRole.partner ? name : null,
+            referralCode: _referralController.text.trim().isEmpty
+                ? null
+                : _referralController.text.trim(),
+            institutionName: _role == UserRole.partner
+                ? _institutionNameController.text.trim()
+                : null,
           );
 
       if (!mounted) return;
@@ -96,181 +164,471 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F5F0),
-      body: Row(
-        children: [
-          // Left — editorial panel
-          Expanded(
-            flex: 2,
-            child: Container(
-              color: const Color(0xFF1A1A2E),
-              padding: const EdgeInsets.all(64),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Text('OSEE', style: Theme.of(context).textTheme.displaySmall?.copyWith(color: Colors.white, fontSize: 24, letterSpacing: 4)),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        color: const Color(0xFFE63946),
-                        child: const Text('PREP HUB', style: TextStyle(fontFamily: 'Helvetica', fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 2)),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(border: Border.all(color: const Color(0xFFC9A96E))),
-                        child: const Text('JOIN US', style: TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFC9A96E), letterSpacing: 3)),
-                      ),
-                      const SizedBox(height: 20),
-                      Text('Become a\nsmarter\nteacher.', style: Theme.of(context).textTheme.displayLarge?.copyWith(color: Colors.white, fontSize: 52, height: 1.1)),
-                    ],
-                  ),
-                  Text('Your students are waiting.', style: TextStyle(fontFamily: 'Georgia', fontSize: 14, color: Colors.white.withOpacity(0.4))),
-                ],
-              ),
-            ),
-          ),
-          // Right — form (NO Form widget, NO validators — just direct submission)
-          Expanded(
-            flex: 3,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(48),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Create Account', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 32)),
-                  const SizedBox(height: 8),
-                  Text('No credit card needed.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF9B9B9B))),
-                  const SizedBox(height: 32),
-
-                  // Name
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'FULL NAME'),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Email
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'EMAIL ADDRESS'),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Password
-                  TextField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      labelText: 'PASSWORD',
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF9B9B9B)),
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                      ),
-                      helperText: 'Min 8 chars, 1 letter, 1 number',
-                    ),
-                    obscureText: _obscure,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Role selector
-                  Text('I AM A...', style: Theme.of(context).textTheme.labelSmall),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _RoleChip(label: 'Student', selected: _role == UserRole.student, onTap: () => setState(() => _role = UserRole.student)),
-                      const SizedBox(width: 8),
-                      _RoleChip(label: 'Teacher', selected: _role == UserRole.teacher, onTap: () => setState(() => _role = UserRole.teacher)),
-                      const SizedBox(width: 8),
-                      _RoleChip(label: 'Institution', selected: _role == UserRole.partner, onTap: () => setState(() => _role = UserRole.partner)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Referral code
-                  TextField(
-                    controller: _referralController,
-                    decoration: const InputDecoration(labelText: 'REFERRAL CODE (OPTIONAL)'),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ERROR MESSAGE — always visible if set
-                  if (_errorMsg != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      color: const Color(0xFFFEE),
-                      child: Text(_errorMsg!, style: const TextStyle(fontFamily: 'Helvetica', fontSize: 13, color: Color(0xFFE63946))),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Submit button
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _isLoading ? null : _submit,
-                      child: _isLoading
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('CREATE ACCOUNT'),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text('Already have an account? Sign in'),
-                    ),
-                  ),
-                ],
-              ),
-              ),
-            ),
-          ),
-        ],
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData icon,
+    String? helperText,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      helperText: helperText,
+      prefixIcon: Icon(icon, size: 20, color: OseeTheme.textMuted),
+      suffixIcon: suffix,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: OseeTheme.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: OseeTheme.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: OseeTheme.primary, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: OseeTheme.danger, width: 1.5),
       ),
     );
   }
-}
-
-class _RoleChip extends StatelessWidget {
-  const _RoleChip({required this.label, required this.selected, required this.onTap});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF1A1A2E) : Colors.transparent,
-          border: Border.all(color: selected ? const Color(0xFF1A1A2E) : const Color(0xFFE8E6E1)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Helvetica',
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : const Color(0xFF1A1A2E),
-            letterSpacing: 1,
-          ),
-        ),
+    return Scaffold(
+      backgroundColor: OseeTheme.bg,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 900;
+
+          final form = Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: wide ? Spacing.xxl : Spacing.lg,
+                vertical: Spacing.xl,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Logo & brand
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                OseeTheme.primary,
+                                OseeTheme.primary.withValues(alpha: 0.8),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.school_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: Spacing.sm),
+                        Text(
+                          'OSEE Prep Hub',
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: OseeTheme.textPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 36),
+
+                    // Heading
+                    Text(
+                      'Create account',
+                      style: GoogleFonts.inter(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        color: OseeTheme.textPrimary,
+                        height: 1.1,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.referralCode == null
+                          ? 'Start with a teacher, student, or institution workspace.'
+                          : 'Joining with referral code: ${widget.referralCode}',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        color: OseeTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // Role selector — mini cards
+                    Text(
+                      'I want to join as',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: OseeTheme.textSecondary,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AuthRoleChip(
+                            icon: Icons.school_outlined,
+                            label: 'Student',
+                            description: 'Learn & practice',
+                            selected: _role == UserRole.student,
+                            onTap: () =>
+                                setState(() => _role = UserRole.student),
+                          ),
+                        ),
+                        const SizedBox(width: Spacing.sm),
+                        Expanded(
+                          child: AuthRoleChip(
+                            icon: Icons.co_present_outlined,
+                            label: 'Teacher',
+                            description: 'Manage classes',
+                            selected: _role == UserRole.teacher,
+                            onTap: () =>
+                                setState(() => _role = UserRole.teacher),
+                          ),
+                        ),
+                        const SizedBox(width: Spacing.sm),
+                        Expanded(
+                          child: AuthRoleChip(
+                            icon: Icons.business_outlined,
+                            label: 'Institution',
+                            description: 'Admin & analytics',
+                            selected: _role == UserRole.partner,
+                            onTap: () =>
+                                setState(() => _role = UserRole.partner),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Full name
+                    Text(
+                      'Full name',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: OseeTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _nameController,
+                      decoration: _inputDecoration(
+                        hint: 'Enter your full name',
+                        icon: Icons.badge_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Institution name (only for partner role)
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      child: _role == UserRole.partner
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Institution name',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: OseeTheme.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: _institutionNameController,
+                                  decoration: _inputDecoration(
+                                    hint: 'e.g. OSEE Language Center',
+                                    icon: Icons.apartment_outlined,
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+
+                    // Email
+                    Text(
+                      'Email address',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: OseeTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _emailController,
+                      decoration: _inputDecoration(
+                        hint: 'you@example.com',
+                        icon: Icons.email_outlined,
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Password
+                    Text(
+                      'Password',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: OseeTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _passwordController,
+                      decoration: _inputDecoration(
+                        hint: 'Min 8 chars, 1 letter, 1 number',
+                        icon: Icons.lock_outline,
+                        suffix: IconButton(
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            size: 20,
+                            color: OseeTheme.textMuted,
+                          ),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                      ),
+                      obscureText: _obscure,
+                      onChanged: (_) => setState(() {}),
+                    ),
+
+                    // Password strength indicator
+                    if (_passwordController.text.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          ...List.generate(4, (i) {
+                            return Expanded(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                height: 3,
+                                margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
+                                decoration: BoxDecoration(
+                                  color: i < _passwordStrength
+                                      ? _strengthColor
+                                      : OseeTheme.border,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            );
+                          }),
+                          const SizedBox(width: 10),
+                          Text(
+                            _strengthLabel,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: _strengthColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+
+                    // Referral code
+                    Text(
+                      'Referral code (optional)',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: OseeTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _referralController,
+                      decoration: _inputDecoration(
+                        hint: 'Enter code if you have one',
+                        icon: Icons.confirmation_number_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Terms agreement
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: Checkbox(
+                            value: _agreedToTerms,
+                            onChanged: (v) =>
+                                setState(() => _agreedToTerms = v ?? false),
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            activeColor: OseeTheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(
+                              () => _agreedToTerms = !_agreedToTerms,
+                            ),
+                            child: Text(
+                              'I agree to the Terms of Service and Privacy Policy',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: OseeTheme.textSecondary,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Error message
+                    if (_errorMsg != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: OseeTheme.danger.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: OseeTheme.danger.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 18,
+                              color: OseeTheme.danger,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _errorMsg!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: OseeTheme.danger,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Submit button
+                    SizedBox(
+                      height: 52,
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: (_isLoading || !_agreedToTerms)
+                            ? null
+                            : _submit,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: OseeTheme.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'Create Account',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Login link
+                    Center(
+                      child: TextButton(
+                        onPressed: () => context.go('/login'),
+                        child: RichText(
+                          text: TextSpan(
+                            text: 'Already have an account? ',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: OseeTheme.textSecondary,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: 'Sign in',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: OseeTheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
+          final brandPanel = AuthBrandPanel(role: _role);
+
+          if (!wide) {
+            return form;
+          }
+
+          return Row(
+            children: [
+              Expanded(flex: 5, child: brandPanel),
+              Expanded(flex: 6, child: form),
+            ],
+          );
+        },
       ),
     );
   }

@@ -10,12 +10,14 @@ import { getSupabase } from './supabase';
  *   - Partner tier: unlimited (institution license)
  *   - Admin: unlimited
  *
- * Quota bonus (Task 12.4 — placeholder): teachers earn +5 credits per student
- * who completes first practice.
+ * Quota bonus (Task 12.4): teachers earn +5 generation credits per student
+ * who registers via referral, +5 per first practice test, +10 per official
+ * booking, +10 per EduBot premium subscription. (See awardQuotaBonus below.)
  */
 
 const FREE_GRADING_LIMIT = 50;
-// FREE_GENERATION_LIMIT = 10 — will be added in Task 6.6 when generation quota is implemented
+const FREE_GENERATION_LIMIT = 10;
+const FREE_REPORT_LIMIT = 10; // Blueprint line 646: free tier report quota = 10/month
 
 export interface QuotaStatus {
   used: number;
@@ -24,22 +26,126 @@ export interface QuotaStatus {
   reset_at: string; // ISO timestamp — start of next month
 }
 
-export type QuotaType = 'grading' | 'generation' | 'speaking';
+export type QuotaType = 'grading' | 'generation' | 'speaking' | 'report';
+
+/** Check if a teacher has an active Pro/Institution subscription OR is an ambassador (Appendix B). */
+async function isTeacherPro(env: Env, userId: string): Promise<boolean> {
+  const supabase = getSupabase(env);
+  const { data } = await supabase
+    .from('teacher_profiles')
+    .select('tier, tier_expires_at, is_ambassador')
+    .eq('user_id', userId)
+    .maybeSingle();
+  const p = (data as Record<string, unknown> | null) ?? {};
+  // Ambassadors get unlimited AI (blueprint Appendix B line 2915)
+  if (p.is_ambassador === true) return true;
+  const tier = (p.tier as string) ?? 'free';
+  if (tier === 'free') return false;
+  // Check not expired
+  const expiresAt = p.tier_expires_at as string | null;
+  if (expiresAt && new Date(expiresAt).getTime() < Date.now()) return false;
+  return true;
+}
+
+/** Quota bonus system — Task 12.4.
+ *
+ * Teachers earn extra generation credits when their students take real actions:
+ *   +5 credits per student who registers via referral code
+ *   +5 credits per student who completes first practice test
+ *   +10 credits per student who books official test
+ *   +10 credits per student who subscribes to EduBot premium
+ */
+const BONUS_MAP: Record<string, { type: QuotaType; amount: number }> = {
+  student_registered: { type: 'generation', amount: 5 },
+  test_completed: { type: 'generation', amount: 5 },
+  official_booking: { type: 'generation', amount: 10 },
+  premium_subscribed: { type: 'generation', amount: 10 },
+};
+
+/** Award bonus credits to a teacher when their student performs an action. */
+export async function awardQuotaBonus(
+  env: Env,
+  teacherId: string,
+  eventType: string
+): Promise<void> {
+  const bonus = BONUS_MAP[eventType];
+  if (!bonus) return;
+
+  const supabase = getSupabase(env);
+
+  // Find existing quota_usage row for this teacher + quota_type
+  const { data: existing } = await supabase
+    .from('ai_quota_usage')
+    .select('id, earned_bonus')
+    .eq('user_id', teacherId)
+    .eq('quota_type', bonus.type)
+    .maybeSingle();
+
+  if (existing) {
+    const row = existing as Record<string, unknown>;
+    const newBonus = (row.earned_bonus as number) + bonus.amount;
+    await supabase
+      .from('ai_quota_usage')
+      .update({ earned_bonus: newBonus, updated_at: new Date().toISOString() })
+      .eq('id', row.id as string);
+  } else {
+    // Create new row with bonus as initial earned_bonus
+    await supabase.from('ai_quota_usage').insert({
+      user_id: teacherId,
+      quota_type: bonus.type,
+      used_count: 0,
+      max_count: bonus.type === 'generation' ? 10 : 50,
+      earned_bonus: bonus.amount,
+      period_start: new Date().toISOString(),
+    });
+  }
+}
+
+/** Get the earned bonus credits for a user + quota type (from DB). */
+async function getEarnedBonus(env: Env, userId: string, quotaType: QuotaType): Promise<number> {
+  const supabase = getSupabase(env);
+  const { data } = await supabase
+    .from('ai_quota_usage')
+    .select('earned_bonus')
+    .eq('user_id', userId)
+    .eq('quota_type', quotaType)
+    .maybeSingle();
+  return ((data as Record<string, unknown> | null)?.earned_bonus as number) ?? 0;
+}
 
 /** Get the user's quota limit for a given type. */
-export function getQuotaLimit(role: UserRole, bonusCredits = 0): number {
+export async function getQuotaLimit(
+  env: Env,
+  role: UserRole,
+  userId: string,
+  quotaType: QuotaType,
+  bonusCredits = 0
+): Promise<number> {
   switch (role) {
     case 'admin':
     case 'partner':
-      return -1; // unlimited
+      return -1; // unlimited — skip DB lookups
     case 'teacher': {
-      // TODO: Check if teacher has pro subscription — pro = unlimited
-      // For now, assume free tier unless we add a subscription check
-      return FREE_GRADING_LIMIT + bonusCredits;
+      const isPro = await isTeacherPro(env, userId);
+      if (isPro) return -1;
+      const dbBonus = bonusCredits > 0 ? bonusCredits : await getEarnedBonus(env, userId, quotaType);
+      const base = quotaType === 'generation'
+        ? FREE_GENERATION_LIMIT
+        : quotaType === 'report'
+          ? FREE_REPORT_LIMIT
+          : FREE_GRADING_LIMIT;
+      return base + dbBonus;
     }
     case 'student':
-    default:
-      return FREE_GRADING_LIMIT + bonusCredits;
+    default: {
+      const dbBonus = bonusCredits > 0 ? bonusCredits : await getEarnedBonus(env, userId, quotaType);
+      const base = quotaType === 'generation'
+        ? FREE_GENERATION_LIMIT
+        : quotaType === 'report'
+          ? FREE_REPORT_LIMIT
+          : FREE_GRADING_LIMIT;
+      return base + dbBonus;
+    }
   }
 }
 
@@ -114,7 +220,7 @@ export async function checkQuota(
   quotaType: QuotaType,
   bonusCredits = 0
 ): Promise<QuotaStatus> {
-  const limit = getQuotaLimit(role, bonusCredits);
+  const limit = await getQuotaLimit(env, role, userId, quotaType, bonusCredits);
   const used = await getMonthlyUsage(env, userId, quotaType);
 
   // Unlimited
@@ -161,9 +267,9 @@ export async function getQuotaStatus(
   } catch (err) {
     // Quota exceeded — return 0 remaining
     if ((err as Error & { code?: string }).code === 'QUOTA_EXCEEDED') {
-      const limit = getQuotaLimit(role, bonusCredits);
+      const limit = await getQuotaLimit(env, role, userId, quotaType, bonusCredits);
       return {
-        used: limit,
+        used: limit === -1 ? 0 : limit,
         limit,
         remaining: 0,
         reset_at: getMonthResetIso(),

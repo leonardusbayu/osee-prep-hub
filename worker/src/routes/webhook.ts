@@ -1,9 +1,17 @@
 import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { webhookAuth } from '../middleware/webhook-auth';
+import { rateLimit } from '../middleware/rate-limit';
 import { getSupabase } from '../services/supabase';
 
 export const webhookRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
+
+// Per-platform, per-IP rate limit: burst 60, sustained 1/sec.
+const webhookRateLimit = rateLimit({
+  key: (c) => `${c.req.path}:${c.req.header('cf-connecting-ip') ?? 'unknown'}`,
+  capacity: 60,
+  refillPerSecond: 1,
+});
 
 // ---------- Webhook event validation ----------
 
@@ -80,27 +88,27 @@ async function storeWebhookEvent(
  * 4. Return 202 Accepted (async processing)
  */
 
-webhookRoutes.post('/ibt', webhookAuth('ibt'), async (c) => {
+webhookRoutes.post('/ibt', webhookRateLimit, webhookAuth('ibt'), async (c) => {
   return handleWebhook(c, 'ibt');
 });
 
-webhookRoutes.post('/itp', webhookAuth('itp'), async (c) => {
+webhookRoutes.post('/itp', webhookRateLimit, webhookAuth('itp'), async (c) => {
   return handleWebhook(c, 'itp');
 });
 
-webhookRoutes.post('/ielts', webhookAuth('ielts'), async (c) => {
+webhookRoutes.post('/ielts', webhookRateLimit, webhookAuth('ielts'), async (c) => {
   return handleWebhook(c, 'ielts');
 });
 
-webhookRoutes.post('/toeic', webhookAuth('toeic'), async (c) => {
+webhookRoutes.post('/toeic', webhookRateLimit, webhookAuth('toeic'), async (c) => {
   return handleWebhook(c, 'toeic');
 });
 
-webhookRoutes.post('/booking', webhookAuth('booking'), async (c) => {
+webhookRoutes.post('/booking', webhookRateLimit, webhookAuth('booking'), async (c) => {
   return handleWebhook(c, 'booking');
 });
 
-webhookRoutes.post('/edubot', webhookAuth('edubot'), async (c) => {
+webhookRoutes.post('/edubot', webhookRateLimit, webhookAuth('edubot'), async (c) => {
   return handleWebhook(c, 'edubot');
 });
 
@@ -108,9 +116,20 @@ webhookRoutes.post('/edubot', webhookAuth('edubot'), async (c) => {
 
 /**
  * POST /api/webhook/process — internal endpoint to process queued events.
- * In production, this is triggered by the cron trigger in wrangler.toml.
+ * Triggered by the cron trigger in wrangler.toml. Guarded by an
+ * X-Internal-Secret header checked against EDUBOT_INTERNAL_SECRET so only
+ * the Cloudflare cron (or an admin with the secret) can trigger batch
+ * processing — not an anonymous caller.
  */
 webhookRoutes.post('/process', async (c) => {
+  const provided = c.req.header('X-Internal-Secret');
+  const expected = c.env.EDUBOT_INTERNAL_SECRET;
+  if (!expected) {
+    return c.json({ error: { code: 'SECRET_NOT_CONFIGURED', message: 'EDUBOT_INTERNAL_SECRET not set' } }, 500);
+  }
+  if (!provided || provided !== expected) {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Invalid or missing X-Internal-Secret' } }, 401);
+  }
   try {
     const { processWebhookBatch } = await import('../services/webhook-processor');
     const result = await processWebhookBatch(c.env, 100);

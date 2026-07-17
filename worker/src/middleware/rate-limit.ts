@@ -1,70 +1,42 @@
-/**
- * Rate-limit middleware — Task 1 (Wave 1).
- *
- * Simple in-memory token-bucket per userId+route. For production scale this should
- * be KV-backed, but in-memory is sufficient for Wave 1 correctness + tests.
- *
- * Free tier: 20 req/min. Pro tier: 200 req/min.
- */
-
 import type { Context } from 'hono';
-import type { Env, ContextVars, User } from '../types';
-
-interface Bucket {
-  tokens: number;
-  lastRefill: number; // epoch ms
-}
-
-const buckets = new Map<string, Bucket>();
-const REFILL_INTERVAL_MS = 60_000;
-
-function refill(bucket: Bucket, capacity: number): void {
-  const now = Date.now();
-  const elapsed = now - bucket.lastRefill;
-  if (elapsed >= REFILL_INTERVAL_MS) {
-    const refills = Math.floor(elapsed / REFILL_INTERVAL_MS);
-    bucket.tokens = Math.min(capacity, bucket.tokens + refills * capacity);
-    bucket.lastRefill = now;
-  }
-}
-
-function getCapacity(user: User | null): number {
-  if (!user) return 20;
-  // Pro tier: admin/partner/teacher with explicit role flag.
-  // For Wave 1 simplicity: admin + partner = pro. Teacher = pro.
-  // Student = free unless they have a paid subscription (future).
-  if (user.role === 'admin' || user.role === 'partner' || user.role === 'teacher') {
-    return 200;
-  }
-  return 20;
-}
+import type { Env, ContextVars } from '../types';
 
 /**
- * Rate-limit middleware factory.
- * Usage: agentRoutes.use('*', rateLimit('agent-invoke'));
+ * Simple in-memory rate-limit middleware.
+ *
+ * Uses a per-key token bucket stored in a module-level Map. Each Worker
+ * isolate has its own map, so this is a best-effort limiter (not globally
+ * accurate across isolates) — sufficient to stop a single caller from
+ * flooding an endpoint. For stricter limits, use Cloudflare's Rate Limiting
+ * Rules in the dashboard.
+ *
+ * Returns 429 when the bucket is empty.
  */
-export function rateLimit(scope: string) {
-  return async (
-    c: Context<{ Bindings: Env; Variables: ContextVars }>,
-    next: () => Promise<void>
-  ): Promise<Response | void> => {
-    const user = c.get('user');
-    if (!user) {
-      return c.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, 401);
-    }
-    const key = `${scope}:${user.id}`;
-    const capacity = getCapacity(user);
-    let bucket = buckets.get(key);
+
+interface RateLimitBuckets {
+  map: Map<string, { tokens: number; last: number }>;
+}
+
+const registry: RateLimitBuckets[] = [];
+
+export function rateLimit(opts: { key: (c: Context<{ Bindings: Env; Variables: ContextVars }>) => string; capacity: number; refillPerSecond: number }) {
+  const buckets: RateLimitBuckets = { map: new Map() };
+  registry.push(buckets);
+  return async (c: Context<{ Bindings: Env; Variables: ContextVars }>, next: () => Promise<void>): Promise<Response | void> => {
+    const key = opts.key(c);
+    const now = Date.now() / 1000;
+    let bucket = buckets.map.get(key);
     if (!bucket) {
-      bucket = { tokens: capacity, lastRefill: Date.now() };
-      buckets.set(key, bucket);
+      bucket = { tokens: opts.capacity, last: now };
+      buckets.map.set(key, bucket);
     }
-    refill(bucket, capacity);
+    // Refill
+    const elapsed = now - bucket.last;
+    bucket.tokens = Math.min(opts.capacity, bucket.tokens + elapsed * opts.refillPerSecond);
+    bucket.last = now;
     if (bucket.tokens < 1) {
-      const retryAfterSec = Math.ceil((REFILL_INTERVAL_MS - (Date.now() - bucket.lastRefill)) / 1000);
-      c.header('Retry-After', String(Math.max(retryAfterSec, 1)));
       return c.json(
-        { error: { code: 'RATE_LIMITED', message: `Rate limit exceeded (${capacity}/min). Retry after ${retryAfterSec}s.` } },
+        { error: { code: 'RATE_LIMITED', message: 'Too many requests. Please slow down.' } },
         429
       );
     }
@@ -73,7 +45,9 @@ export function rateLimit(scope: string) {
   };
 }
 
-/** Test-only helper: reset buckets between tests. */
-export function _resetBucketsForTests(): void {
-  buckets.clear();
+/** Reset all rate-limit buckets — used by tests to avoid cross-test interference. */
+export function resetRateLimits(): void {
+  for (const b of registry) {
+    b.map.clear();
+  }
 }

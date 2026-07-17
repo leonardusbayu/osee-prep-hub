@@ -45,6 +45,7 @@ class User {
     this.telegramId,
     this.targetExam,
     this.currentLevel,
+    this.teacherInstitution,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -57,6 +58,7 @@ class User {
   final String? telegramId;
   final String? targetExam;
   final String? currentLevel;
+  final String? teacherInstitution;
   final String createdAt;
   final String updatedAt;
 
@@ -70,21 +72,23 @@ class User {
       telegramId: json['telegram_id'] as String?,
       targetExam: json['target_exam'] as String?,
       currentLevel: json['current_level'] as String?,
+      teacherInstitution: json['teacher_institution'] as String?,
       createdAt: json['created_at'] as String,
       updatedAt: json['updated_at'] as String,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'email': email,
-        'display_name': displayName,
-        'role': role.name,
-        'avatar_url': avatarUrl,
-        'telegram_id': telegramId,
-        'target_exam': targetExam,
-        'current_level': currentLevel,
-        'created_at': createdAt,
-        'updated_at': updatedAt,
-      };
+    'id': id,
+    'email': email,
+    'display_name': displayName,
+    'role': role.name,
+    'avatar_url': avatarUrl,
+    'telegram_id': telegramId,
+    'target_exam': targetExam,
+    'current_level': currentLevel,
+    'teacher_institution': teacherInstitution,
+    'created_at': createdAt,
+    'updated_at': updatedAt,
+  };
 }
