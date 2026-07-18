@@ -1,21 +1,27 @@
 /** @type {import('tailwindcss').Config} */
+// osee scale ported to OseeTheme (base theme) — P0-1 theme unification.
+// Token names unchanged so every osee-* utility class keeps working;
+// only the rendered colors change to match the OseeTheme palette.
+//   gold #C9A96E  ·  navy #1A1A2E  ·  cream #F7F5F0  ·  ink #1A1A2E
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
         osee: {
-          50: '#f8fafc',   // slate-50 — page bg
-          100: '#f1f5f9',   // slate-100 — surface variant
-          200: '#e2e8f0',   // slate-200 — borders
-          300: '#cbd5e1',   // slate-300
-          400: '#94a3b8',   // slate-400 — muted text
-          500: '#64748b',   // slate-500 — secondary text
-          600: '#4f46e5',   // indigo-600 — primary
-          700: '#4338ca',   // indigo-700
-          800: '#3730a3',   // indigo-800 — primary dark
-          900: '#0f172a',   // slate-900 — primary text
+          50: '#F7F5F0',   // OseeTheme.paper — page bg
+          100: '#F0EEE7',  // OseeTheme.surfaceVariant — surface variant
+          200: '#E8E6E1',  // OseeTheme.border — borders
+          300: '#D8D2C4',  // neutral between border and muted
+          400: '#9B9B9B',  // OseeTheme.textMuted — muted text
+          500: '#6D6D7C',  // OseeTheme.textSecondary — secondary text
+          600: '#1A1A2E',  // OseeTheme.ink/primary — primary buttons (navy)
+          700: '#2E2E4A',  // OseeTheme.primaryLight — hover
+          800: '#12122A',  // darker navy — active/pressed
+          900: '#1A1A2E',  // OseeTheme.ink — primary text
         },
+        // Accent scales preserved for semantic badges (success/warn/danger/info).
+        // Primary action color is now OseeTheme navy (osee-600), not indigo.
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

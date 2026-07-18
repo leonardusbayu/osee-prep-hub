@@ -1,10 +1,34 @@
 # Design Architecture Audit — OSEE Prep Hub
 
-**Date:** 2026-07-18
+**Date:** 2026-07-18 (updated after P0-1 resolution)
 **Scope:** flutter/lib design system + theme consistency + information architecture
 **Method:** direct filesystem + grep analysis (file counts verified)
 
 ---
+
+## RESOLVED — theme architecture after P0-1
+
+Base theme chosen: **OseeTheme**. Final state (shipped in `49ca3f9` + admin port):
+
+| # | Theme | Role | Primary | Status |
+|---|---|---|---|---|
+| 1 | **OseeTheme** | `flutter/lib/app/theme.dart` | Navy `#1A1A2E` | **BASE** — canonical neutrals, typography, spacing, components. 27 files. |
+| 2 | **MagazineColors** | `flutter/lib/design/tokens.dart` | → aliases OseeTheme | **ALIAS LAYER** — now re-exports OseeTheme values (gold/paper/ink). No duplicate hex. 6 files. |
+| 3 | **StudentTheme** | `flutter/lib/features/student/student_theme.dart` | Purple `#925FE2` | **Intentional sub-brand** — deliberate Figma student portal. Keep as accent override. |
+| 4 | **TeacherTheme** | `flutter/lib/features/teacher/teacher_theme.dart` | Blue `#0177FB` | **Intentional sub-brand** — deliberate Figma teacher dashboard. Keep as accent override. |
+| 5 | **React admin osee** | `frontend-admin/tailwind.config.js` | → OseeTheme navy | **PORTED** — osee scale now renders OseeTheme navy/cream/ink (was stray indigo). |
+
+### Decision log
+
+- **MagazineColors → alias to OseeTheme** (DONE `49ca3f9`): kills duplicate golds `#B89B5F`/`#C9A96E`, creams `#FAF6EE`/`#F7F5F0`, inks `#1A1A1A`/`#1A1A2E`. All 6 magazine pages now render identical colors to the 27 OseeTheme pages.
+- **React admin osee → OseeTheme** (DONE): indigo `#4f46e5` was a 6th accidental brand with no design intent. Ported to OseeTheme navy. Zero component changes (token names unchanged).
+- **StudentTheme / TeacherTheme → KEEP as intentional accent overrides** (decision, not oversight): these are deliberate Figma-designed role portals that already share an identical neutral palette with each other (`textSecondary #7D8DA6`, `background #F8F9FB`, `divider #DFE5F1`, etc.). Flattening them to accent-only would be a design regression — role-based visual identity (students = purple, teachers = blue) is a legitimate, intentional pattern. The accidental themes are now unified; the intentional ones are kept.
+
+**Rule going forward:** exactly ONE base theme (OseeTheme) for neutrals/typography/spacing/components. Per-role themes may only override the accent color. No new full-palette theme without explicit design sign-off.
+
+---
+
+## Original findings (pre-resolution)
 
 ## Headline finding (P0): the app has FOUR parallel theme systems
 
