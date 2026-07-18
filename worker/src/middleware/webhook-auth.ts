@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { Env, ContextVars } from '../types';
+import { logger } from '../services/logger';
 
 /**
  * Webhook secret authentication middleware.
@@ -20,7 +21,7 @@ export function webhookAuth(platform: 'ibt' | 'itp' | 'ielts' | 'toeic' | 'booki
 
     const expected = getExpectedSecret(c.env, platform);
     if (!expected) {
-      console.error(`Webhook secret not configured for platform: ${platform}`);
+      logger.error('webhook secret not configured', { platform });
       return c.json(
         { error: { code: 'SECRET_NOT_CONFIGURED', message: 'Webhook secret not set on server' } },
         500

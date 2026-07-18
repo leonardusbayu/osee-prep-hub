@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { Env, ContextVars } from '../types';
+import { logger } from '../services/logger';
 
 /**
  * Cache middleware — Task 18.2.
@@ -94,7 +95,7 @@ export function cache(opts: CacheOptions = {}) {
           c.executionCtx.waitUntil(cache.put(request, cachedResponse));
         }
       } catch (err) {
-        console.error('Cache put failed:', err);
+        logger.error('cache put failed', { error: err instanceof Error ? err.message : String(err) });
       }
     }
 

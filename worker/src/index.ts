@@ -178,7 +178,7 @@ app.onError((err, c) => {
   if (c.env.SENTRY_DSN) {
     try { Sentry.captureException(err); } catch { /* best-effort */ }
   }
-  console.error('Unhandled error:', err);
+  appLogger.error('unhandled error', { error: err instanceof Error ? err.message : String(err) });
   return c.json(
     {
       error: {
@@ -203,16 +203,17 @@ app.onError((err, c) => {
 import { processWebhookBatch } from './services/webhook-processor';
 import { sendUpcomingClassReminders } from './services/live-class';
 import { creditRecurringPremiumCommission } from './services/premium-recurring';
+import { logger as appLogger } from './services/logger';
 
 const scheduledHandler: ExportedHandlerScheduledHandler<Env> = async (_event, env, ctx) => {
   // 1. Process webhook events in FIFO batches
   ctx.waitUntil(
     processWebhookBatch(env, 50)
       .then((result) => {
-        console.log(`[cron] webhook batch: ${result.succeeded}/${result.total} succeeded`);
+        appLogger.info('cron webhook batch', { succeeded: result.succeeded, total: result.total });
       })
       .catch((err) => {
-        console.error('[cron] webhook processing failed:', err);
+        appLogger.error('cron webhook processing failed', { error: err instanceof Error ? err.message : String(err) });
       })
   );
 
@@ -220,10 +221,10 @@ const scheduledHandler: ExportedHandlerScheduledHandler<Env> = async (_event, en
   ctx.waitUntil(
     sendUpcomingClassReminders(env)
       .then((result) => {
-        console.log(`[cron] class reminders sent: ${result.reminders_sent}`);
+        appLogger.info('cron class reminders sent', { reminders_sent: result.reminders_sent });
       })
       .catch((err) => {
-        console.error('[cron] class reminder failed:', err);
+        appLogger.error('cron class reminder failed', { error: err instanceof Error ? err.message : String(err) });
       })
   );
 
@@ -232,11 +233,11 @@ const scheduledHandler: ExportedHandlerScheduledHandler<Env> = async (_event, en
     creditRecurringPremiumCommission(env)
       .then((result) => {
         if (result.credited > 0) {
-          console.log(`[cron] premium recurring commission credited: ${result.credited} students`);
+          appLogger.info('cron premium recurring commission credited', { credited: result.credited });
         }
       })
       .catch((err) => {
-        console.error('[cron] premium recurring commission failed:', err);
+        appLogger.error('cron premium recurring commission failed', { error: err instanceof Error ? err.message : String(err) });
       })
   );
 };

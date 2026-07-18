@@ -124,7 +124,7 @@ class ScrapbookLesson extends StatelessWidget {
                                     children: [
                                       const Icon(Icons.chevron_left, size: 16, color: OseeTheme.ink),
                                       const SizedBox(width: 6),
-                                      Text('PREVIOUS', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.ink)),
+                                      Text('PREVIOUS', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: OseeTheme.ink)),
                                     ],
                                   ),
                                 ),
@@ -142,7 +142,7 @@ class ScrapbookLesson extends StatelessWidget {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
-                                      Text('NEXT CHAPTER', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white)),
+                                      Text('NEXT CHAPTER', style: const TextStyle(fontFamily: 'Helvetica', fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white)),
                                       const SizedBox(width: 6),
                                       const Icon(Icons.chevron_right, size: 16, color: Colors.white),
                                     ],
@@ -187,7 +187,7 @@ class ScrapbookLesson extends StatelessWidget {
                   sourceLabel.toUpperCase(),
                   style: const TextStyle(
                     fontFamily: 'Georgia',
-                    fontSize: 9,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 2,
                     color: Colors.white,
@@ -199,12 +199,12 @@ class ScrapbookLesson extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 difficulty!.toUpperCase(),
-                style: const TextStyle(fontFamily: 'Georgia', fontSize: 10, fontWeight: FontWeight.w700, color: OseeTheme.gold, letterSpacing: 1.5),
+                style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, fontWeight: FontWeight.w700, color: OseeTheme.gold, letterSpacing: 1.5),
               ),
             ],
             if (minutes != null) ...[
-              const Text('  ·  ', style: TextStyle(fontFamily: 'Georgia', fontSize: 10, color: OseeTheme.stone)),
-              Text('$minutes min', style: const TextStyle(fontFamily: 'Georgia', fontSize: 10, color: OseeTheme.stone)),
+              const Text('  ·  ', style: TextStyle(fontFamily: 'Georgia', fontSize: 11, color: OseeTheme.stone)),
+              Text('$minutes min', style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, color: OseeTheme.stone)),
             ],
           ],
         ),
@@ -653,7 +653,7 @@ class _ExerciseClippingState extends State<_ExerciseClipping> {
                     const SizedBox(width: 10),
                     Text(
                       type.replaceAll('_', ' ').toUpperCase(),
-                      style: const TextStyle(fontFamily: 'Georgia', fontSize: 9, fontWeight: FontWeight.w700, color: OseeTheme.stone, letterSpacing: 1),
+                      style: const TextStyle(fontFamily: 'Georgia', fontSize: 11, fontWeight: FontWeight.w700, color: OseeTheme.stone, letterSpacing: 1),
                     ),
                   ],
                 ),

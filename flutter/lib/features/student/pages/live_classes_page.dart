@@ -209,7 +209,7 @@ class _LiveClassesPageState extends ConsumerState<LiveClassesPage> {
                       ),
                       child: Text(
                         status.toUpperCase(),
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color, letterSpacing: 0.5),
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color, letterSpacing: 0.5),
                       ),
                     ),
                   ],

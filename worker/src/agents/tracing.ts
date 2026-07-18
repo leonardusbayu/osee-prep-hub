@@ -18,6 +18,7 @@
 import type { Env } from '../types';
 import type { AgentRunner, AgentContext, AgentRunResult } from './runtime';
 import { getSupabase } from '../services/supabase';
+import { logger } from '../services/logger';
 
 export interface TraceRow {
   user_id: string;
@@ -68,7 +69,7 @@ export function traceMiddleware(
           };
           await supabase.from('agent_traces').insert(row);
         } catch (logErr) {
-          console.error('agent_traces insert failed:', logErr instanceof Error ? logErr.message : logErr);
+          logger.error('agent_traces insert failed', { error: logErr instanceof Error ? logErr.message : String(logErr) });
         }
       }
     },

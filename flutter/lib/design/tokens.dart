@@ -1,31 +1,39 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme.dart';
+
 /// Magazine design tokens — Task 6 (Wave 1).
 ///
-/// Formal color + spacing + typography scale for the magazine editorial theme.
-/// All app pages should reference these tokens, not hardcoded values.
+/// Shim over [OseeTheme]: the single base theme. These aliases exist so the
+/// 6 pages built on the Magazine gold palette keep working while rendering
+/// the canonical OseeTheme colors (no duplicate golds/creams/inks).
+/// New code should import OseeTheme directly.
 
 class MagazineColors {
   MagazineColors._();
 
-  // Brand
-  static const mastheadGold = Color(0xFFB89B5F);
-  static const mastheadGoldLight = Color(0xFFD4B98A);
-  static const paperCream = Color(0xFFFAF6EE);
-  static const inkBlack = Color(0xFF1A1A1A);
-  static const inkGray = Color(0xFF4A4A4A);
-  static const accentRed = Color(0xFFA02B2B);
-  static const dropCapBlue = Color(0xFF1E3A5F);
+  // Brand — aliased to OseeTheme (P0-1 theme unification).
+  static const mastheadGold = OseeTheme.gold;             // #C9A96E (was #B89B5F)
+  static const mastheadGoldLight = OseeTheme.warning;     // lighter accent
+  static const paperCream = OseeTheme.paper;              // #F7F5F0 (was #FAF6EE)
+  static const inkBlack = OseeTheme.ink;                  // #1A1A2E (was #1A1A1A)
+  static const inkGray = OseeTheme.textSecondary;         // #6D6D7C (was #4A4A4A)
+  static const accentRed = OseeTheme.danger;              // #E63946 (was #A02B2B)
+  static const dropCapBlue = Color(0xFF1E3A5F);           // kept — no OseeTheme equivalent
+
+  /// WCAG-AA-safe gold for body text on paper backgrounds (~4.6:1 on #F7F5F0).
+  /// Decorative rules/borders keep the brighter [mastheadGold]; use this for text.
+  static const mastheadGoldText = Color(0xFF8A6B35);
 
   // Status (subtle, magazine-muted)
-  static const successGreen = Color(0xFF4A6741);
-  static const warningAmber = Color(0xFFB89B5F);
-  static const errorRed = Color(0xFFA02B2B);
+  static const successGreen = OseeTheme.success;          // #6B8E7F (was #4A6741)
+  static const warningAmber = OseeTheme.warning;          // #C9A96E
+  static const errorRed = OseeTheme.danger;               // #E63946
 
   // Surfaces
-  static const surfaceLight = Color(0xFFFAF6EE);
-  static const surfaceDark = Color(0xFF1A1A1A);
-  static const surfaceMuted = Color(0xFFE8E2D5);
+  static const surfaceLight = OseeTheme.paper;            // #F7F5F0
+  static const surfaceDark = OseeTheme.primary;           // #1A1A2E
+  static const surfaceMuted = OseeTheme.surfaceVariant;   // #F0EEE7 (was #E8E2D5)
 }
 
 class MagazineSpacing {

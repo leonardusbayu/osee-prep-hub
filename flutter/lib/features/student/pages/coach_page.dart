@@ -112,7 +112,7 @@ class _CoachMasthead extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('AI TUTOR', style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: MagazineColors.mastheadGold,
+            fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: MagazineColors.mastheadGoldText,
           )),
           SizedBox(height: 4),
           Text("Let's make today count.", style: TextStyle(

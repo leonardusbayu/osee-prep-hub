@@ -19,6 +19,7 @@ import {
   registerBuiltinTools, searchCatalogTool, createPracticeQuestionTool, fetchGradingHistoryTool, fetchPassportTool, fetchJobMarketTool,
 } from '../agents/tools';
 import { checkDailyTokenBudget, checkGlobalDailyBudget } from '../services/cost-guard';
+import { logger } from '../services/logger';
 
 export const agentRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -104,7 +105,7 @@ agentRoutes.post('/:agentName/invoke', async (c) => {
     return c.json({ ...result, sessionId });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Agent invocation failed';
-    console.error(`agent-invoke agent=${agentName} user=${user.id} error=${message}`);
+    logger.error('agent-invoke failed', { agent: agentName, userId: user.id, error: message });
     return c.json({ error: { code: 'AGENT_FAILED', message } }, 500);
   }
 });

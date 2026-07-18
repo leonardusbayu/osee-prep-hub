@@ -68,7 +68,7 @@ class _TopBar extends StatelessWidget {
               'PREP HUB',
               style: TextStyle(
                 fontFamily: 'Helvetica',
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
                 letterSpacing: 0,

@@ -16,6 +16,7 @@ import {
   processPendingGrading,
 } from '../services/grading-queue';
 import { evaluateSpeaking } from '../services/speaking-bridge';
+import { logger } from '../services/logger';
 
 export const aiRoutes = new Hono<{ Bindings: Env; Variables: ContextVars }>();
 
@@ -36,7 +37,7 @@ async function handleRagSearch(c: import('hono').Context<{ Bindings: Env; Variab
     const results = await searchDocuments(c.env, body.query, {
       matchCount: body.match_count ?? 10, filter: body.filter,
     });
-    console.log(`rag-search user=${user.id} results=${results.length}`);
+    logger.info('rag-search', { userId: user.id, results: results.length });
     return c.json({ query: body.query, results, count: results.length });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Search failed';
