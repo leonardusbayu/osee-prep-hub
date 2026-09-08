@@ -101,6 +101,72 @@ studentRoutes.get('/dashboard', async (c) => {
   });
 });
 
+/** GET /api/student/readiness — readiness assessment + recommendations.
+ *  Used by the student dashboard (alongside /dashboard) and the readiness page.
+ *  Returns { target_exam, readiness_pct, readiness_status, recommendations[] }.
+ *  Always 200 — users with no progress yet get starter recommendations. */
+studentRoutes.get('/readiness', async (c) => {
+  const user = getAuthedUser(c);
+  const supabase = getSupabase(c.env);
+
+  const { data: profile } = await supabase
+    .from('unified_profiles')
+    .select('target_exam, current_level')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const { data: progress } = await supabase
+    .from('student_progress_unified')
+    .select('*')
+    .eq('student_id', user.id)
+    .maybeSingle();
+
+  const targetExam = (profile as Record<string, unknown> | null)?.target_exam as string | null ?? null;
+  const p = (progress ?? {}) as Record<string, unknown>;
+
+  const readinessPct = typeof p.readiness_pct === 'number' ? p.readiness_pct : 0;
+  const readinessStatus = typeof p.readiness_status === 'string' ? p.readiness_status : 'preparing';
+  const recommendations: Array<{ title: string; detail: string }> = [];
+  const sectionScores: Array<{ section: string; score: number | null }> = [
+    { section: 'Reading', score: (p.ibt_latest_section_scores as Record<string, number> | null)?.reading ?? (p.ielts_latest_section_scores as Record<string, number> | null)?.reading ?? null },
+    { section: 'Listening', score: (p.ibt_latest_section_scores as Record<string, unknown> | null)?.listening as number | null ?? (p.ielts_latest_section_scores as Record<string, unknown> | null)?.listening as number | null ?? null },
+    { section: 'Speaking', score: (p.speaking_latest_band as number | null) ?? null },
+    { section: 'Writing', score: (p.writing_latest_band as number | null) ?? null },
+  ];
+  const known = sectionScores.filter((s) => typeof s.score === 'number');
+  if (known.length === 0) {
+    recommendations.push(
+      { title: 'Take a diagnostic test', detail: 'Find your starting level so Coach can build your plan.' },
+      { title: 'Set your target exam', detail: targetExam ? `Your target is ${targetExam.replace(/_/g, ' ')} — great, Coach will align everything to it.` : 'Pick TOEFL, IELTS, or TOEIC in your profile so recommendations stay focused.' },
+      { title: 'Join a classroom', detail: 'Ask your teacher for a join code to get your syllabus.' },
+    );
+  } else {
+    const weakest = [...known].sort((a, b) => (a.score as number) - (b.score as number))[0];
+    recommendations.push({
+      title: `Focus on ${weakest.section}`,
+      detail: `It's your lowest section right now. Ask Coach for a ${weakest.section.toLowerCase()} drill.`,
+    });
+    if (known.length > 1) {
+      const second = [...known].sort((a, b) => (a.score as number) - (b.score as number))[1];
+      recommendations.push({
+        title: `Keep ${second.section} warm`,
+        detail: `One short practice set a week is enough to hold your level.`,
+      });
+    }
+    recommendations.push({
+      title: 'Review with Coach',
+      detail: 'Open Coach and ask "what should I practice next?" for a personalized plan.',
+    });
+  }
+
+  return c.json({
+    target_exam: targetExam,
+    readiness_pct: readinessPct,
+    readiness_status: readinessStatus,
+    recommendations,
+  });
+});
+
 /** GET /api/student/syllabus — get all syllabi visible to this student
  *  (classroom-linked published + individually assigned). */
 studentRoutes.get('/syllabus', async (c) => {
