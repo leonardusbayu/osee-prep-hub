@@ -11,10 +11,7 @@ import 'student_sidebar.dart';
 /// `StatefulShellRoute.indexedStack`. The sidebar stays mounted across
 /// navigation; only the body (navigationShell) swaps.
 class StudentShell extends ConsumerStatefulWidget {
-  const StudentShell({
-    super.key,
-    required this.navigationShell,
-  });
+  const StudentShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
@@ -46,7 +43,7 @@ class _StudentShellState extends ConsumerState<StudentShell> {
             : Drawer(
                 width: 260,
                 child: StudentSidebar(
-                  activeIndex: widget.navigationShell.currentIndex,
+                  activeIndex: null,
                   onNavigate: () => _closeDrawer(),
                   onLogout: _logout,
                 ),
@@ -54,10 +51,7 @@ class _StudentShellState extends ConsumerState<StudentShell> {
         body: showSidebar
             ? Row(
                 children: [
-                  StudentSidebar(
-                    activeIndex: widget.navigationShell.currentIndex,
-                    onLogout: _logout,
-                  ),
+                  StudentSidebar(activeIndex: null, onLogout: _logout),
                   Expanded(child: widget.navigationShell),
                 ],
               )

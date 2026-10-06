@@ -12,6 +12,7 @@ import { Commission } from './pages/Commission';
 import { Ambassadors } from './pages/Ambassadors';
 import { Analytics } from './pages/Analytics';
 import { Orders } from './pages/Orders';
+import { Materials } from './pages/Materials';
 import { App } from './App';
 
 /** Render a page wrapped in the router it needs (NavLink etc.). */
@@ -153,6 +154,16 @@ describe('admin pages render', () => {
     await waitFor(() => expect(screen.getByText('Pak Budi')).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText('teacher@e.com')).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText(/mock_ibt/)).toBeInTheDocument());
+  });
+
+  it('Materials renders catalog rows with real content', async () => {
+    const fetchMock = stubFetch({
+      '/admin/materials': { materials: [{ id: 'm1', title: 'IELTS Reading — Academic', description: 'Academic passage practice', item_type: 'reading', source_type: 'platform_ielts', difficulty: 'B2', estimated_minutes: 40, source_platform_url: 'https://ielts.osee.co.id', exam_types: ['IELTS'], tags: [], is_public: true, created_by: null, source_material_id: null, created_at: '2026-01-01T00:00:00Z' }] },
+    });
+    renderPage(<Materials />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText('IELTS Reading — Academic')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('reading')).toBeInTheDocument());
   });
 });
 

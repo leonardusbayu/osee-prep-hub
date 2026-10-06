@@ -1,12 +1,9 @@
 import type { Context } from 'hono';
-import type { Env, ContextVars, User, UserRole } from '../types';
+import type { Env, ContextVars, JwtPayload, User, UserRole } from '../types';
 import { verifyJwt, extractBearerToken } from '../services/jwt';
-import { getSupabase } from '../services/supabase';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
-/**
- * Auth middleware — verifies JWT from cookie or Authorization header.
- * Sets c.set('user', user) on success; throws 401 on missing/invalid token.
+/** Auth middleware — verifies JWT from cookie or Authorization header.
+ *  Sets c.set('user', user) on success; throws 401 on missing/invalid token.
  */
 
 const COOKIE_NAME = 'osee_token';
@@ -32,15 +29,22 @@ function extractTokenFromRequest(req: {
   return null;
 }
 
-/** Look up user by ID in Supabase. Returns null if not found. */
-async function getUserById(supabase: SupabaseClient, userId: string): Promise<User | null> {
-  const { data, error } = await supabase
-    .from('unified_profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-  if (error || !data) return null;
-  return data as User;
+/** Build a User from a JWT payload, suitable for middleware context. */
+function userFromPayload(payload: JwtPayload): User {
+  return {
+    id: payload.sub,
+    email: payload.email,
+    display_name: payload.email, // JWT doesn't carry display_name; callers that need it should fetch from DB
+    role: payload.role,
+    avatar_url: null,
+    telegram_id: null,
+    target_exam: null,
+    target_score: null,
+    current_level: null,
+    teacher_institution: null,
+    created_at: '',
+    updated_at: '',
+  };
 }
 
 /** Auth middleware — requires valid JWT. Use on protected routes. */
@@ -52,12 +56,10 @@ export const requireAuth = () => {
     }
     try {
       const payload = await verifyJwt(c.env, token);
-      const supabase = getSupabase(c.env);
-      const user = await getUserById(supabase, payload.sub);
-      if (!user) {
-        return c.json({ error: { code: 'USER_NOT_FOUND', message: 'User no longer exists' } }, 401);
-      }
-      c.set('user', user);
+      // Fast path: derive user from JWT payload without a DB round-trip.
+      // This covers role checks and most endpoints. Routes that need DB-backed
+      // fields (e.g., teacher_institution) can still fetch the full profile.
+      c.set('user', userFromPayload(payload));
       await next();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid token';
@@ -87,9 +89,7 @@ export const optionalAuth = () => {
     if (token) {
       try {
         const payload = await verifyJwt(c.env, token);
-        const supabase = getSupabase(c.env);
-        const user = await getUserById(supabase, payload.sub);
-        if (user) c.set('user', user);
+        c.set('user', userFromPayload(payload));
       } catch {
         // Ignore invalid token — treat as unauthenticated
       }
@@ -97,6 +97,20 @@ export const optionalAuth = () => {
     await next();
   };
 };
+
+/** Fetch a fresh user profile from Supabase. Use when a route needs DB-backed
+ *  fields that are not stored in the JWT (e.g., display_name, teacher_institution). */
+export async function fetchUserProfile(env: Env, userId: string): Promise<User | null> {
+  const { getSupabase } = await import('../services/supabase');
+  const supabase = getSupabase(env);
+  const { data, error } = await supabase
+    .from('unified_profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  if (error || !data) return null;
+  return data as User;
+}
 
 /**
  * Helper to get the authenticated user from context.

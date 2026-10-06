@@ -246,10 +246,14 @@ class _StatCardState extends State<_StatCard> {
         duration: TeacherTheme.animFast,
         padding: const EdgeInsets.all(TeacherSpacing.md),
         decoration: BoxDecoration(
-          color: _hovering ? TeacherTheme.backgroundSecondary : TeacherTheme.surface,
+          color: _hovering
+              ? TeacherTheme.backgroundSecondary
+              : TeacherTheme.surface,
           borderRadius: BorderRadius.circular(TeacherTheme.radiusCard),
           border: Border.all(
-            color: _hovering ? widget.accent.withValues(alpha: 0.2) : TeacherTheme.divider,
+            color: _hovering
+                ? widget.accent.withValues(alpha: 0.2)
+                : TeacherTheme.divider,
           ),
           boxShadow: _hovering ? TeacherTheme.cardShadow : [],
         ),
@@ -293,7 +297,6 @@ class _ActionGrid extends StatelessWidget {
     _Action(Icons.view_kanban_rounded, 'Syllabi', '/teacher/syllabi'),
     _Action(Icons.class_outlined, 'Classrooms', '/teacher/classrooms'),
     _Action(Icons.edit_note_rounded, 'AI Grader', '/teacher/ai-grader'),
-    _Action(Icons.mic_rounded, 'Speaking', '/teacher/speaking-grader'),
     _Action(Icons.auto_awesome_outlined, 'Generator', '/teacher/generator'),
     _Action(Icons.shopping_cart_outlined, 'Orders', '/teacher/orders'),
     _Action(Icons.payments_outlined, 'Earnings', '/teacher/commission'),
@@ -349,12 +352,17 @@ class _ActionButtonState extends State<_ActionButton> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(widget.action.icon, size: 16, color: TeacherTheme.primaryBlue),
+              Icon(
+                widget.action.icon,
+                size: 16,
+                color: TeacherTheme.primaryBlue,
+              ),
               const SizedBox(width: 8),
               Text(
                 widget.action.label,
-                style: TeacherTheme.chipActive(TeacherTheme.primaryBlue)
-                    .copyWith(fontSize: 13),
+                style: TeacherTheme.chipActive(
+                  TeacherTheme.primaryBlue,
+                ).copyWith(fontSize: 13),
               ),
             ],
           ),
@@ -455,10 +463,11 @@ class _ActivityTileState extends State<_ActivityTile> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: (widget.isPaid
-                            ? TeacherTheme.successGreen
-                            : const Color(0xFFF0A030))
-                        .withValues(alpha: 0.12),
+                    color:
+                        (widget.isPaid
+                                ? TeacherTheme.successGreen
+                                : const Color(0xFFF0A030))
+                            .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(
                       TeacherTheme.radiusBadge,
                     ),
@@ -503,10 +512,7 @@ class _ActivityTileState extends State<_ActivityTile> {
             if (widget.showDivider)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Divider(
-                  height: 1,
-                  color: TeacherTheme.dividerSubtle,
-                ),
+                child: Divider(height: 1, color: TeacherTheme.dividerSubtle),
               ),
           ],
         ),

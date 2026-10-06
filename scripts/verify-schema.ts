@@ -51,6 +51,7 @@ const EXPECTED_TABLES = [
   'teacher_invitations',
   'syllabus_item_comments',
   'syllabus_item_attachments',
+  'material_catalog',
 ] as const;
 
 interface VerifyResult {

@@ -27,6 +27,7 @@ interface CliArgs {
   limit?: number;
   tier: string;
   noEmbeddings: boolean;
+  category: string;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -35,6 +36,7 @@ function parseArgs(argv: string[]): CliArgs {
     dryRun: false,
     tier: '1',
     noEmbeddings: false,
+    category: 'general',
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -43,6 +45,7 @@ function parseArgs(argv: string[]): CliArgs {
     if (arg === '--limit') args.limit = parseInt(argv[++i], 10);
     if (arg === '--tier') args.tier = argv[++i] ?? '1';
     if (arg === '--no-embeddings') args.noEmbeddings = true;
+    if (arg === '--category') args.category = argv[++i] ?? 'general';
   }
   return args;
 }
@@ -140,7 +143,7 @@ async function insertDocument(
     body: JSON.stringify({
       title: basename(filePath, extname(filePath)),
       source: filePath,
-      category: 'general',
+      category: args.category,
       subcategory: tier,
       cefr_level: null,
       content: chunks.join('\n\n---\n\n'),

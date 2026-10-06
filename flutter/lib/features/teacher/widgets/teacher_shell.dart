@@ -37,17 +37,14 @@ class _TeacherShellState extends ConsumerState<TeacherShell> {
           : Drawer(
               width: TeacherSpacing.sidebarWidth,
               child: TeacherSidebar(
-                activeIndex: _navIndexFromShellIndex(shellIndex),
+                activeIndex: null,
                 onNavigate: () => _closeDrawer(),
               ),
             ),
       body: showSidebar
           ? Row(
               children: [
-                TeacherSidebar(
-                  activeIndex: _navIndexFromShellIndex(shellIndex),
-                  onNavigate: () {},
-                ),
+                TeacherSidebar(activeIndex: null, onNavigate: () {}),
                 Expanded(
                   child: Column(
                     children: [
@@ -81,55 +78,6 @@ class _TeacherShellState extends ConsumerState<TeacherShell> {
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
       Navigator.of(context).pop();
     }
-  }
-
-  /// Maps the shell branch index → sidebar nav item index.
-  /// The sidebar nav items have a fixed order; branches have a different order.
-  int _navIndexFromShellIndex(int shellIndex) {
-    // Shell branch → nav item route → nav index
-    const shellToRoute = <String>[
-      '/teacher', // 0
-      '/teacher/orders', // 1
-      '/teacher/schedule', // 2
-      '/teacher/ai-grader', // 3
-      '/teacher/speaking-grader', // 4
-      '/teacher/generator', // 5
-      '/teacher/syllabi', // 6
-      '/teacher/syllabi', // 7 (builder, same nav highlight)
-      '/teacher/classrooms', // 8
-      '/teacher/classrooms', // 9 (detail, same nav highlight)
-      '/teacher/classrooms', // 10 (report, same nav highlight)
-      '/teacher/commission', // 11
-      '/teacher/reports', // 12
-      '/teacher/settings', // 13
-      '/teacher/upgrade', // 14
-    ];
-    if (shellIndex >= shellToRoute.length) return 0;
-    final route = shellToRoute[shellIndex];
-    // Find matching nav item
-    const navRoutes = [
-      '/teacher',
-      '/teacher/schedule',
-      '/teacher',
-      '/teacher/reports',
-      '/teacher/syllabi',
-      '/teacher/generator',
-      '/teacher/classrooms',
-      '/teacher/orders',
-      '/teacher/commission',
-      '/teacher/ai-grader',
-      '/teacher/speaking-grader',
-      '/teacher/upgrade',
-      '/teacher/settings',
-    ];
-    for (int i = 0; i < navRoutes.length; i++) {
-      if (route == '/teacher') {
-        if (navRoutes[i] == '/teacher') return i;
-      } else if (navRoutes[i] == route) {
-        return i;
-      }
-    }
-    return 0;
   }
 
   _RouteMeta _routeMetaForIndex(int index) {

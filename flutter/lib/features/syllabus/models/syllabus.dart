@@ -235,6 +235,13 @@ class CatalogEntry {
   final String? difficulty;
   final int estimatedMinutes;
 
+  /// Deep link to the source platform (Goal 6). Passed to syllabus items so
+  /// students get redirected to the right practice platform on "Start".
+  /// Mirrors the `platform_links` seed in schema.sql. null for sources
+  /// without an external platform (ai_generated, teacher_custom, video_lesson,
+  /// live_class — those resolve their own URL later).
+  final String? sourcePlatformUrl;
+
   const CatalogEntry({
     required this.sourceType,
     required this.materialId,
@@ -244,5 +251,6 @@ class CatalogEntry {
     this.section,
     this.difficulty,
     this.estimatedMinutes = 20,
+    this.sourcePlatformUrl,
   });
 }

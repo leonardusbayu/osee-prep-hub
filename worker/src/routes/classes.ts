@@ -40,8 +40,10 @@ classRoutes.get('/upcoming', cache({ ttl: 60, varyByUser: false }), async (c) =>
   }
 });
 
-/** GET /api/classes/:id — single class detail */
+/** GET /api/classes/:id — single class detail. Zoom link and password are only
+ *  revealed to registered users, admin, or when the class is marked free. */
 classRoutes.get('/:id', async (c) => {
+  const user = getAuthedUser(c);
   const supabase = (await import('../services/supabase')).getSupabase(c.env);
   const { data, error } = await supabase
     .from('live_classes')
@@ -51,7 +53,29 @@ classRoutes.get('/:id', async (c) => {
   if (error || !data) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Class not found' } }, 404);
   }
-  return c.json(data);
+  const liveClass = data as Record<string, unknown>;
+
+  // Determine if the user may view sensitive meeting details.
+  const isAdmin = user.role === 'admin';
+  const isFree = (liveClass.is_free as boolean | undefined) ?? true;
+  let isRegistered = isAdmin;
+  if (!isRegistered) {
+    const { data: reg } = await supabase
+      .from('class_registrations')
+      .select('id')
+      .eq('class_id', c.req.param('id'))
+      .eq('user_id', user.id)
+      .maybeSingle();
+    isRegistered = !!reg;
+  }
+  const revealZoom = isAdmin || isFree || isRegistered;
+
+  if (!revealZoom) {
+    delete liveClass.zoom_link;
+    delete liveClass.zoom_password;
+    delete liveClass.zoom_meeting_id;
+  }
+  return c.json(liveClass);
 });
 
 /** POST /api/classes/:id/register — register for a class */

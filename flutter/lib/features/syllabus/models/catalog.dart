@@ -5,6 +5,12 @@ import 'syllabus.dart';
 /// In production this would come from the worker (`/api/teacher/catalog`),
 /// but for v1 we ship a curated static set so the builder works
 /// immediately and offline-friendly. The shape matches [CatalogEntry].
+///
+/// `sourcePlatformUrl` mirrors the `platform_links` seed in schema.sql so
+/// students get redirected to the right practice platform on "Start"
+/// (Goal 6 — Materials hub). URLs are the platform roots, not deep test
+/// links, because individual test URLs are not known to the Hub; the
+/// student lands on the platform and picks the assigned package.
 const List<CatalogEntry> kMaterialCatalog = [
   // ----- iBT -----
   CatalogEntry(
@@ -16,6 +22,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'reading',
     difficulty: 'B1',
     estimatedMinutes: 30,
+    sourcePlatformUrl: 'https://ibt.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ibt',
@@ -26,6 +33,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'reading',
     difficulty: 'C1',
     estimatedMinutes: 45,
+    sourcePlatformUrl: 'https://ibt.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ibt',
@@ -36,6 +44,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'listening',
     difficulty: 'B2',
     estimatedMinutes: 25,
+    sourcePlatformUrl: 'https://ibt.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ibt',
@@ -46,6 +55,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'listening',
     difficulty: 'C1',
     estimatedMinutes: 40,
+    sourcePlatformUrl: 'https://ibt.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ibt',
@@ -56,6 +66,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'speaking',
     difficulty: 'B2',
     estimatedMinutes: 30,
+    sourcePlatformUrl: 'https://ibt.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ibt',
@@ -66,6 +77,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'speaking',
     difficulty: 'C1',
     estimatedMinutes: 35,
+    sourcePlatformUrl: 'https://ibt.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ibt',
@@ -76,6 +88,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'writing',
     difficulty: 'C1',
     estimatedMinutes: 30,
+    sourcePlatformUrl: 'https://ibt.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ibt',
@@ -86,6 +99,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'writing',
     difficulty: 'B2',
     estimatedMinutes: 30,
+    sourcePlatformUrl: 'https://ibt.osee.co.id',
   ),
 
   // ----- ITP -----
@@ -98,6 +112,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'mock',
     difficulty: 'B2',
     estimatedMinutes: 110,
+    sourcePlatformUrl: 'https://test.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_itp',
@@ -108,6 +123,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'mock',
     difficulty: 'B2',
     estimatedMinutes: 110,
+    sourcePlatformUrl: 'https://test.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_itp',
@@ -118,6 +134,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'structure',
     difficulty: 'B1',
     estimatedMinutes: 25,
+    sourcePlatformUrl: 'https://test.osee.co.id',
   ),
 
   // ----- IELTS -----
@@ -130,6 +147,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'reading',
     difficulty: 'B2',
     estimatedMinutes: 60,
+    sourcePlatformUrl: 'https://ielts.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ielts',
@@ -140,6 +158,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'writing',
     difficulty: 'B2',
     estimatedMinutes: 20,
+    sourcePlatformUrl: 'https://ielts.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ielts',
@@ -150,6 +169,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'writing',
     difficulty: 'C1',
     estimatedMinutes: 40,
+    sourcePlatformUrl: 'https://ielts.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ielts',
@@ -160,6 +180,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'speaking',
     difficulty: 'B2',
     estimatedMinutes: 25,
+    sourcePlatformUrl: 'https://ielts.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_ielts',
@@ -170,6 +191,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'vocabulary',
     difficulty: 'B2',
     estimatedMinutes: 30,
+    sourcePlatformUrl: 'https://ielts.osee.co.id',
   ),
 
   // ----- TOEIC -----
@@ -182,6 +204,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'listening',
     difficulty: 'B1',
     estimatedMinutes: 45,
+    sourcePlatformUrl: 'https://toeic.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_toeic',
@@ -192,6 +215,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'reading',
     difficulty: 'B2',
     estimatedMinutes: 75,
+    sourcePlatformUrl: 'https://toeic.osee.co.id',
   ),
   CatalogEntry(
     sourceType: 'platform_toeic',
@@ -202,6 +226,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'mock',
     difficulty: 'B2',
     estimatedMinutes: 120,
+    sourcePlatformUrl: 'https://toeic.osee.co.id',
   ),
 
   // ----- EduBot -----
@@ -214,6 +239,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'speaking',
     difficulty: 'B1',
     estimatedMinutes: 15,
+    sourcePlatformUrl: 'https://t.me/osee_edubot',
   ),
   CatalogEntry(
     sourceType: 'edubot',
@@ -224,6 +250,7 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'speaking',
     difficulty: 'B2',
     estimatedMinutes: 20,
+    sourcePlatformUrl: 'https://t.me/osee_edubot',
   ),
   CatalogEntry(
     sourceType: 'edubot',
@@ -234,9 +261,11 @@ const List<CatalogEntry> kMaterialCatalog = [
     section: 'vocabulary',
     difficulty: 'A2',
     estimatedMinutes: 15,
+    sourcePlatformUrl: 'https://t.me/osee_edubot',
   ),
 
   // ----- AI generated -----
+  // No external URL — content lives in the Hub (ai_generation_queue).
   CatalogEntry(
     sourceType: 'ai_generated',
     materialId: 'ai-grammar-fixes',
@@ -259,6 +288,7 @@ const List<CatalogEntry> kMaterialCatalog = [
   ),
 
   // ----- Custom -----
+  // No URL here — teacher supplies it in the upload dialog.
   CatalogEntry(
     sourceType: 'teacher_custom',
     materialId: 'custom-material',

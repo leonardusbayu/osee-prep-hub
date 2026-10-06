@@ -10,6 +10,7 @@ import '../features/landing/pages/landing_page.dart';
 import '../features/student/pages/student_dashboard_page.dart';
 import '../features/student/pages/student_progress_page.dart';
 import '../features/student/pages/student_syllabus_page.dart';
+import '../features/student/pages/syllabus_item_detail_page.dart';
 import '../features/student/pages/readiness_page.dart';
 import '../features/student/pages/video_lessons_page.dart';
 import '../features/student/pages/live_classes_page.dart';
@@ -264,6 +265,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/student/syllabus',
                 builder: (c, s) => const StudentSyllabusPage(),
+              ),
+              GoRoute(
+                path: '/student/syllabus/item/:itemId',
+                builder: (c, s) =>
+                    SyllabusItemDetailPage(itemId: s.pathParameters['itemId']!),
               ),
             ],
           ),

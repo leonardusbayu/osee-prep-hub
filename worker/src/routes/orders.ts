@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Env, ContextVars } from '../types';
 import { requireAuth, getAuthedUser } from '../middleware/auth';
+import { getSupabase } from '../services/supabase';
 import {
   createOrder,
   getOrder,
@@ -147,13 +148,24 @@ orderRoutes.post('/:id/pay', async (c) => {
       return c.json({ error: { code: 'INVALID_AMOUNT', message: 'Order amount must be > 0' } }, 400);
     }
 
-    // Build TriPay payment request
+    if (!user.email || !user.email.includes('@')) {
+      return c.json({ error: { code: 'INVALID_USER', message: 'User email required' } }, 400);
+    }
+
+    const supabase = getSupabase(c.env);
+    const { data: profile } = await supabase
+      .from('unified_profiles')
+      .select('display_name')
+      .eq('id', user.id)
+      .maybeSingle();
+    const customerName = (profile?.display_name as string | undefined)?.trim() || user.email;
+
     const merchantRef = `OSEE-${orderId}`;
     const payment = await createPayment(c.env, {
       payment_method: body.payment_method,
       merchant_ref: merchantRef,
       amount,
-      customer_name: user.display_name,
+      customer_name: customerName,
       customer_email: user.email,
       order_items: [
         {

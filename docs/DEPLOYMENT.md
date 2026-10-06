@@ -122,7 +122,7 @@ For `prep.osee.co.id/api/*` to route to the Worker:
 
 ## Step 9: Configure Webhook Secrets on Practice Platforms
 
-For each platform (ibt.osee.co.id, itp.osee.co.id, etc.), add a webhook:
+For each platform (ibt.osee.co.id, test.osee.co.id, etc.), add a webhook:
 - URL: `https://prep-api.osee.co.id/api/webhook/{ibt|itp|ielts|toeic|booking|edubot}`
 - Header: `X-Webhook-Secret: <same value as WEBHOOK_SECRET_IBT env var>`
 - Events to forward:

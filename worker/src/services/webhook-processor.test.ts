@@ -76,7 +76,7 @@ describe('webhook-processor', () => {
   it('returns empty result when no events', async () => {
     hoisted.chainPlan.push({ data: [], error: null });
     const r = await processWebhookBatch(mockEnv);
-    expect(r).toEqual({ total: 0, succeeded: 0, failed: 0, errors: [] });
+    expect(r).toEqual({ total: 0, succeeded: 0, failed: 0, dead: [], errors: [] });
   });
 
   it('throws on fetch error', async () => {

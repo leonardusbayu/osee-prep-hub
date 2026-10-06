@@ -19,6 +19,24 @@ function buildChain(finalData: Row | null, finalError: unknown = null): MockChai
   return chain;
 }
 
+function buildChainById(lookup: Record<string, Row | null>, defaultData: Row | null = null): MockChain {
+  const chain = {} as MockChain & { _lastId?: unknown };
+  chain.select = vi.fn(() => chain);
+  chain.eq = vi.fn((_column: string, value: unknown) => {
+    chain._lastId = value;
+    return chain;
+  });
+  chain.maybeSingle = vi.fn(async () => {
+    const data = chain._lastId !== undefined ? lookup[String(chain._lastId)] ?? defaultData : defaultData;
+    return { data, error: null };
+  });
+  chain.single = vi.fn(async () => {
+    const data = chain._lastId !== undefined ? lookup[String(chain._lastId)] ?? defaultData : defaultData;
+    return { data, error: null };
+  });
+  return chain;
+}
+
 const supabaseMock = {
   from: vi.fn(),
 };
@@ -154,11 +172,14 @@ describe('teacher routes — POST /students/:id/report/email', () => {
 
   it('emails the report to the student email on file (happy path)', async () => {
     supabaseMock.from.mockImplementation(() =>
-      buildChain({
-        id: 'student-1',
-        display_name: 'Budi Santoso',
-        email: 'budi@example.com',
-        role: 'student',
+      buildChainById({
+        'student-1': {
+          id: 'student-1',
+          display_name: 'Budi Santoso',
+          email: 'budi@example.com',
+          role: 'student',
+        },
+        'teacher-1': { display_name: 'Mrs. Ari' },
       })
     );
     mockSendReportEmail.mockResolvedValueOnce({ id: 'msg-xyz' });
@@ -188,11 +209,14 @@ describe('teacher routes — POST /students/:id/report/email', () => {
 
   it('uses the body-provided email override when supplied', async () => {
     supabaseMock.from.mockImplementation(() =>
-      buildChain({
-        id: 'student-1',
-        display_name: 'Sari',
-        email: 'sari@example.com',
-        role: 'student',
+      buildChainById({
+        'student-1': {
+          id: 'student-1',
+          display_name: 'Sari',
+          email: 'sari@example.com',
+          role: 'student',
+        },
+        'teacher-1': { display_name: 'Mrs. Ari' },
       })
     );
     mockSendReportEmail.mockResolvedValueOnce({ id: 'msg-2' });

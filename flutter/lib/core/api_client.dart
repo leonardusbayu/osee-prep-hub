@@ -6,9 +6,8 @@ import 'package:flutter/foundation.dart';
 class ApiClient {
   ApiClient._();
 
-  static String get _defaultBaseUrl => kDebugMode
-      ? 'http://localhost:8787/api'
-      : 'https://osee-prep-hub-worker.edubot-leonardus.workers.dev/api';
+  static String get _defaultBaseUrl =>
+      kDebugMode ? 'http://localhost:8787/api' : 'https://prep.osee.co.id/api';
 
   /// Currently active JWT, set by AuthNotifier on login/register and cleared on logout.
   /// Read by [_AuthInterceptor] on every request so cookies (which are scoped to

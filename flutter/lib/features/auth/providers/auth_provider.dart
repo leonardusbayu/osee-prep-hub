@@ -7,9 +7,8 @@ import '../../../core/api_client.dart';
 import '../auth_storage.dart';
 import '../models/user.dart';
 
-String get _apiUrl => kDebugMode
-    ? 'http://localhost:8787/api'
-    : 'https://osee-prep-hub-worker.edubot-leonardus.workers.dev/api';
+String get _apiUrl =>
+    kDebugMode ? 'http://localhost:8787/api' : 'https://prep.osee.co.id/api';
 
 class AuthState {
   const AuthState({this.user, this.token, this.isLoading = false, this.error});

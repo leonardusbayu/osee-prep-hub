@@ -14,15 +14,14 @@ class _NavItem {
 
 const _navItems = <_NavItem>[
   _NavItem(Icons.dashboard_outlined, 'Dashboard', '/teacher'),
-  _NavItem(Icons.calendar_today_outlined, 'My Schedule', '/teacher/schedule'),
+  _NavItem(Icons.calendar_today_outlined, 'Schedule', '/teacher/schedule'),
   _NavItem(Icons.groups_2_outlined, 'Students', '/teacher/reports'),
-  _NavItem(Icons.menu_book_outlined, 'Courses', '/teacher/syllabi'),
-  _NavItem(Icons.folder_outlined, 'Resources', '/teacher/generator'),
+  _NavItem(Icons.menu_book_outlined, 'Syllabus', '/teacher/syllabi'),
+  _NavItem(Icons.auto_awesome_outlined, 'AI Generator', '/teacher/generator'),
   _NavItem(Icons.class_outlined, 'Classrooms', '/teacher/classrooms'),
+  _NavItem(Icons.edit_note_rounded, 'AI Grader', '/teacher/ai-grader'),
   _NavItem(Icons.shopping_cart_outlined, 'Orders', '/teacher/orders'),
   _NavItem(Icons.payments_outlined, 'Earnings', '/teacher/commission'),
-  _NavItem(Icons.edit_note_rounded, 'AI Grader', '/teacher/ai-grader'),
-  _NavItem(Icons.mic_rounded, 'Speaking', '/teacher/speaking-grader'),
   _NavItem(Icons.star_rounded, 'Upgrade', '/teacher/upgrade'),
   _NavItem(Icons.settings_outlined, 'Settings', '/teacher/settings'),
 ];

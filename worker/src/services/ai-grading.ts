@@ -51,14 +51,14 @@ export async function gradeWriting(env: Env, input: GradeWritingInput): Promise<
   const rubricQuery = `${input.examType} ${input.rubric} writing assessment criteria rubric ${input.level ?? ''}`;
   const rubricResults = await searchDocuments(env, rubricQuery, {
     matchCount: 3,
-    filter: { tier: '1', category: 'rubrics' },
+    filter: { category: 'rubrics' },
   }).catch(() => []);
 
   // RAG search #2: Indonesian error patterns (category: error_patterns)
   const errorQuery = `Indonesian learner English writing common errors grammar mistakes`;
   const errorResults = await searchDocuments(env, errorQuery, {
     matchCount: 3,
-    filter: { tier: '1', category: 'error_patterns' },
+    filter: { category: 'error_patterns' },
   }).catch(() => []);
 
   // Fallback: if category filter returns nothing, search without category
@@ -68,7 +68,6 @@ export async function gradeWriting(env: Env, input: GradeWritingInput): Promise<
     const fallbackQuery = `${input.examType} ${input.rubric} writing assessment ${input.level ?? ''}`;
     ragResults = await searchDocuments(env, fallbackQuery, {
       matchCount: 5,
-      filter: { tier: '1' },
     }).catch(() => []);
   }
 

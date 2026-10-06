@@ -49,9 +49,14 @@ class _SyllabusListPageState extends ConsumerState<SyllabusListPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete syllabus?'),
-        content: const Text('This will remove the syllabus and all its items. This cannot be undone.'),
+        content: const Text(
+          'This will remove the syllabus and all its items. This cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: OseeTheme.danger),
             onPressed: () => Navigator.pop(ctx, true),
@@ -66,15 +71,15 @@ class _SyllabusListPageState extends ConsumerState<SyllabusListPage> {
       await dio.delete('/teacher/syllabi/$id');
       ref.invalidate(syllabiListProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Syllabus deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Syllabus deleted')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Delete failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
     }
   }
@@ -126,7 +131,7 @@ class _SyllabusListPageState extends ConsumerState<SyllabusListPage> {
                 icon: Icons.view_kanban_outlined,
                 title: 'No syllabi yet',
                 subtitle:
-                    'Create your first plan and organize materials into weekly units.',
+                    'Create your first syllabus, then drag materials from the catalog into weekly columns. Start by clicking "Create Syllabus" below.',
                 action: FilledButton.icon(
                   onPressed: () => _showCreateDialog(context, ref),
                   icon: const Icon(Icons.add_rounded),
@@ -187,7 +192,9 @@ class _StatsRow extends StatelessWidget {
     final templates = syllabi.where((s) => s.isTemplate).length;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = constraints.maxWidth < 400 ? 1 : (constraints.maxWidth < 700 ? 2 : 3);
+        final cols = constraints.maxWidth < 400
+            ? 1
+            : (constraints.maxWidth < 700 ? 2 : 3);
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -222,7 +229,11 @@ class _StatsRow extends StatelessWidget {
 }
 
 class _SyllabusCard extends StatelessWidget {
-  const _SyllabusCard({required this.syllabus, required this.classroomName, required this.onDelete});
+  const _SyllabusCard({
+    required this.syllabus,
+    required this.classroomName,
+    required this.onDelete,
+  });
   final Syllabus syllabus;
   final String? classroomName;
   final VoidCallback onDelete;
@@ -265,7 +276,9 @@ class _SyllabusCard extends StatelessWidget {
                           ? 'Class: $classroomName'
                           : 'No classroom assigned',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: classroomName != null ? OseeTheme.textSecondary : OseeTheme.danger,
+                        color: classroomName != null
+                            ? OseeTheme.textSecondary
+                            : OseeTheme.danger,
                       ),
                     ),
                     const SizedBox(height: Spacing.xs),
@@ -290,7 +303,11 @@ class _SyllabusCard extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, size: 20, color: OseeTheme.danger),
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 20,
+                  color: OseeTheme.danger,
+                ),
                 onPressed: onDelete,
                 tooltip: 'Delete syllabus',
               ),
@@ -332,7 +349,12 @@ class _CreateSyllabusResult {
   final String? description;
   final String? targetExam;
   final String? classroomId;
-  _CreateSyllabusResult(this.name, this.description, this.targetExam, this.classroomId);
+  _CreateSyllabusResult(
+    this.name,
+    this.description,
+    this.targetExam,
+    this.classroomId,
+  );
 }
 
 class _CreateSyllabusDialog extends StatefulWidget {
@@ -406,27 +428,50 @@ class _CreateSyllabusDialogState extends State<_CreateSyllabusDialog> {
                 decoration: const InputDecoration(labelText: 'Target exam'),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('Any / Mixed')),
-                  DropdownMenuItem(value: 'TOEFL_IBT', child: Text('TOEFL iBT')),
-                  DropdownMenuItem(value: 'TOEFL_ITP', child: Text('TOEFL ITP')),
+                  DropdownMenuItem(
+                    value: 'TOEFL_IBT',
+                    child: Text('TOEFL iBT'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'TOEFL_ITP',
+                    child: Text('TOEFL ITP'),
+                  ),
                   DropdownMenuItem(value: 'IELTS', child: Text('IELTS')),
                   DropdownMenuItem(value: 'TOEIC', child: Text('TOEIC')),
-                  DropdownMenuItem(value: 'GENERAL', child: Text('General English')),
+                  DropdownMenuItem(
+                    value: 'GENERAL',
+                    child: Text('General English'),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _exam = v),
               ),
               const SizedBox(height: Spacing.md),
               if (_loadingClassrooms)
-                const Padding(padding: const EdgeInsets.all(8), child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                const Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
               else
                 DropdownButtonFormField<String>(
                   value: _classroomId,
-                  decoration: const InputDecoration(labelText: 'Assign to classroom (optional)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Assign to classroom (optional)',
+                  ),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('No classroom')),
-                    ...(_classrooms ?? []).map((c) => DropdownMenuItem(
-                      value: (c as Map)['id'] as String?,
-                      child: Text(c['name'] as String? ?? ''),
-                    )),
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('No classroom'),
+                    ),
+                    ...(_classrooms ?? []).map(
+                      (c) => DropdownMenuItem(
+                        value: (c as Map)['id'] as String?,
+                        child: Text(c['name'] as String? ?? ''),
+                      ),
+                    ),
                   ],
                   onChanged: (v) => setState(() => _classroomId = v),
                 ),

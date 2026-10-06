@@ -55,8 +55,18 @@ class _OrderPageState extends ConsumerState<OrderPage>
         _isLoading = false;
       });
     } catch (e) {
+      // Fallback to default pricing so the page is still usable even if
+      // the pricing API is temporarily unavailable.
       setState(() {
-        _error = 'Failed to load pricing: $e';
+        _pricing = {
+          'mock_itp': 60000,
+          'mock_ibt': 120000,
+          'mock_ielts': 120000,
+          'mock_toeic': 80000,
+          'tutor_bot_premium': 79000,
+          'official_toefl': 625000,
+          'official_toeic': 525000,
+        };
         _isLoading = false;
       });
     }
@@ -123,9 +133,7 @@ class _OrderPageState extends ConsumerState<OrderPage>
                   TextButton.icon(
                     onPressed: _pickStudent,
                     icon: const Icon(Icons.person_search, size: 18),
-                    label: Text(
-                      _assignedStudentId == null ? 'Pick' : 'Change',
-                    ),
+                    label: Text(_assignedStudentId == null ? 'Pick' : 'Change'),
                   ),
                 ],
               ),
@@ -181,7 +189,8 @@ class _OrderPageState extends ConsumerState<OrderPage>
           ),
           const SizedBox(height: Spacing.lg),
           FilledButton.icon(
-            onPressed: _pricing == null ||
+            onPressed:
+                _pricing == null ||
                     _cart.isEmpty ||
                     _isPlacingOrder ||
                     (orderType == 'book_for_student' &&
@@ -539,13 +548,15 @@ class _OrderPageState extends ConsumerState<OrderPage>
         data: {
           'order_type': orderType,
           'items': _cart.entries
-              .map((entry) => {
-                'item_type': entry.key,
-                'quantity': entry.value,
-                if (orderType == 'book_for_student' &&
-                    _assignedStudentId != null)
-                  'assigned_student_id': _assignedStudentId,
-              })
+              .map(
+                (entry) => {
+                  'item_type': entry.key,
+                  'quantity': entry.value,
+                  if (orderType == 'book_for_student' &&
+                      _assignedStudentId != null)
+                    'assigned_student_id': _assignedStudentId,
+                },
+              )
               .toList(),
         },
       );

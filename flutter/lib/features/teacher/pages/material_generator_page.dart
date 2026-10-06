@@ -79,138 +79,133 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
                   'Create exam-aligned material and send it directly into a syllabus.',
               icon: Icons.auto_awesome_rounded,
             ),
-              const SizedBox(height: Spacing.lg),
-              SurfaceCard(
-                padding: const EdgeInsets.all(Spacing.lg),
-                child: Column(
-                  children: [
-                    DropdownButtonFormField<String>(
-                      value: _type,
-                      decoration: const InputDecoration(
-                        labelText: 'Material type',
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'reading',
-                          child: Text('Reading Passage'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'listening',
-                          child: Text('Listening Script'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'grammar',
-                          child: Text('Grammar Exercise'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'vocabulary',
-                          child: Text('Vocabulary Set'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'writing',
-                          child: Text('Writing Prompt'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'speaking',
-                          child: Text('Speaking Prompt'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'mock_test',
-                          child: Text('Mock Test'),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() => _type = v ?? 'reading'),
+            const SizedBox(height: Spacing.lg),
+            SurfaceCard(
+              padding: const EdgeInsets.all(Spacing.lg),
+              child: Column(
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: _type,
+                    decoration: const InputDecoration(
+                      labelText: 'Material type',
                     ),
-                    const SizedBox(height: Spacing.md),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _exam,
-                            decoration: const InputDecoration(
-                              labelText: 'Exam',
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'reading',
+                        child: Text('Reading Passage'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'listening',
+                        child: Text('Listening Script'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'grammar',
+                        child: Text('Grammar Exercise'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'vocabulary',
+                        child: Text('Vocabulary Set'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'writing',
+                        child: Text('Writing Prompt'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'speaking',
+                        child: Text('Speaking Prompt'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'mock_test',
+                        child: Text('Mock Test'),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() => _type = v ?? 'reading'),
+                  ),
+                  const SizedBox(height: Spacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _exam,
+                          decoration: const InputDecoration(labelText: 'Exam'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'IELTS',
+                              child: Text('IELTS'),
                             ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'IELTS',
-                                child: Text('IELTS'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'TOEFL_IBT',
-                                child: Text('TOEFL iBT'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'TOEFL_ITP',
-                                child: Text('TOEFL ITP'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'TOEIC',
-                                child: Text('TOEIC'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'GENERAL',
-                                child: Text('General English'),
-                              ),
-                            ],
-                            onChanged: (v) =>
-                                setState(() => _exam = v ?? 'IELTS'),
-                          ),
-                        ),
-                        const SizedBox(width: Spacing.sm),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _level,
-                            decoration: const InputDecoration(
-                              labelText: 'Level',
+                            DropdownMenuItem(
+                              value: 'TOEFL_IBT',
+                              child: Text('TOEFL iBT'),
                             ),
-                            items: const [
-                              DropdownMenuItem(value: 'A2', child: Text('A2')),
-                              DropdownMenuItem(value: 'B1', child: Text('B1')),
-                              DropdownMenuItem(value: 'B2', child: Text('B2')),
-                              DropdownMenuItem(value: 'C1', child: Text('C1')),
-                            ],
-                            onChanged: (v) =>
-                                setState(() => _level = v ?? 'B2'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: Spacing.md),
-                    TextFormField(
-                      controller: _topicController,
-                      decoration: const InputDecoration(
-                        labelText: 'Topic',
-                        hintText: 'e.g. technology and society',
-                        prefixIcon: Icon(Icons.topic_outlined),
-                      ),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Topic required'
-                          : null,
-                    ),
-                    const SizedBox(height: Spacing.lg),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _isGenerating ? null : _generate,
-                        icon: const Icon(Icons.auto_awesome),
-                        label: Text(
-                          _isGenerating ? 'Generating...' : 'Generate Material',
+                            DropdownMenuItem(
+                              value: 'TOEFL_ITP',
+                              child: Text('TOEFL ITP'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'TOEIC',
+                              child: Text('TOEIC'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'GENERAL',
+                              child: Text('General English'),
+                            ),
+                          ],
+                          onChanged: (v) =>
+                              setState(() => _exam = v ?? 'IELTS'),
                         ),
                       ),
+                      const SizedBox(width: Spacing.sm),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _level,
+                          decoration: const InputDecoration(labelText: 'Level'),
+                          items: const [
+                            DropdownMenuItem(value: 'A2', child: Text('A2')),
+                            DropdownMenuItem(value: 'B1', child: Text('B1')),
+                            DropdownMenuItem(value: 'B2', child: Text('B2')),
+                            DropdownMenuItem(value: 'C1', child: Text('C1')),
+                          ],
+                          onChanged: (v) => setState(() => _level = v ?? 'B2'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Spacing.md),
+                  TextFormField(
+                    controller: _topicController,
+                    decoration: const InputDecoration(
+                      labelText: 'Topic',
+                      hintText: 'e.g. technology and society',
+                      prefixIcon: Icon(Icons.topic_outlined),
                     ),
-                  ],
-                ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Topic required'
+                        : null,
+                  ),
+                  const SizedBox(height: Spacing.lg),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _isGenerating ? null : _generate,
+                      icon: const Icon(Icons.auto_awesome),
+                      label: Text(
+                        _isGenerating ? 'Generating...' : 'Generate Material',
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ),
 
-              if (_isGenerating) ...[
-                const SizedBox(height: Spacing.lg),
-                const LoadingState(),
-              ],
+            if (_isGenerating) ...[
+              const SizedBox(height: Spacing.lg),
+              const LoadingState(),
+            ],
 
-              if (_generated != null) ...[
-                const SizedBox(height: Spacing.lg),
-                _buildPreview(),
-              ],
+            if (_generated != null) ...[
+              const SizedBox(height: Spacing.lg),
+              _buildPreview(),
+            ],
           ],
         ),
       ),
@@ -303,10 +298,11 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
                         const SizedBox(width: Spacing.sm),
                         Text(
                           'Content needs review',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: OseeTheme.warning,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: OseeTheme.warning,
+                                fontWeight: FontWeight.w700,
+                              ),
                         ),
                       ],
                     ),
@@ -328,6 +324,12 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
               onPressed: _addToSyllabus,
               icon: const Icon(Icons.add),
               label: const Text('Add to Syllabus'),
+            ),
+            const SizedBox(width: Spacing.sm),
+            OutlinedButton.icon(
+              onPressed: _saveToCatalog,
+              icon: const Icon(Icons.bookmark_outline),
+              label: const Text('Save to Catalog'),
             ),
           ],
         ),
@@ -416,6 +418,52 @@ class _MaterialGeneratorPageState extends ConsumerState<MaterialGeneratorPage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    }
+  }
+
+  /// Save the AI-generated material to the global material catalog so it
+  /// appears in the syllabus builder's material library for all teachers.
+  /// Blueprint Task 6.5: "Generated material preview + add to syllabus".
+  Future<void> _saveToCatalog() async {
+    if (_generated == null) return;
+    try {
+      final g = _generated!;
+      final content = g['content'] as Map<String, dynamic>? ?? {};
+      final title =
+          (content['title'] as String?) ?? _topicController.text.trim();
+      final itemType = _type == 'mock_test' ? 'mock_test' : _type;
+
+      final dio = ApiClient.create();
+      await dio.post(
+        '/teacher/catalog',
+        data: {
+          'title': title,
+          'description': 'AI-generated $_type for $_exam ($_level)',
+          'item_type': itemType,
+          'section': _type,
+          'difficulty': _level,
+          'source_type': 'ai_generated',
+          'estimated_minutes': 30,
+          'exam_types': [_exam],
+          'ai_generated_content': content,
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Saved to material catalog ✓ — available for all teachers',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
       }
     }
   }

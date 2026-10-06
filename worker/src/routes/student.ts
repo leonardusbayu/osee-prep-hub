@@ -135,7 +135,7 @@ studentRoutes.get('/dashboard', cache({ ttl: 30 }), async (c) => {
   }
 
   return c.json({
-    student: { id: user.id, name: user.display_name, email: user.email },
+    student: { id: user.id, name: user.display_name ?? user.email, email: user.email },
     syllabus,
     progress: progress ?? {},
     readiness,
@@ -305,6 +305,56 @@ studentRoutes.get('/book-test', async (c) => {
     note: canBook
       ? 'You are ready to book your official test.'
       : 'Continue practicing until your readiness reaches 80%.',
+  });
+});
+
+/** GET /api/student/syllabus/item/:itemId — full item detail + classroom/syllabus
+ *  context (Goal 6). Powers the SyllabusItemDetailPage on the student portal:
+ *  shows the student what to do on the destination platform before redirecting.
+ *  Reuses the same ownership check as start/complete. */
+studentRoutes.get('/syllabus/item/:itemId', async (c) => {
+  const user = getAuthedUser(c);
+  const itemId = c.req.param('itemId');
+  const supabase = getSupabase(c.env);
+
+  const ok = await studentOwnsSyllabusItem(c.env, user.id, itemId);
+  if (!ok) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Item not available for this student' } }, 403);
+  }
+
+  const { data: item, error } = await supabase
+    .from('syllabus_items')
+    .select('id, syllabus_id, title, description, item_type, section, difficulty, estimated_minutes, source_type, source_material_id, source_platform_url')
+    .eq('id', itemId)
+    .maybeSingle();
+  if (error || !item) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Item not found' } }, 404);
+  }
+
+  // Join to syllabus (for syllabus_name + classroom_id) + classroom (for classroom_name).
+  const syllabusId = (item as Record<string, unknown>).syllabus_id as string;
+  const { data: syllabus } = await supabase
+    .from('syllabi')
+    .select('id, name, classroom_id')
+    .eq('id', syllabusId)
+    .maybeSingle();
+  const syl = (syllabus as Record<string, unknown> | null) ?? {};
+  const classroomId = syl.classroom_id as string | null;
+
+  let classroomName: string | null = null;
+  if (classroomId) {
+    const { data: classroom } = await supabase
+      .from('classrooms')
+      .select('name')
+      .eq('id', classroomId)
+      .maybeSingle();
+    classroomName = ((classroom as Record<string, unknown> | null) ?? {}).name as string | null;
+  }
+
+  return c.json({
+    ...item,
+    syllabus_name: syl.name ?? null,
+    classroom_name: classroomName,
   });
 });
 

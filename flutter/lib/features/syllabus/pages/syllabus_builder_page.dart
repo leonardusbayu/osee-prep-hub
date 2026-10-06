@@ -104,7 +104,7 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
       sortOrder: _columns[targetCol].length,
       sourceType: entry.sourceType,
       sourceMaterialId: entry.materialId,
-      sourcePlatformUrl: null,
+      sourcePlatformUrl: entry.sourcePlatformUrl,
       title: entry.title,
       description: entry.description,
       itemType: entry.itemType,
@@ -296,6 +296,333 @@ class _SyllabusBuilderPageState extends ConsumerState<SyllabusBuilderPage> {
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _showUploadCustomMaterialDialog(targetCol);
+                  },
+                  icon: const Icon(Icons.upload_file, size: 18),
+                  label: const Text('Upload Custom'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Upload Custom Material dialog — teacher creates their own material and
+  /// saves it to the global catalog (POST /api/teacher/catalog). The material
+  /// then appears in the syllabus builder's material library for all teachers.
+  /// Blueprint line 495: source_type='teacher_custom' — "teacher's own uploaded material".
+  void _showUploadCustomMaterialDialog(int targetCol) {
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final urlCtrl = TextEditingController();
+    String itemType = 'reading';
+    String difficulty = 'B2';
+    int estimatedMinutes = 30;
+    final selectedExams = <String>{};
+    bool isUploading = false;
+    String? errorMsg;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: const Text('Upload Custom Material'),
+              content: SizedBox(
+                width: 480,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Create your own material and add it to the catalog. '
+                        'It will appear in the material library for all teachers.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: titleCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Title *',
+                          hintText: 'e.g. Reading Passage — Indonesian Culture',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: descCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                          hintText: 'Short description of the material',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: itemType,
+                              decoration: const InputDecoration(
+                                labelText: 'Type',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'reading',
+                                  child: Text('Reading'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'listening',
+                                  child: Text('Listening'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'speaking',
+                                  child: Text('Speaking'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'writing',
+                                  child: Text('Writing'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'grammar',
+                                  child: Text('Grammar'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'vocabulary',
+                                  child: Text('Vocabulary'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'mock_test',
+                                  child: Text('Mock Test'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'assignment',
+                                  child: Text('Assignment'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'review',
+                                  child: Text('Review'),
+                                ),
+                              ],
+                              onChanged: (v) => setDialogState(
+                                () => itemType = v ?? 'reading',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: difficulty,
+                              decoration: const InputDecoration(
+                                labelText: 'Level',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'A1',
+                                  child: Text('A1'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'A2',
+                                  child: Text('A2'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'B1',
+                                  child: Text('B1'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'B2',
+                                  child: Text('B2'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'C1',
+                                  child: Text('C1'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'C2',
+                                  child: Text('C2'),
+                                ),
+                              ],
+                              onChanged: (v) =>
+                                  setDialogState(() => difficulty = v ?? 'B2'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: urlCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Platform URL (optional)',
+                                hintText: 'https://...',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 100,
+                            child: TextFormField(
+                              initialValue: '30',
+                              decoration: const InputDecoration(
+                                labelText: 'Minutes',
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.number,
+                              onChanged: (v) =>
+                                  estimatedMinutes = int.tryParse(v) ?? 30,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Exam Types',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        children:
+                            [
+                              'TOEFL_IBT',
+                              'TOEFL_ITP',
+                              'IELTS',
+                              'TOEIC',
+                              'GENERAL',
+                            ].map((et) {
+                              final selected = selectedExams.contains(et);
+                              return FilterChip(
+                                label: Text(et),
+                                selected: selected,
+                                onSelected: (_) => setDialogState(() {
+                                  if (selected) {
+                                    selectedExams.remove(et);
+                                  } else {
+                                    selectedExams.add(et);
+                                  }
+                                }),
+                              );
+                            }).toList(),
+                      ),
+                      if (errorMsg != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          errorMsg!,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isUploading ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: isUploading
+                      ? null
+                      : () async {
+                          if (titleCtrl.text.trim().isEmpty) {
+                            setDialogState(
+                              () => errorMsg = 'Title is required',
+                            );
+                            return;
+                          }
+                          setDialogState(() {
+                            isUploading = true;
+                            errorMsg = null;
+                          });
+                          try {
+                            final dio = ApiClient.create();
+                            await dio.post(
+                              '/teacher/catalog',
+                              data: {
+                                'title': titleCtrl.text.trim(),
+                                'description': descCtrl.text.trim().isEmpty
+                                    ? null
+                                    : descCtrl.text.trim(),
+                                'item_type': itemType,
+                                'section': itemType,
+                                'difficulty': difficulty,
+                                'estimated_minutes': estimatedMinutes,
+                                'source_type': 'teacher_custom',
+                                'source_platform_url':
+                                    urlCtrl.text.trim().isEmpty
+                                    ? null
+                                    : urlCtrl.text.trim(),
+                                'exam_types': selectedExams.toList(),
+                              },
+                            );
+                            // Also add to this syllabus column immediately.
+                            final entry = CatalogEntry(
+                              sourceType: 'teacher_custom',
+                              materialId:
+                                  'custom-${DateTime.now().millisecondsSinceEpoch}',
+                              title: titleCtrl.text.trim(),
+                              description: descCtrl.text.trim().isEmpty
+                                  ? null
+                                  : descCtrl.text.trim(),
+                              itemType: itemType,
+                              section: itemType,
+                              difficulty: difficulty,
+                              estimatedMinutes: estimatedMinutes,
+                              sourcePlatformUrl: urlCtrl.text.trim().isEmpty
+                                  ? null
+                                  : urlCtrl.text.trim(),
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            _onCatalogDrop(entry, targetCol);
+                            // Invalidate catalog provider so it refetches with the new material.
+                            ref.invalidate(catalogProvider);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  duration: const Duration(seconds: 2),
+                                  content: Text(
+                                    'Material "${titleCtrl.text.trim()}" added to catalog + syllabus',
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() {
+                              isUploading = false;
+                              errorMsg = 'Upload failed: $e';
+                            });
+                          }
+                        },
+                  child: isUploading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Save to Catalog'),
                 ),
               ],
             );

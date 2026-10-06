@@ -220,6 +220,91 @@ CREATE TABLE syllabus_item_attachments (
 );
 CREATE INDEX idx_syllabus_item_attachments_item ON syllabus_item_attachments(syllabus_item_id);
 
+-- ============================================================
+-- MATERIAL CATALOG — global reusable material repository
+-- ============================================================
+-- Stores materials that teachers can drag into any syllabus, sourced from:
+--   1. Admin-curated platform templates (source='platform_*')
+--   2. AI-generated materials saved by teachers (source='ai_generated')
+--   3. Teacher-created custom materials shared to catalog (source='teacher_custom')
+-- Unlike syllabus_items (which require a syllabus_id FK), this table stores
+-- standalone materials that are NOT tied to a specific syllabus.
+-- The /api/teacher/catalog endpoint reads from this table + video_lessons +
+-- ai_generation_queue to populate the syllabus builder's material library.
+
+CREATE TABLE material_catalog (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  source_type TEXT NOT NULL CHECK (source_type IN (
+    'platform_ibt', 'platform_itp', 'platform_ielts', 'platform_toeic',
+    'edubot', 'teacher_custom', 'ai_generated', 'video_lesson'
+  )),
+  source_material_id TEXT,          -- ID in source platform (if applicable)
+  source_platform_url TEXT,         -- deep link to the material on the source platform
+
+  -- Item metadata
+  title TEXT NOT NULL,
+  description TEXT,
+  item_type TEXT NOT NULL CHECK (item_type IN (
+    'reading', 'listening', 'speaking', 'writing',
+    'grammar', 'vocabulary', 'mock_test', 'diagnostic',
+    'video', 'live_class', 'assignment', 'review'
+  )),
+  section TEXT,                      -- 'reading', 'listening', etc.
+  difficulty TEXT,                   -- 'A1'..'C2'
+  estimated_minutes INTEGER DEFAULT 20,
+
+  -- AI-generated content (if source_type='ai_generated')
+  ai_generated_content JSONB,
+
+  -- Ownership: who created/shared this material to the catalog
+  created_by UUID REFERENCES unified_profiles(id) ON DELETE SET NULL,
+  is_public BOOLEAN DEFAULT TRUE,    -- TRUE = visible to all teachers in catalog
+
+  -- Metadata
+  tags TEXT[] DEFAULT '{}',          -- e.g. ['inference','academic','B2']
+  exam_types TEXT[] DEFAULT '{}',    -- e.g. ['TOEFL_IBT','IELTS'] (which exams this helps with)
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_material_catalog_type ON material_catalog(item_type);
+CREATE INDEX idx_material_catalog_difficulty ON material_catalog(difficulty);
+CREATE INDEX idx_material_catalog_source ON material_catalog(source_type);
+CREATE INDEX idx_material_catalog_public ON material_catalog(is_public);
+CREATE INDEX idx_material_catalog_tags ON material_catalog USING gin(tags);
+CREATE INDEX idx_material_catalog_exam_types ON material_catalog USING gin(exam_types);
+
+-- Seed: built-in platform catalog (24 curated materials across all 5 platforms).
+-- These populate the syllabus builder's material library out-of-the-box so
+-- teachers can drag them into any syllabus immediately.
+INSERT INTO material_catalog (source_type, source_material_id, source_platform_url, title, description, item_type, section, difficulty, estimated_minutes, exam_types, tags) VALUES
+  ('platform_ibt', 'ibt-reading-basics', 'https://ibt.osee.co.id', 'iBT Reading — Basics', 'Reading passages & questions, foundation level', 'reading', 'reading', 'B1', 30, '{TOEFL_IBT}', '{inference,passage}'),
+  ('platform_ibt', 'ibt-reading-advanced', 'https://ibt.osee.co.id', 'iBT Reading — Advanced', 'Inference & rhetoric-focused passages', 'reading', 'reading', 'C1', 45, '{TOEFL_IBT}', '{inference,rhetoric}'),
+  ('platform_ibt', 'ibt-listening-conversations', 'https://ibt.osee.co.id', 'iBT Listening — Conversations', 'Campus-dialogue listening sets', 'listening', 'listening', 'B2', 25, '{TOEFL_IBT}', '{conversation,campus}'),
+  ('platform_ibt', 'ibt-listening-lectures', 'https://ibt.osee.co.id', 'iBT Listening — Lectures', 'Mini-lecture listening practice', 'listening', 'listening', 'C1', 40, '{TOEFL_IBT}', '{lecture,academic}'),
+  ('platform_ibt', 'ibt-speaking-task1', 'https://ibt.osee.co.id', 'iBT Speaking — Task 1', 'Independent speaking prompts', 'speaking', 'speaking', 'B2', 20, '{TOEFL_IBT}', '{independent,prompt}'),
+  ('platform_ibt', 'ibt-speaking-task2', 'https://ibt.osee.co.id', 'iBT Speaking — Task 2', 'Integrated speaking (read+listen+speak)', 'speaking', 'speaking', 'C1', 30, '{TOEFL_IBT}', '{integrated,speaking}'),
+  ('platform_ibt', 'ibt-writing-independent', 'https://ibt.osee.co.id', 'iBT Writing — Independent', 'Opinion essay prompts', 'writing', 'writing', 'B2', 30, '{TOEFL_IBT}', '{essay,opinion}'),
+  ('platform_ibt', 'ibt-writing-integrated', 'https://ibt.osee.co.id', 'iBT Writing — Integrated', 'Read-listen-write tasks', 'writing', 'writing', 'C1', 40, '{TOEFL_IBT}', '{integrated,writing}'),
+  ('platform_itp', 'itp-reading-basics', 'https://test.osee.co.id', 'ITP Reading — Basics', 'Structure & written expression', 'reading', 'reading', 'B1', 30, '{TOEFL_ITP}', '{structure,grammar}'),
+  ('platform_itp', 'itp-listening-basics', 'https://test.osee.co.id', 'ITP Listening — Basics', 'Short conversation listening', 'listening', 'listening', 'B1', 25, '{TOEFL_ITP}', '{conversation}'),
+  ('platform_itp', 'itp-grammar-structure', 'https://test.osee.co.id', 'ITP Grammar — Structure', 'Sentence structure correction', 'grammar', 'grammar', 'B2', 20, '{TOEFL_ITP}', '{grammar,structure}'),
+  ('platform_itp', 'itp-vocabulary', 'https://test.osee.co.id', 'ITP Vocabulary', 'Academic word list practice', 'vocabulary', 'vocabulary', 'B1', 15, '{TOEFL_ITP}', '{vocab,academic}'),
+  ('platform_ielts', 'ielts-reading-academic', 'https://ielts.osee.co.id', 'IELTS Reading — Academic', 'Academic passage practice', 'reading', 'reading', 'B2', 40, '{IELTS}', '{academic,passage}'),
+  ('platform_ielts', 'ielts-listening', 'https://ielts.osee.co.id', 'IELTS Listening', 'Four-section listening test', 'listening', 'listening', 'B2', 30, '{IELTS}', '{listening,test}'),
+  ('platform_ielts', 'ielts-speaking-part1', 'https://ielts.osee.co.id', 'IELTS Speaking — Part 1', 'Personal interview questions', 'speaking', 'speaking', 'B2', 15, '{IELTS}', '{interview,personal}'),
+  ('platform_ielts', 'ielts-speaking-part2', 'https://ielts.osee.co.id', 'IELTS Speaking — Part 2', 'Long-turn monologue', 'speaking', 'speaking', 'C1', 20, '{IELTS}', '{monologue,cue-card}'),
+  ('platform_ielts', 'ielts-writing-task1', 'https://ielts.osee.co.id', 'IELTS Writing — Task 1', 'Chart/graph description', 'writing', 'writing', 'B2', 20, '{IELTS}', '{chart,description}'),
+  ('platform_ielts', 'ielts-writing-task2', 'https://ielts.osee.co.id', 'IELTS Writing — Task 2', 'Academic essay', 'writing', 'writing', 'C1', 40, '{IELTS}', '{essay,academic}'),
+  ('platform_toeic', 'toeic-listening-photographs', 'https://toeic.osee.co.id', 'TOEIC Listening — Photographs', 'Picture description', 'listening', 'listening', 'A2', 15, '{TOEIC}', '{picture,business}'),
+  ('platform_toeic', 'toeic-listening-short-talks', 'https://toeic.osee.co.id', 'TOEIC Listening — Short Talks', 'Business monologues', 'listening', 'listening', 'B1', 25, '{TOEIC}', '{business,talk}'),
+  ('platform_toeic', 'toeic-reading-incomplete', 'https://toeic.osee.co.id', 'TOEIC Reading — Incomplete Sentences', 'Grammar/vocab fill-in-blank', 'reading', 'reading', 'B1', 20, '{TOEIC}', '{grammar,vocab}'),
+  ('platform_toeic', 'toeic-reading-comprehension', 'https://toeic.osee.co.id', 'TOEIC Reading — Comprehension', 'Passage-based questions', 'reading', 'reading', 'B2', 30, '{TOEIC}', '{passage,business}'),
+  ('edubot', 'edubot-conversation', 'https://edubot.osee.co.id', 'EduBot — Conversation Practice', 'AI-powered spoken conversation', 'speaking', 'speaking', 'B1', 30, '{GENERAL}', '{conversation,ai}'),
+  ('edubot', 'edubot-writing-feedback', 'https://edubot.osee.co.id', 'EduBot — Writing Feedback', 'AI essay scoring + feedback', 'writing', 'writing', 'B2', 25, '{GENERAL}', '{writing,ai,feedback}')
+ON CONFLICT DO NOTHING;
+
 -- Per-student syllabus item progress (Task 11.2)
 CREATE TABLE syllabus_item_progress (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -605,10 +690,9 @@ CREATE TABLE student_progress_unified (
   has_premium BOOLEAN DEFAULT FALSE,
   last_premium_credit_at TIMESTAMPTZ,  -- null = never credited; used by cron to credit monthly
 
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(student_id)
 );
-
-CREATE INDEX idx_progress_student ON student_progress_unified(student_id);
 
 -- Per-practice history row (audit trail of all practice/test attempts)
 CREATE TABLE student_progress_history (
@@ -645,10 +729,10 @@ CREATE INDEX idx_platform_links_exam ON platform_links(exam_type);
 -- Seed: deep links to the five practice platforms + the OSEE booking bridge.
 INSERT INTO platform_links (platform, exam_type, url, label) VALUES
   ('ibt',    'TOEFL_IBT', 'https://ibt.osee.co.id',     'OSEE IBT Practice'),
-  ('itp',    'TOEFL_ITP', 'https://itp.osee.co.id',    'OSEE ITP Practice'),
+  ('itp',    'TOEFL_ITP', 'https://test.osee.co.id/sso.php', 'OSEE ITP Practice'),
   ('ielts',  'IELTS',     'https://ielts.osee.co.id',  'OSEE IELTS Practice'),
   ('toeic',  'TOEIC',     'https://toeic.osee.co.id',  'OSEE TOEIC Practice'),
-  ('edubot', 'GENERAL',   'https://edubot.osee.co.id', 'EduBot Tutor'),
+  ('edubot', 'GENERAL',   'https://t.me/osee_edubot',  'EduBot Tutor'),
   ('osee',   'TOEFL_IBT', 'https://osee.co.id/booking','OSEE Official Test Booking')
 ON CONFLICT (platform, exam_type) DO UPDATE SET url = EXCLUDED.url, label = EXCLUDED.label;
 
@@ -834,6 +918,7 @@ CREATE TABLE webhook_events (
   processed BOOLEAN DEFAULT FALSE,
   processed_at TIMESTAMPTZ,
   error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -1130,6 +1215,7 @@ ALTER TABLE knowledge_base_embeddings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teacher_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE syllabus_item_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE syllabus_item_attachments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE material_catalog ENABLE ROW LEVEL SECURITY;
 
 -- Default deny for sensitive tables (access via service key only)
 CREATE POLICY syllabus_item_progress_student_select ON syllabus_item_progress
@@ -1497,6 +1583,20 @@ CREATE POLICY teacher_invitations_partner_insert ON teacher_invitations
   FOR INSERT WITH CHECK (partner_id = auth.uid());
 CREATE POLICY teacher_invitations_admin_update ON teacher_invitations
   FOR UPDATE USING (is_admin());
+
+-- material_catalog: teachers read public + own; creators update/delete own; admin all
+CREATE POLICY material_catalog_select ON material_catalog
+  FOR SELECT USING (
+    is_public = TRUE
+    OR created_by = auth.uid()
+    OR is_admin()
+  );
+CREATE POLICY material_catalog_insert ON material_catalog
+  FOR INSERT WITH CHECK (created_by = auth.uid() OR is_admin());
+CREATE POLICY material_catalog_update ON material_catalog
+  FOR UPDATE USING (created_by = auth.uid() OR is_admin());
+CREATE POLICY material_catalog_delete ON material_catalog
+  FOR DELETE USING (created_by = auth.uid() OR is_admin());
 
 -- ============================================================
 -- 18. USEFUL VIEWS

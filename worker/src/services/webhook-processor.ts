@@ -17,6 +17,8 @@ import { awardQuotaBonus } from './quota';
  * Marks each event as processed=true with optional error_message on failure.
  */
 
+const MAX_RETRIES = 3;
+
 interface WebhookEventRow {
   id: string;
   platform: string;
@@ -24,6 +26,7 @@ interface WebhookEventRow {
   user_email: string | null;
   user_id: string | null;
   payload: Record<string, unknown>;
+  retry_count: number;
   created_at: string;
 }
 
@@ -31,6 +34,7 @@ export interface ProcessResult {
   total: number;
   succeeded: number;
   failed: number;
+  dead: Array<{ event_id: string; error: string }>;
   errors: Array<{ event_id: string; error: string }>;
 }
 
@@ -54,6 +58,7 @@ export async function processWebhookBatch(env: Env, batchSize = 100): Promise<Pr
     total: events?.length ?? 0,
     succeeded: 0,
     failed: 0,
+    dead: [],
     errors: [],
   };
 
@@ -67,10 +72,18 @@ export async function processWebhookBatch(env: Env, batchSize = 100): Promise<Pr
       result.succeeded++;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      result.failed++;
-      result.errors.push({ event_id: event.id, error: message });
-      // Mark as processed with error (don't block queue)
-      await markProcessed(supabase, event.id, message);
+      const nextRetry = (event.retry_count ?? 0) + 1;
+      if (nextRetry >= MAX_RETRIES) {
+        // Dead letter — stop retrying and mark as processed with error
+        result.dead.push({ event_id: event.id, error: message });
+        await markProcessed(supabase, event.id, message, nextRetry);
+        // Optional: notify admin/monitoring here (e.g., Sentry, Telegram)
+      } else {
+        result.failed++;
+        result.errors.push({ event_id: event.id, error: message });
+        // Don't mark as processed — leave unprocessed for next cron retry, but bump retry_count
+        await bumpRetryCount(supabase, event.id, nextRetry, message);
+      }
     }
   }
 
@@ -292,11 +305,28 @@ async function checkReadinessAndNotify(
   }
 }
 
+/** Increment retry_count and store latest error while leaving processed=false. */
+async function bumpRetryCount(
+  supabase: import('@supabase/supabase-js').SupabaseClient,
+  eventId: string,
+  retryCount: number,
+  errorMessage: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('webhook_events')
+    .update({ retry_count: retryCount, error_message: errorMessage })
+    .eq('id', eventId);
+  if (error) {
+    console.error(`Failed to bump retry_count for event ${eventId}:`, error);
+  }
+}
+
 /** Mark a webhook event as processed. error_message is null on success. */
 async function markProcessed(
   supabase: import('@supabase/supabase-js').SupabaseClient,
   eventId: string,
-  errorMessage: string | null
+  errorMessage: string | null,
+  retryCount?: number
 ): Promise<void> {
   const { error } = await supabase
     .from('webhook_events')
@@ -304,6 +334,7 @@ async function markProcessed(
       processed: true,
       processed_at: new Date().toISOString(),
       error_message: errorMessage,
+      ...(retryCount !== undefined ? { retry_count: retryCount } : {}),
     })
     .eq('id', eventId);
   if (error) {

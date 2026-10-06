@@ -29,6 +29,7 @@ final catalogProvider = FutureProvider.autoDispose<List<CatalogEntry>>((
         section: m['section'] as String?,
         difficulty: m['difficulty'] as String?,
         estimatedMinutes: (m['estimated_minutes'] as int?) ?? 20,
+        sourcePlatformUrl: m['source_platform_url'] as String?,
       );
     }).toList();
     // API returned data — use it.

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api_client.dart';
+import '../../auth/auth_storage.dart';
 import '../student_theme.dart';
 import '../widgets/student_widgets.dart';
 
@@ -132,8 +133,20 @@ class _PlatformLinksPageState extends ConsumerState<PlatformLinksPage> {
     final platform = (link['platform'] as String?) ?? '';
     final url = (link['url'] as String?) ?? '';
     final label = (link['label'] as String?) ?? platform;
+
+    // Append JWT to SSO-enabled platform URLs for cross-origin authentication.
+    // In production (*.osee.co.id) the cookie Domain=.osee.co.id handles this
+    // automatically; the query param is the fallback for local dev where
+    // Flutter (localhost:8080) and ITP (localhost/2026/itp) are cross-origin.
+    String finalUrl = url;
+    final token = AuthStorage.token;
+    if (token != null && token.isNotEmpty && url.contains('sso')) {
+      final separator = url.contains('?') ? '&' : '?';
+      finalUrl = '$url${separator}osee_token=$token';
+    }
+
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse(url)),
+      onTap: () => launchUrl(Uri.parse(finalUrl)),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

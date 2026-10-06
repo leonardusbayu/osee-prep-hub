@@ -32,7 +32,10 @@ To ingest documents into the RAG knowledge base:
 npx tsx scripts/ingest-knowledge-base.ts --source docs/knowledge-base/tier1 --dry-run
 
 # Real ingestion (requires OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY)
-npx tsx scripts/ingest-knowledge-base.ts --source docs/knowledge-base/tier1 --tier 1
+npx tsx scripts/ingest-knowledge-base.ts --source docs/knowledge-base/tier1 --tier 1 --category rubrics
+
+# Ingest Tier 2 error patterns (when available)
+npx tsx scripts/ingest-knowledge-base.ts --source docs/knowledge-base/tier2 --tier 2 --category error_patterns
 
 # Limit to first N files
 npx tsx scripts/ingest-knowledge-base.ts --source docs/knowledge-base/tier1 --limit 3

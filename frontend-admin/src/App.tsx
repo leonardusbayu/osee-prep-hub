@@ -5,6 +5,7 @@ import { Users } from './pages/Users';
 import { KnowledgeBase } from './pages/KnowledgeBase';
 import { Commission } from './pages/Commission';
 import { Orders } from './pages/Orders';
+import { Materials } from './pages/Materials';
 import { Analytics } from './pages/Analytics';
 import { Pricing } from './pages/Pricing';
 import { Ambassadors } from './pages/Ambassadors';
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/students', label: 'Students' },
   { to: '/pricing', label: 'Pricing' },
   { to: '/content', label: 'Knowledge Base' },
+  { to: '/materials', label: 'Materials' },
   { to: '/commission', label: 'Commission' },
   { to: '/orders', label: 'Orders' },
   { to: '/ambassadors', label: 'Ambassadors' },
@@ -155,6 +157,7 @@ export function App() {
           <Route path="/students" element={<Students />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/content" element={<KnowledgeBase />} />
+          <Route path="/materials" element={<Materials />} />
           <Route path="/commission" element={<Commission />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/ambassadors" element={<Ambassadors />} />

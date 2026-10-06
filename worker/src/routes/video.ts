@@ -189,7 +189,8 @@ videoRoutes.post('/lessons/:id/complete', async (c) => {
         .filter((id): id is string => id !== null);
 
       if (c.env.TELEGRAM_BOT_TOKEN && teacherChatIds.length > 0) {
-        const msg = `${user.display_name} completed a video lesson (quiz score: ${quizScore ?? 'n/a'}).`;
+        const displayName = user.display_name ?? user.email;
+        const msg = `${displayName} completed a video lesson (quiz score: ${quizScore ?? 'n/a'}).`;
         for (const chatId of teacherChatIds) {
           await fetch(`https://api.telegram.org/bot${c.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
             method: 'POST',

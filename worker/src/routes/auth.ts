@@ -130,10 +130,8 @@ authRoutes.post('/register', authRateLimit, async (c) => {
       return c.json({ error: { code: 'INVALID_REFERRAL', message: 'Invalid or inactive referral code' } }, 400);
     }
     referredBy = referrer.user_id as string;
-    // Prevent self-referral
-    if (referredBy === email) {
-      return c.json({ error: { code: 'SELF_REFERRAL', message: 'Cannot refer yourself' } }, 400);
-    }
+    // Prevent self-referral — the check happens below against the referrer's email.
+    // (Kept as a no-op placeholder to preserve block structure.)
   }
 
   // Hash password
@@ -165,6 +163,20 @@ authRoutes.post('/register', authRateLimit, async (c) => {
       const code = err instanceof InvitationError ? err.code : 'INVITATION_INVALID';
       const message = err instanceof Error ? err.message : 'Invalid invitation';
       return c.json({ error: { code, message } }, 400);
+    }
+  }
+
+  // Prevent self-referral: compare referrer (teacher user_id) against the new user email.
+  // The referrer is a teacher profile, and a teacher cannot register themselves with their own referral code.
+  // We check before insert because the new user does not exist yet; the new user's email must not match the referrer's email.
+  if (referredBy) {
+    const { data: referrerProfile } = await supabase
+      .from('unified_profiles')
+      .select('email')
+      .eq('id', referredBy)
+      .maybeSingle();
+    if (referrerProfile?.email?.toLowerCase() === email.toLowerCase()) {
+      return c.json({ error: { code: 'SELF_REFERRAL', message: 'Cannot refer yourself' } }, 400);
     }
   }
 

@@ -3,6 +3,9 @@
 -- Tables + functions added since last production push
 -- ============================================================
 
+-- 0. Add retry_count to webhook_events for dead-letter handling.
+ALTER TABLE webhook_events ADD COLUMN IF NOT EXISTS retry_count INTEGER DEFAULT 0;
+
 -- 1. syllabus_item_progress — per-student syllabus item tracking
 CREATE TABLE IF NOT EXISTS syllabus_item_progress (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -129,12 +132,23 @@ CREATE TABLE IF NOT EXISTS video_progress (
 CREATE INDEX IF NOT EXISTS idx_video_progress_user ON video_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_video_progress_lesson ON video_progress(lesson_id);
 
--- 9. student_progress_unified — add practice_count columns
+-- 9. student_progress_unified — add practice_count columns + UNIQUE constraint on student_id
+-- The UNIQUE(student_id) constraint is required for upsert (ON CONFLICT) in student-progress.ts
 ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS ibt_practice_count INTEGER DEFAULT 0;
 ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS itp_practice_count INTEGER DEFAULT 0;
 ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS ielts_practice_count INTEGER DEFAULT 0;
 ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS toeic_practice_count INTEGER DEFAULT 0;
 ALTER TABLE student_progress_unified ADD COLUMN IF NOT EXISTS edubot_practice_count INTEGER DEFAULT 0;
+-- Drop the old non-unique index if it exists, then add unique constraint
+DROP INDEX IF EXISTS idx_progress_student;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'student_progress_unified_student_id_key'
+  ) THEN
+    ALTER TABLE student_progress_unified ADD CONSTRAINT student_progress_unified_student_id_key UNIQUE (student_id);
+  END IF;
+END $$;
 
 -- 10. ai_generation_queue — add user_id column (code queries user_id, schema has teacher_id)
 ALTER TABLE ai_generation_queue ADD COLUMN IF NOT EXISTS user_id UUID;
@@ -548,10 +562,10 @@ END $$;
 
 INSERT INTO platform_links (platform, exam_type, url, label) VALUES
   ('ibt',    'TOEFL_IBT', 'https://ibt.osee.co.id',     'OSEE IBT Practice'),
-  ('itp',    'TOEFL_ITP', 'https://itp.osee.co.id',    'OSEE ITP Practice'),
+  ('itp',    'TOEFL_ITP', 'https://test.osee.co.id',    'OSEE ITP Practice'),
   ('ielts',  'IELTS',     'https://ielts.osee.co.id',  'OSEE IELTS Practice'),
   ('toeic',  'TOEIC',     'https://toeic.osee.co.id',  'OSEE TOEIC Practice'),
-  ('edubot', 'GENERAL',   'https://edubot.osee.co.id', 'EduBot Tutor'),
+  ('edubot', 'GENERAL',   'https://t.me/osee_edubot',  'EduBot Tutor'),
   ('osee',   'TOEFL_IBT', 'https://osee.co.id/booking','OSEE Official Test Booking')
 ON CONFLICT (platform, exam_type) DO UPDATE SET url = EXCLUDED.url, label = EXCLUDED.label;
 
@@ -845,3 +859,85 @@ CREATE POLICY teacher_invitations_partner_select ON teacher_invitations FOR SELE
   );
 DROP POLICY IF EXISTS teacher_invitations_admin_update ON teacher_invitations;
 CREATE POLICY teacher_invitations_admin_update ON teacher_invitations FOR UPDATE USING (is_admin());
+-- ============================================================
+-- Wave 11: Material catalog — global reusable material repository
+-- ============================================================
+
+-- 25. Create material_catalog table.
+CREATE TABLE IF NOT EXISTS material_catalog (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  source_type TEXT NOT NULL CHECK (source_type IN (
+    'platform_ibt', 'platform_itp', 'platform_ielts', 'platform_toeic',
+    'edubot', 'teacher_custom', 'ai_generated', 'video_lesson'
+  )),
+  source_material_id TEXT,
+  source_platform_url TEXT,
+  title TEXT NOT NULL,
+  description TEXT,
+  item_type TEXT NOT NULL CHECK (item_type IN (
+    'reading', 'listening', 'speaking', 'writing',
+    'grammar', 'vocabulary', 'mock_test', 'diagnostic',
+    'video', 'live_class', 'assignment', 'review'
+  )),
+  section TEXT,
+  difficulty TEXT,
+  estimated_minutes INTEGER DEFAULT 20,
+  ai_generated_content JSONB,
+  created_by UUID REFERENCES unified_profiles(id) ON DELETE SET NULL,
+  is_public BOOLEAN DEFAULT TRUE,
+  tags TEXT[] DEFAULT '{}',
+  exam_types TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_material_catalog_type ON material_catalog(item_type);
+CREATE INDEX IF NOT EXISTS idx_material_catalog_difficulty ON material_catalog(difficulty);
+CREATE INDEX IF NOT EXISTS idx_material_catalog_source ON material_catalog(source_type);
+CREATE INDEX IF NOT EXISTS idx_material_catalog_public ON material_catalog(is_public);
+CREATE INDEX IF NOT EXISTS idx_material_catalog_tags ON material_catalog USING gin(tags);
+CREATE INDEX IF NOT EXISTS idx_material_catalog_exam_types ON material_catalog USING gin(exam_types);
+
+-- 26. Enable RLS + policies.
+ALTER TABLE material_catalog ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS material_catalog_select ON material_catalog;
+CREATE POLICY material_catalog_select ON material_catalog
+  FOR SELECT USING (
+    is_public = TRUE OR created_by = auth.uid() OR is_admin()
+  );
+DROP POLICY IF EXISTS material_catalog_insert ON material_catalog;
+CREATE POLICY material_catalog_insert ON material_catalog
+  FOR INSERT WITH CHECK (created_by = auth.uid() OR is_admin());
+DROP POLICY IF EXISTS material_catalog_update ON material_catalog;
+CREATE POLICY material_catalog_update ON material_catalog
+  FOR UPDATE USING (created_by = auth.uid() OR is_admin());
+DROP POLICY IF EXISTS material_catalog_delete ON material_catalog;
+CREATE POLICY material_catalog_delete ON material_catalog
+  FOR DELETE USING (created_by = auth.uid() OR is_admin());
+
+-- 27. Seed built-in platform catalog (24 curated materials).
+INSERT INTO material_catalog (source_type, source_material_id, source_platform_url, title, description, item_type, section, difficulty, estimated_minutes, exam_types, tags) VALUES
+  ('platform_ibt', 'ibt-reading-basics', 'https://ibt.osee.co.id', 'iBT Reading — Basics', 'Reading passages & questions, foundation level', 'reading', 'reading', 'B1', 30, '{TOEFL_IBT}', '{inference,passage}'),
+  ('platform_ibt', 'ibt-reading-advanced', 'https://ibt.osee.co.id', 'iBT Reading — Advanced', 'Inference & rhetoric-focused passages', 'reading', 'reading', 'C1', 45, '{TOEFL_IBT}', '{inference,rhetoric}'),
+  ('platform_ibt', 'ibt-listening-conversations', 'https://ibt.osee.co.id', 'iBT Listening — Conversations', 'Campus-dialogue listening sets', 'listening', 'listening', 'B2', 25, '{TOEFL_IBT}', '{conversation,campus}'),
+  ('platform_ibt', 'ibt-listening-lectures', 'https://ibt.osee.co.id', 'iBT Listening — Lectures', 'Mini-lecture listening practice', 'listening', 'listening', 'C1', 40, '{TOEFL_IBT}', '{lecture,academic}'),
+  ('platform_ibt', 'ibt-speaking-task1', 'https://ibt.osee.co.id', 'iBT Speaking — Task 1', 'Independent speaking prompts', 'speaking', 'speaking', 'B2', 20, '{TOEFL_IBT}', '{independent,prompt}'),
+  ('platform_ibt', 'ibt-speaking-task2', 'https://ibt.osee.co.id', 'iBT Speaking — Task 2', 'Integrated speaking (read+listen+speak)', 'speaking', 'speaking', 'C1', 30, '{TOEFL_IBT}', '{integrated,speaking}'),
+  ('platform_ibt', 'ibt-writing-independent', 'https://ibt.osee.co.id', 'iBT Writing — Independent', 'Opinion essay prompts', 'writing', 'writing', 'B2', 30, '{TOEFL_IBT}', '{essay,opinion}'),
+  ('platform_ibt', 'ibt-writing-integrated', 'https://ibt.osee.co.id', 'iBT Writing — Integrated', 'Read-listen-write tasks', 'writing', 'writing', 'C1', 40, '{TOEFL_IBT}', '{integrated,writing}'),
+  ('platform_itp', 'itp-reading-basics', 'https://test.osee.co.id', 'ITP Reading — Basics', 'Structure & written expression', 'reading', 'reading', 'B1', 30, '{TOEFL_ITP}', '{structure,grammar}'),
+  ('platform_itp', 'itp-listening-basics', 'https://test.osee.co.id', 'ITP Listening — Basics', 'Short conversation listening', 'listening', 'listening', 'B1', 25, '{TOEFL_ITP}', '{conversation}'),
+  ('platform_itp', 'itp-grammar-structure', 'https://test.osee.co.id', 'ITP Grammar — Structure', 'Sentence structure correction', 'grammar', 'grammar', 'B2', 20, '{TOEFL_ITP}', '{grammar,structure}'),
+  ('platform_itp', 'itp-vocabulary', 'https://test.osee.co.id', 'ITP Vocabulary', 'Academic word list practice', 'vocabulary', 'vocabulary', 'B1', 15, '{TOEFL_ITP}', '{vocab,academic}'),
+  ('platform_ielts', 'ielts-reading-academic', 'https://ielts.osee.co.id', 'IELTS Reading — Academic', 'Academic passage practice', 'reading', 'reading', 'B2', 40, '{IELTS}', '{academic,passage}'),
+  ('platform_ielts', 'ielts-listening', 'https://ielts.osee.co.id', 'IELTS Listening', 'Four-section listening test', 'listening', 'listening', 'B2', 30, '{IELTS}', '{listening,test}'),
+  ('platform_ielts', 'ielts-speaking-part1', 'https://ielts.osee.co.id', 'IELTS Speaking — Part 1', 'Personal interview questions', 'speaking', 'speaking', 'B2', 15, '{IELTS}', '{interview,personal}'),
+  ('platform_ielts', 'ielts-speaking-part2', 'https://ielts.osee.co.id', 'IELTS Speaking — Part 2', 'Long-turn monologue', 'speaking', 'speaking', 'C1', 20, '{IELTS}', '{monologue,cue-card}'),
+  ('platform_ielts', 'ielts-writing-task1', 'https://ielts.osee.co.id', 'IELTS Writing — Task 1', 'Chart/graph description', 'writing', 'writing', 'B2', 20, '{IELTS}', '{chart,description}'),
+  ('platform_ielts', 'ielts-writing-task2', 'https://ielts.osee.co.id', 'IELTS Writing — Task 2', 'Academic essay', 'writing', 'writing', 'C1', 40, '{IELTS}', '{essay,academic}'),
+  ('platform_toeic', 'toeic-listening-photographs', 'https://toeic.osee.co.id', 'TOEIC Listening — Photographs', 'Picture description', 'listening', 'listening', 'A2', 15, '{TOEIC}', '{picture,business}'),
+  ('platform_toeic', 'toeic-listening-short-talks', 'https://toeic.osee.co.id', 'TOEIC Listening — Short Talks', 'Business monologues', 'listening', 'listening', 'B1', 25, '{TOEIC}', '{business,talk}'),
+  ('platform_toeic', 'toeic-reading-incomplete', 'https://toeic.osee.co.id', 'TOEIC Reading — Incomplete Sentences', 'Grammar/vocab fill-in-blank', 'reading', 'reading', 'B1', 20, '{TOEIC}', '{grammar,vocab}'),
+  ('platform_toeic', 'toeic-reading-comprehension', 'https://toeic.osee.co.id', 'TOEIC Reading — Comprehension', 'Passage-based questions', 'reading', 'reading', 'B2', 30, '{TOEIC}', '{passage,business}'),
+  ('edubot', 'edubot-conversation', 'https://edubot.osee.co.id', 'EduBot — Conversation Practice', 'AI-powered spoken conversation', 'speaking', 'speaking', 'B1', 30, '{GENERAL}', '{conversation,ai}'),
+  ('edubot', 'edubot-writing-feedback', 'https://edubot.osee.co.id', 'EduBot — Writing Feedback', 'AI essay scoring + feedback', 'writing', 'writing', 'B2', 25, '{GENERAL}', '{writing,ai,feedback}')
+ON CONFLICT DO NOTHING;

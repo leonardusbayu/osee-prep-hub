@@ -45,6 +45,11 @@ export async function evaluateSpeaking(
   // For simplicity, we send the audio URL and EduBot fetches it.
   const edubotUrl = `${env.EDUBOT_API_URL}/api/speaking/evaluate`;
 
+  // Guard against EduBot being slow or unresponsive: abort after 12 seconds
+  // so the Worker doesn't burn its full 30-second request budget.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12_000);
+
   const response = await fetch(edubotUrl, {
     method: 'POST',
     headers: {
@@ -58,7 +63,8 @@ export async function evaluateSpeaking(
       level: input.level,
       source: 'hub-bridge',
     }),
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeoutId));
 
   if (!response.ok) {
     const errorText = await response.text();

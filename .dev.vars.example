@@ -25,7 +25,8 @@ EDUBOT_INTERNAL_SECRET=xxx
 
 # Webhook secrets (shared with each practice platform)
 WEBHOOK_SECRET_IBT=xxx
-WEBHOOK_SECRET_ITP=xxx
+# Must match WEBHOOK_SECRET_ITP in ITP's includes/config.php
+WEBHOOK_SECRET_ITP=dev-itp-webhook-secret
 WEBHOOK_SECRET_IELTS=xxx
 WEBHOOK_SECRET_TOEIC=xxx
 WEBHOOK_SECRET_BOOKING=xxx
@@ -45,6 +46,10 @@ R2_SECRET_ACCESS_KEY=xxx
 TRIPAY_API_KEY=xxx
 TRIPAY_PRIVATE_KEY=xxx
 TRIPAY_MERCHANT_CODE=xxx
+
+# Email (Resend)
+RESEND_API_KEY=xxx
+MAIL_FROM=OSEE Prep Hub <noreply@osee.co.id>
 
 # Telegram (for EduBot bridge — live class notifications)
 TELEGRAM_BOT_TOKEN=xxx

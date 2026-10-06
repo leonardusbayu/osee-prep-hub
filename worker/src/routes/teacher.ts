@@ -179,20 +179,25 @@ teacherRoutes.get('/dashboard', cache({ ttl: 30 }), async (c) => {
 
     // Recent activity (last 5 webhook events involving this teacher's students)
     let recentActivity: Array<Record<string, unknown>> = [];
+    let displayName = user.email;
     try {
-      const { data: activityRows } = await supabase
-        .from('commission_ledger')
-        .select('id, action, amount_idr, status, created_at')
-        .eq('teacher_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const [{ data: activityRows }, { data: profileResult }] = await Promise.all([
+        supabase
+          .from('commission_ledger')
+          .select('id, action, amount_idr, status, created_at')
+          .eq('teacher_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase.from('unified_profiles').select('display_name').eq('id', user.id).maybeSingle(),
+      ]);
       recentActivity = (activityRows ?? []) as Array<Record<string, unknown>>;
-    } catch {
-      // ignore
+      displayName = (profileResult?.display_name as string | undefined)?.trim() || user.email;
+    } catch (err) {
+      console.error('Teacher dashboard recent activity/profile fetch failed:', err);
     }
 
     return c.json({
-      user: { id: user.id, name: user.display_name, role: user.role },
+      user: { id: user.id, name: displayName, role: user.role },
       classrooms_count: classrooms.length,
       total_students: totalStudents,
       commission_this_month: commissionThisMonth,
@@ -201,7 +206,7 @@ teacherRoutes.get('/dashboard', cache({ ttl: 30 }), async (c) => {
     });
   } catch (err) {
     return c.json({
-      user: { id: user.id, name: user.display_name, role: user.role },
+      user: { id: user.id, name: user.email, role: user.role },
       classrooms_count: 0,
       total_students: 0,
       commission_this_month: 0,
@@ -338,12 +343,24 @@ teacherRoutes.post('/students/:id/report/email', async (c) => {
 
   const reportUrl = `${c.env.WEBAPP_URL ?? ''}/api/teacher/students/${studentId}/report/html`;
 
+  let teacherName = user.email;
+  try {
+    const { data: profileResult } = await supabase
+      .from('unified_profiles')
+      .select('display_name')
+      .eq('id', user.id)
+      .maybeSingle();
+    teacherName = (profileResult?.display_name as string | undefined)?.trim() || user.email;
+  } catch (err) {
+    console.error('Teacher profile fetch failed for report email:', err);
+  }
+
   try {
     const result = await sendReportEmail(c.env, {
       to: recipient,
       studentName,
       reportUrl,
-      teacherName: user.display_name,
+      teacherName,
     });
     return c.json({
       success: true,
@@ -361,98 +378,228 @@ teacherRoutes.post('/students/:id/report/email', async (c) => {
 // ---------- Catalog endpoint (Task 10.x — material catalog for syllabus builder) ----------
 
 /** GET /api/teacher/catalog — list materials teachers can drag into a syllabus.
- * Aggregates from syllabus_items (teacher_custom, reusable across syllabi) +
- * video_lessons (published) + a curated platform-material set. Supports
- * optional ?type=reading&exam=IELTS&level=B2&limit=50 filters. */
+ * Reads from the `material_catalog` table (global reusable repository) +
+ * `video_lessons` (published) + `ai_generation_queue` (completed).
+ * Falls back to a built-in platform catalog when the DB has no curated
+ * materials yet, so the syllabus builder is never empty.
+ * Supports ?type=reading&exam=IELTS&level=B2&limit=100 filters. */
 teacherRoutes.get('/catalog', cache({ ttl: 60 }), async (c) => {
   const type = c.req.query('type') ?? null;
   const exam = c.req.query('exam') ?? null;
   const level = c.req.query('level') ?? null;
-  const limit = Math.min(parseInt(c.req.query('limit') ?? '100', 10), 200);
+  const rawLimit = parseInt(c.req.query('limit') ?? '100', 10);
+  const limit = Number.isNaN(rawLimit) || rawLimit <= 0 ? 100 : Math.min(rawLimit, 200);
 
   const supabase = getSupabase(c.env);
 
-  const syllabusQuery = supabase
-    .from('syllabus_items')
-    .select('id, title, description, item_type, section, difficulty, source_type, source_platform_url, estimated_minutes')
-    .eq('source_type', 'teacher_custom')
-    .limit(limit);
-  if (type) syllabusQuery.eq('item_type', type);
-  if (level) syllabusQuery.eq('difficulty', level);
+  try {
+    // 1. Query material_catalog (global reusable materials, public only).
+    const catalogQuery = supabase
+      .from('material_catalog')
+      .select('id, source_type, source_material_id, source_platform_url, title, description, item_type, section, difficulty, estimated_minutes, tags, exam_types')
+      .eq('is_public', true)
+      .order('source_type', { ascending: true })
+      .limit(limit);
+    if (type) catalogQuery.eq('item_type', type);
+    if (level) catalogQuery.eq('difficulty', level);
+    if (exam) catalogQuery.contains('exam_types', [exam]);
 
-  const videoQuery = supabase
-    .from('video_lessons')
-    .select('id, title, description, section, cefr_level, youtube_id, is_free_preview')
-    .eq('is_published', true)
-    .limit(limit);
-  if (level) videoQuery.eq('cefr_level', level);
+    // 2. Query video_lessons (published).
+    const videoQuery = supabase
+      .from('video_lessons')
+      .select('id, title, description, section, cefr_level, youtube_id, is_free_preview')
+      .eq('is_published', true)
+      .limit(limit);
+    if (level) videoQuery.eq('cefr_level', level);
 
-  const [syllabusItems, videoLessons] = await Promise.all([syllabusQuery, videoQuery]);
+    // 3. Query ai_generation_queue (completed AI materials).
+    const aiQuery = supabase
+      .from('ai_generation_queue')
+      .select('id, generation_type, exam_type, cefr_level, topic, generated_content')
+      .eq('status', 'completed')
+      .limit(limit);
+    if (type) aiQuery.eq('generation_type', type);
+    if (exam) aiQuery.eq('exam_type', exam);
+    if (level) aiQuery.eq('cefr_level', level);
 
-  type CatalogItem = {
-    source_type: string;
-    material_id: string;
-    title: string;
-    description: string | null;
-    item_type: string;
-    section: string | null;
-    difficulty: string | null;
-    estimated_minutes: number | null;
-    source_platform_url: string | null;
+    const [catalogItems, videoLessons, aiGenerated] = await Promise.all([catalogQuery, videoQuery, aiQuery]);
+
+    type CatalogItem = {
+      source_type: string;
+      material_id: string;
+      title: string;
+      description: string | null;
+      item_type: string;
+      section: string | null;
+      difficulty: string | null;
+      estimated_minutes: number | null;
+      source_platform_url: string | null;
+      tags: string[] | null;
+      exam_types?: string[] | null;
+    };
+
+    const items: CatalogItem[] = [];
+
+    // material_catalog rows
+    for (const row of (catalogItems.data ?? []) as Array<Record<string, unknown>>) {
+      items.push({
+        source_type: (row.source_type as string) ?? 'teacher_custom',
+        material_id: row.id as string,
+        title: row.title as string,
+        description: (row.description as string) ?? null,
+        item_type: (row.item_type as string) ?? 'unknown',
+        section: (row.section as string) ?? null,
+        difficulty: (row.difficulty as string) ?? null,
+        estimated_minutes: (row.estimated_minutes as number) ?? null,
+        source_platform_url: (row.source_platform_url as string) ?? null,
+        tags: (row.tags as string[]) ?? null,
+        exam_types: (row.exam_types as string[]) ?? null,
+      });
+    }
+
+    // video_lessons rows
+    for (const row of (videoLessons.data ?? []) as Array<Record<string, unknown>>) {
+      items.push({
+        source_type: 'video',
+        material_id: row.id as string,
+        title: row.title as string,
+        description: (row.description as string) ?? null,
+        item_type: 'video',
+        section: (row.section as string) ?? null,
+        difficulty: (row.cefr_level as string) ?? null,
+        estimated_minutes: null,
+        source_platform_url: row.youtube_id ? `https://youtube.com/watch?v=${row.youtube_id}` : null,
+        tags: null,
+      });
+    }
+
+    // ai_generation_queue rows (completed AI materials)
+    for (const row of (aiGenerated.data ?? []) as Array<Record<string, unknown>>) {
+      const genType = (row.generation_type as string) ?? 'material';
+      const topic = (row.topic as string) ?? '';
+      const title = `${genType}${topic ? ` — ${topic}` : ''}`.trim() || 'AI-generated material';
+      items.push({
+        source_type: 'ai_generated',
+        material_id: row.id as string,
+        title,
+        description: null,
+        item_type: genType,
+        section: null,
+        difficulty: (row.cefr_level as string) ?? null,
+        estimated_minutes: null,
+        source_platform_url: null,
+        tags: null,
+        exam_types: row.exam_type ? [(row.exam_type as string)] : null,
+      });
+    }
+
+    let catalogResult = items.slice(0, limit);
+
+    // If DB has no curated materials yet, fall back to the built-in platform
+    // catalog so the syllabus builder is never empty.
+    if (catalogResult.length === 0) {
+      catalogResult = getBuiltinCatalog();
+      if (type) catalogResult = catalogResult.filter((i) => i.item_type === type);
+      if (level) catalogResult = catalogResult.filter((i) => i.difficulty === level);
+      if (exam) catalogResult = catalogResult.filter((i) => !i.exam_types || i.exam_types.includes(exam));
+      catalogResult = catalogResult.slice(0, limit);
+    }
+
+    return c.json({ catalog: catalogResult });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Catalog fetch failed';
+    console.error('Catalog GET failed:', err);
+    return c.json({ error: { code: 'FETCH_FAILED', message } }, 500);
+  }
+});
+
+/** POST /api/teacher/catalog — add a custom material to the global catalog.
+ *  Teachers can create their own materials and share them to the catalog for
+ *  reuse across syllabi. AI-generated materials can also be saved here. */
+teacherRoutes.post('/catalog', async (c) => {
+  const user = getAuthedUser(c);
+  if (!['teacher', 'partner', 'admin'].includes(user.role)) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Teacher role required' } }, 403);
+  }
+
+  let body: {
+    title?: string; description?: string; item_type?: string;
+    section?: string; difficulty?: string; estimated_minutes?: number;
+    source_type?: string; source_platform_url?: string;
+    ai_generated_content?: Record<string, unknown>;
+    tags?: unknown; exam_types?: unknown;
   };
-
-  const items: CatalogItem[] = [];
-
-  for (const row of (syllabusItems.data ?? []) as Array<Record<string, unknown>>) {
-    items.push({
-      source_type: (row.source_type as string) ?? 'teacher_custom',
-      material_id: row.id as string,
-      title: row.title as string,
-      description: (row.description as string) ?? null,
-      item_type: (row.item_type as string) ?? 'unknown',
-      section: (row.section as string) ?? null,
-      difficulty: (row.difficulty as string) ?? null,
-      estimated_minutes: (row.estimated_minutes as number) ?? null,
-      source_platform_url: (row.source_platform_url as string) ?? null,
-    });
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.title?.trim()) {
+    return c.json({ error: { code: 'INVALID_TITLE', message: 'Title required' } }, 400);
+  }
+  if (!body.item_type) {
+    return c.json({ error: { code: 'INVALID_TYPE', message: 'item_type required' } }, 400);
   }
 
-  for (const row of (videoLessons.data ?? []) as Array<Record<string, unknown>>) {
-    items.push({
-      source_type: 'video',
-      material_id: row.id as string,
-      title: row.title as string,
-      description: (row.description as string) ?? null,
-      item_type: 'video',
-      section: (row.section as string) ?? null,
-      difficulty: (row.cefr_level as string) ?? null,
-      estimated_minutes: null,
-      source_platform_url: row.youtube_id ? `https://youtube.com/watch?v=${row.youtube_id}` : null,
-    });
+  const VALID_ITEM_TYPES = new Set([
+    'reading', 'listening', 'speaking', 'writing',
+    'grammar', 'vocabulary', 'mock_test', 'diagnostic',
+    'video', 'live_class', 'assignment', 'review',
+  ]);
+  if (!VALID_ITEM_TYPES.has(body.item_type)) {
+    return c.json({ error: { code: 'INVALID_TYPE', message: `Invalid item_type: ${body.item_type}` } }, 400);
   }
 
-  // Apply exam filter in JS (syllabus_items/video_lessons don't carry exam_type
-  // directly — it's on the parent syllabus/classroom, which we don't join here
-  // to keep the query cheap; exam filtering is a secondary use-case).
-  const filtered = exam
-    ? items.filter(() => true) // exam filter is advisory; items are cross-exam
-    : items;
-
-  let catalogResult = filtered.slice(0, limit);
-
-  // If DB has no curated materials yet, fall back to the built-in platform
-  // catalog so the syllabus builder is never empty. This mirrors the Flutter
-  // `kMaterialCatalog` static set — a teacher can drag any of these into
-  // their syllabus as a starting point.
-  if (catalogResult.length === 0) {
-    catalogResult = getBuiltinCatalog();
-    // Apply optional type/level filters to the built-in catalog.
-    if (type) catalogResult = catalogResult.filter((i) => i.item_type === type);
-    if (level) catalogResult = catalogResult.filter((i) => i.difficulty === level);
-    catalogResult = catalogResult.slice(0, limit);
+  if (body.difficulty !== undefined && body.difficulty !== null && !/^[A-C][1-2]$/.test(body.difficulty)) {
+    return c.json({ error: { code: 'INVALID_DIFFICULTY', message: 'difficulty must be A1-C2' } }, 400);
   }
 
-  return c.json({ catalog: catalogResult });
+  const estimatedMinutes = Number(body.estimated_minutes ?? 20);
+  if (Number.isNaN(estimatedMinutes) || estimatedMinutes <= 0 || !Number.isInteger(estimatedMinutes)) {
+    return c.json({ error: { code: 'INVALID_DURATION', message: 'estimated_minutes must be a positive integer' } }, 400);
+  }
+
+  const VALID_SOURCE_TYPES = new Set([
+    'platform_ibt', 'platform_itp', 'platform_ielts', 'platform_toeic',
+    'edubot', 'teacher_custom', 'ai_generated', 'video_lesson',
+  ]);
+  const sourceType = body.source_type ?? 'teacher_custom';
+  if (!VALID_SOURCE_TYPES.has(sourceType)) {
+    return c.json({ error: { code: 'INVALID_SOURCE_TYPE', message: `Invalid source_type: ${body.source_type}` } }, 400);
+  }
+
+  const tags = Array.isArray(body.tags) ? body.tags : [];
+  const examTypes = Array.isArray(body.exam_types) ? body.exam_types : [];
+  if (tags.some((t) => typeof t !== 'string')) {
+    return c.json({ error: { code: 'INVALID_TAGS', message: 'tags must be an array of strings' } }, 400);
+  }
+  if (examTypes.some((e) => typeof e !== 'string')) {
+    return c.json({ error: { code: 'INVALID_EXAM_TYPES', message: 'exam_types must be an array of strings' } }, 400);
+  }
+
+  const supabase = getSupabase(c.env);
+  const { data, error } = await supabase
+    .from('material_catalog')
+    .insert({
+      created_by: user.id,
+      source_type: sourceType,
+      title: body.title.trim(),
+      description: body.description ?? null,
+      item_type: body.item_type,
+      section: body.section ?? null,
+      difficulty: body.difficulty ?? null,
+      estimated_minutes: estimatedMinutes,
+      source_platform_url: body.source_platform_url ?? null,
+      ai_generated_content: body.ai_generated_content ?? null,
+      tags: tags as string[],
+      exam_types: examTypes as string[],
+      is_public: true,
+    })
+    .select()
+    .single();
+
+  if (error || !data) {
+    return c.json({ error: { code: 'CREATE_FAILED', message: error?.message ?? 'Failed to create material' } }, 500);
+  }
+  return c.json({ material: data }, 201);
 });
 
 /** Built-in curated platform catalog (mirrors Flutter `kMaterialCatalog`).
@@ -468,6 +615,7 @@ function getBuiltinCatalog(): Array<{
   difficulty: string;
   estimated_minutes: number;
   source_platform_url: string | null;
+  tags: string[] | null;
 }> {
   const def = (
     sourceType: string, materialId: string, title: string, description: string,
@@ -483,6 +631,7 @@ function getBuiltinCatalog(): Array<{
     difficulty,
     estimated_minutes: minutes,
     source_platform_url: url,
+    tags: null,
   });
 
   return [
@@ -496,10 +645,10 @@ function getBuiltinCatalog(): Array<{
     def('platform_ibt', 'ibt-writing-independent', 'iBT Writing — Independent', 'Opinion essay prompts', 'writing', 'writing', 'B2', 30, 'https://ibt.osee.co.id'),
     def('platform_ibt', 'ibt-writing-integrated', 'iBT Writing — Integrated', 'Read-listen-write tasks', 'writing', 'writing', 'C1', 40, 'https://ibt.osee.co.id'),
     // ITP
-    def('platform_itp', 'itp-reading-basics', 'ITP Reading — Basics', 'Structure & written expression', 'reading', 'reading', 'B1', 30, 'https://itp.osee.co.id'),
-    def('platform_itp', 'itp-listening-basics', 'ITP Listening — Basics', 'Short conversation listening', 'listening', 'listening', 'B1', 25, 'https://itp.osee.co.id'),
-    def('platform_itp', 'itp-grammar-structure', 'ITP Grammar — Structure', 'Sentence structure correction', 'grammar', 'grammar', 'B2', 20, 'https://itp.osee.co.id'),
-    def('platform_itp', 'itp-vocabulary', 'ITP Vocabulary', 'Academic word list practice', 'vocabulary', 'vocabulary', 'B1', 15, 'https://itp.osee.co.id'),
+    def('platform_itp', 'itp-reading-basics', 'ITP Reading — Basics', 'Structure & written expression', 'reading', 'reading', 'B1', 30, 'https://test.osee.co.id'),
+    def('platform_itp', 'itp-listening-basics', 'ITP Listening — Basics', 'Short conversation listening', 'listening', 'listening', 'B1', 25, 'https://test.osee.co.id'),
+    def('platform_itp', 'itp-grammar-structure', 'ITP Grammar — Structure', 'Sentence structure correction', 'grammar', 'grammar', 'B2', 20, 'https://test.osee.co.id'),
+    def('platform_itp', 'itp-vocabulary', 'ITP Vocabulary', 'Academic word list practice', 'vocabulary', 'vocabulary', 'B1', 15, 'https://test.osee.co.id'),
     // IELTS
     def('platform_ielts', 'ielts-reading-academic', 'IELTS Reading — Academic', 'Academic passage practice', 'reading', 'reading', 'B2', 40, 'https://ielts.osee.co.id'),
     def('platform_ielts', 'ielts-listening', 'IELTS Listening', 'Four-section listening test', 'listening', 'listening', 'B2', 30, 'https://ielts.osee.co.id'),
@@ -513,8 +662,8 @@ function getBuiltinCatalog(): Array<{
     def('platform_toeic', 'toeic-reading-incomplete', 'TOEIC Reading — Incomplete Sentences', 'Grammar/vocab fill-in-blank', 'reading', 'reading', 'B1', 20, 'https://toeic.osee.co.id'),
     def('platform_toeic', 'toeic-reading-comprehension', 'TOEIC Reading — Comprehension', 'Passage-based questions', 'reading', 'reading', 'B2', 30, 'https://toeic.osee.co.id'),
     // EduBot
-    def('edubot', 'edubot-conversation', 'EduBot — Conversation Practice', 'AI-powered spoken conversation', 'speaking', 'speaking', 'B1', 30, 'https://edubot.osee.co.id'),
-    def('edubot', 'edubot-writing-feedback', 'EduBot — Writing Feedback', 'AI essay scoring + feedback', 'writing', 'writing', 'B2', 25, 'https://edubot.osee.co.id'),
+    def('edubot', 'edubot-conversation', 'EduBot — Conversation Practice', 'AI-powered spoken conversation', 'speaking', 'speaking', 'B1', 30, 'https://t.me/osee_edubot'),
+    def('edubot', 'edubot-writing-feedback', 'EduBot — Writing Feedback', 'AI essay scoring + feedback', 'writing', 'writing', 'B2', 25, 'https://t.me/osee_edubot'),
   ];
 }
 

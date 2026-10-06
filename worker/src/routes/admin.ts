@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { Env, ContextVars, UserRole } from '../types';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth, requireRole, getAuthedUser } from '../middleware/auth';
 import { setPrice, listAllPricing, deactivatePrice } from '../services/pricing';
 import { getSupabase } from '../services/supabase';
 import {
@@ -459,6 +459,110 @@ adminRoutes.post('/orders/:id/mark-paid', async (c) => {
   } catch (err) {
     return c.json({ error: { code: 'MARK_PAID_FAILED', message: (err as Error).message } }, 400);
   }
+});
+
+// ---------- Material catalog management (Goal 6/7) ----------
+
+/** GET /api/admin/materials — list all material_catalog items (all sources). */
+adminRoutes.get('/materials', async (c) => {
+  const type = c.req.query('type') ?? null;
+  const source = c.req.query('source') ?? null;
+  const supabase = getSupabase(c.env);
+  let query = supabase
+    .from('material_catalog')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(500);
+  if (type) query = query.eq('item_type', type);
+  if (source) query = query.eq('source_type', source);
+  const { data, error } = await query;
+  if (error) {
+    return c.json({ error: { code: 'FETCH_FAILED', message: error.message } }, 500);
+  }
+  return c.json({ materials: data ?? [] });
+});
+
+/** POST /api/admin/materials — admin adds a material to the catalog. */
+adminRoutes.post('/materials', async (c) => {
+  let body: {
+    title?: string; description?: string; item_type?: string;
+    section?: string; difficulty?: string; estimated_minutes?: number;
+    source_type?: string; source_platform_url?: string;
+    tags?: string[]; exam_types?: string[];
+  };
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  if (!body.title?.trim()) {
+    return c.json({ error: { code: 'INVALID_TITLE', message: 'Title required' } }, 400);
+  }
+  if (!body.item_type) {
+    return c.json({ error: { code: 'INVALID_TYPE', message: 'item_type required' } }, 400);
+  }
+  const supabase = getSupabase(c.env);
+  const user = getAuthedUser(c);
+  const { data, error } = await supabase
+    .from('material_catalog')
+    .insert({
+      created_by: user.id,
+      source_type: body.source_type ?? 'teacher_custom',
+      title: body.title.trim(),
+      description: body.description ?? null,
+      item_type: body.item_type,
+      section: body.section ?? null,
+      difficulty: body.difficulty ?? null,
+      estimated_minutes: body.estimated_minutes ?? 20,
+      source_platform_url: body.source_platform_url ?? null,
+      tags: body.tags ?? [],
+      exam_types: body.exam_types ?? [],
+      is_public: true,
+    })
+    .select()
+    .single();
+  if (error || !data) {
+    return c.json({ error: { code: 'CREATE_FAILED', message: error?.message ?? 'Failed' } }, 500);
+  }
+  return c.json({ material: data }, 201);
+});
+
+/** PUT /api/admin/materials/:id — admin updates a catalog material. */
+adminRoutes.put('/materials/:id', async (c) => {
+  const materialId = c.req.param('id');
+  let body: Record<string, unknown> = {};
+  try { body = await c.req.json(); } catch {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON' } }, 400);
+  }
+  // Whitelist updatable fields
+  const allowed: Record<string, unknown> = {};
+  for (const k of ['title', 'description', 'item_type', 'section', 'difficulty', 'estimated_minutes', 'source_type', 'source_platform_url', 'tags', 'exam_types', 'is_public']) {
+    if (body[k] !== undefined) allowed[k] = body[k];
+  }
+  allowed['updated_at'] = new Date().toISOString();
+  const supabase = getSupabase(c.env);
+  const { data, error } = await supabase
+    .from('material_catalog')
+    .update(allowed)
+    .eq('id', materialId)
+    .select()
+    .single();
+  if (error || !data) {
+    return c.json({ error: { code: 'UPDATE_FAILED', message: error?.message ?? 'Not found' } }, 500);
+  }
+  return c.json({ material: data });
+});
+
+/** DELETE /api/admin/materials/:id — admin removes a material from catalog. */
+adminRoutes.delete('/materials/:id', async (c) => {
+  const materialId = c.req.param('id');
+  const supabase = getSupabase(c.env);
+  const { error } = await supabase
+    .from('material_catalog')
+    .delete()
+    .eq('id', materialId);
+  if (error) {
+    return c.json({ error: { code: 'DELETE_FAILED', message: error.message } }, 500);
+  }
+  return c.json({ success: true });
 });
 
 // ---------- Knowledge base ----------

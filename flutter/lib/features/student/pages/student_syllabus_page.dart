@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -50,52 +49,10 @@ class _StudentSyllabusPageState extends ConsumerState<StudentSyllabusPage> {
   }
 
   Future<void> _startItem(String itemId) async {
-    try {
-      final dio = ApiClient.create();
-      final r = await dio.post('/student/syllabus/$itemId/start', data: {});
-      final deepLink = (r.data as Map)['deep_link'] as String?;
-      if (deepLink != null && deepLink.isNotEmpty && mounted) {
-        // Open the deep link immediately, with a SnackBar re-open fallback.
-        await launchUrl(Uri.parse(deepLink));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: StudentTheme.primary,
-            content: Text(
-              'Opening: $deepLink',
-              style: StudentTheme.cardLabel(Colors.white),
-            ),
-            action: SnackBarAction(
-              label: 'Re-open',
-              textColor: Colors.white,
-              onPressed: () => launchUrl(Uri.parse(deepLink)),
-            ),
-          ),
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: StudentTheme.successGreen,
-            content: Text(
-              'Started! No external link for this item.',
-              style: StudentTheme.cardLabel(Colors.white),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: StudentTheme.danger,
-            content: Text(
-              'Failed: $e',
-              style: StudentTheme.cardLabel(Colors.white),
-            ),
-          ),
-        );
-      }
-    }
+    // Navigate to the item detail page — it explains what to do on the
+    // destination platform and then opens the external link (Goal 6:
+    // Materials hub gives context, not just a raw redirect).
+    context.go('/student/syllabus/item/$itemId');
   }
 
   Future<void> _completeItem(String itemId) async {
